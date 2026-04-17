@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Use a custom build folder because OneDrive frequently locks `.next/*` files on Windows.
+  distDir: ".next-build",
 };
 
 export default nextConfig;

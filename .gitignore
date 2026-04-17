@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local build + temp files
+/.next-build/
+/tmp_*/
+*.zip
+CareerAdvisorworkflow.docx
+/PersonaFoundry/

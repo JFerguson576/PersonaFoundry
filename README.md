@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Product Roadmap
+
+The working product roadmap for Persona Foundry and Career Copilot lives here:
+
+- [PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md)
+
 ## Getting Started
 
 First, run the development server:
