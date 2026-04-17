@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     const grouped = new Map<string, { user_id: string; email: string | null; roles: PlatformRole[] }>()
     for (const row of roleRows ?? []) {
       if (!isPlatformRole(row.role)) continue
-      const current = grouped.get(row.user_id) ?? {
+      const current: { user_id: string; email: string | null; roles: PlatformRole[] } = grouped.get(row.user_id) ?? {
         user_id: row.user_id,
         email: emailByUserId.get(row.user_id) ?? null,
         roles: [],
