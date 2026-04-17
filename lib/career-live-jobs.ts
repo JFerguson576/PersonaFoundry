@@ -23,19 +23,25 @@ type SearchPayload = {
 
 type DbRow = Record<string, unknown>
 
-type SupabaseQuery = {
-  select: (...args: unknown[]) => SupabaseQuery
-  eq: (...args: unknown[]) => SupabaseQuery
-  in: (...args: unknown[]) => SupabaseQuery
-  order: (...args: unknown[]) => SupabaseQuery
-  limit: (...args: unknown[]) => SupabaseQuery
-  insert: (rows: DbRow[]) => SupabaseQuery
+type SupabaseSelectQuery = {
+  eq: (...args: unknown[]) => SupabaseSelectQuery
+  in: (...args: unknown[]) => SupabaseSelectQuery
+  order: (...args: unknown[]) => SupabaseSelectQuery
+  limit: (...args: unknown[]) => SupabaseSelectQuery
+  select: (...args: unknown[]) => SupabaseSelectQuery
   maybeSingle: () => Promise<{ data: DbRow | null; error?: { message?: string } | null }>
   single: () => Promise<{ data: DbRow; error?: { message?: string } | null }>
 }
 
+type SupabaseInsertQuery = {
+  select: (...args: unknown[]) => SupabaseSelectQuery
+}
+
 type SupabaseLike = {
-  from: (table: string) => SupabaseQuery
+  from: (table: string) => {
+    select: (...args: unknown[]) => SupabaseSelectQuery
+    insert: (rows: DbRow[]) => SupabaseInsertQuery
+  }
 }
 
 function stringify(value: unknown) {
