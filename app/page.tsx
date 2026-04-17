@@ -1241,11 +1241,12 @@ export default function Home() {
   const topCompareRows = useMemo(() => compareRows.slice(0, 3), [compareRows])
 
   async function signInWithProvider(provider: 'google' | 'facebook' | 'linkedin_oidc') {
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const redirectTo =
+      typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: redirectTo ? { redirectTo } : undefined,
     })
 
     if (error) {

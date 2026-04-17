@@ -1513,11 +1513,12 @@ export default function Home() {
       return
     }
     setBusyProvider(provider)
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const redirectTo =
+      typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: redirectTo ? { redirectTo } : undefined,
     })
 
     if (error) {

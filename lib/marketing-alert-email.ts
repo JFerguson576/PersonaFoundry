@@ -32,7 +32,7 @@ export async function sendCriticalMarketingAlertEmail(params: MarketingAlertEmai
     "johnliamferguson@gmail.com"
 
   const fromEmail = process.env.CONTACT_FROM_EMAIL || "Personara <onboarding@resend.dev>"
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
   const engineUrl = `${baseUrl}/control-center/marketing-engine`
 
   const subject = `Personara Critical Alert: ${params.alertType.replaceAll("_", " ")}`
@@ -67,4 +67,3 @@ export async function sendCriticalMarketingAlertEmail(params: MarketingAlertEmai
 
   return { sent: true as const }
 }
-

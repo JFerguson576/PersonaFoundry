@@ -99,9 +99,8 @@ export async function POST(request: Request) {
   if (resendApiKey) {
     const fromEmail = process.env.CONTACT_FROM_EMAIL || "Personara <onboarding@resend.dev>"
     const toName = inviteeName || "there"
-    const inviteUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/career-intelligence`
-      : "http://localhost:3000/career-intelligence"
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+    const inviteUrl = `${baseUrl}/career-intelligence`
     const subject = `${inviterEmail || "A Personara user"} invited you to Personara Career Intelligence`
     const html = `
       <h2>You were invited to Personara</h2>

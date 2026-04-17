@@ -73,11 +73,15 @@ export default function PlatformLandingPage() {
     setMessage("")
     setBusyProvider(provider)
     const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/platform` : "http://localhost:3000/platform"
+      typeof window !== "undefined"
+        ? `${window.location.origin}/platform`
+        : process.env.NEXT_PUBLIC_SITE_URL
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/platform`
+          : undefined
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: redirectTo ? { redirectTo } : undefined,
     })
 
     if (error) {

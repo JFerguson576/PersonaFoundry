@@ -126,11 +126,16 @@ export function CareerIntelligenceLandingClient() {
       return
     }
     setBusyProvider(provider)
-    const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/career-intelligence` : "http://localhost:3000/career-intelligence"
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/career-intelligence`
+        : process.env.NEXT_PUBLIC_SITE_URL
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/career-intelligence`
+          : undefined
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: redirectTo ? { redirectTo } : undefined,
     })
 
     if (error) {
