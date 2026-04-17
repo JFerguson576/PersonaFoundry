@@ -24,6 +24,7 @@ export async function GET(req: Request, context: RouteContext) {
       return NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 })
     }
 
+    const currentUserId = user.id
     const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
     const canViewAllCandidates = capabilities.isAdmin
     const { id } = await context.params
@@ -42,7 +43,7 @@ export async function GET(req: Request, context: RouteContext) {
       }
 
       if (!canViewAllCandidates || !admin) {
-        query = query.eq("user_id", user.id)
+        query = query.eq("user_id", currentUserId)
       }
 
       return query.single()
@@ -68,7 +69,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("created_at", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      documentsQuery = documentsQuery.eq("user_id", user.id)
+      documentsQuery = documentsQuery.eq("user_id", currentUserId)
     }
 
     const { data: documents, error: documentsError } = await documentsQuery
@@ -84,7 +85,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("profile_version", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      profilesQuery = profilesQuery.eq("user_id", user.id)
+      profilesQuery = profilesQuery.eq("user_id", currentUserId)
     }
 
     const { data: profiles, error: profilesError } = await profilesQuery
@@ -100,7 +101,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("created_at", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      assetsQuery = assetsQuery.eq("user_id", user.id)
+      assetsQuery = assetsQuery.eq("user_id", currentUserId)
     }
 
     const { data: assets, error: assetsError } = await assetsQuery
@@ -116,7 +117,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("created_at", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      liveJobRunsQuery = liveJobRunsQuery.eq("user_id", user.id)
+      liveJobRunsQuery = liveJobRunsQuery.eq("user_id", currentUserId)
     }
 
     const { data: liveJobRuns, error: liveJobRunsError } = await liveJobRunsQuery
@@ -132,7 +133,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("created_at", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      backgroundJobsQuery = backgroundJobsQuery.eq("user_id", user.id)
+      backgroundJobsQuery = backgroundJobsQuery.eq("user_id", currentUserId)
     }
 
     const { data: backgroundJobs, error: backgroundJobsError } = await backgroundJobsQuery
@@ -148,7 +149,7 @@ export async function GET(req: Request, context: RouteContext) {
       .order("updated_at", { ascending: false })
 
     if (!canViewAllCandidates || !admin) {
-      applicationsQuery = applicationsQuery.eq("user_id", user.id)
+      applicationsQuery = applicationsQuery.eq("user_id", currentUserId)
     }
 
     const { data: applications, error: applicationsError } = await applicationsQuery
