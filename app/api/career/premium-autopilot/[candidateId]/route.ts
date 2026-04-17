@@ -238,7 +238,7 @@ export async function PUT(request: Request, context: RouteContext) {
   return NextResponse.json({ settings: normalizeSettingsRow(data as RawSettingsRow) })
 }
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const { user, accessToken, errorMessage } = await getRequestAuth(request)
 
   if (!user || !accessToken) {
