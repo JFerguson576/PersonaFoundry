@@ -154,7 +154,7 @@ export async function runLiveJobSearch(params: {
 
   for (const asset of supportingAssetRows) {
     if (!asset.asset_type || latestByType.has(asset.asset_type)) continue
-    latestByType.set(asset.asset_type, { title: asset.title, content: asset.content })
+    latestByType.set(asset.asset_type, { title: asset.title ?? null, content: asset.content ?? null })
   }
 
   const model = process.env.OPENAI_JOB_SEARCH_MODEL || process.env.OPENAI_MODEL || "gpt-5"
