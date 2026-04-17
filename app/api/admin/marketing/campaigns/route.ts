@@ -25,17 +25,17 @@ function numeric(value: unknown, fallback = 0) {
 async function checkAdmin(request: Request) {
   const { user, errorMessage } = await getRequestAuth(request)
   if (!user) {
-    return { error: NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 }), user: null as const, admin: null as const }
+    return { error: NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 }), user: null, admin: null }
   }
 
   const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
   if (!capabilities.isAdmin) {
-    return { error: NextResponse.json({ error: "Admin access required" }, { status: 403 }), user: null as const, admin: null as const }
+    return { error: NextResponse.json({ error: "Admin access required" }, { status: 403 }), user: null, admin: null }
   }
 
   const admin = createAdminClient()
   if (!admin) {
-    return { error: NextResponse.json({ error: "Missing SUPABASE_SERVICE_ROLE_KEY." }, { status: 500 }), user: null as const, admin: null as const }
+    return { error: NextResponse.json({ error: "Missing SUPABASE_SERVICE_ROLE_KEY." }, { status: 500 }), user: null, admin: null }
   }
 
   return { error: null, user, admin }
@@ -148,4 +148,3 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ campaign: data })
 }
-
