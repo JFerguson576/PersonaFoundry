@@ -1,6 +1,7 @@
 import OpenAI from "openai"
 import { normalizeString } from "@/lib/career"
 import { logApiUsage, logUsageEvent } from "@/lib/telemetry"
+import type { createRouteClient } from "@/lib/supabase/route"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -21,28 +22,7 @@ type SearchPayload = {
   next_steps?: string[]
 }
 
-type DbRow = Record<string, unknown>
-
-type SupabaseSelectQuery = {
-  eq: (...args: unknown[]) => SupabaseSelectQuery
-  in: (...args: unknown[]) => SupabaseSelectQuery
-  order: (...args: unknown[]) => SupabaseSelectQuery
-  limit: (...args: unknown[]) => SupabaseSelectQuery
-  select: (...args: unknown[]) => SupabaseSelectQuery
-  maybeSingle: () => Promise<{ data: DbRow | null; error?: { message?: string } | null }>
-  single: () => Promise<{ data: DbRow; error?: { message?: string } | null }>
-}
-
-type SupabaseInsertQuery = {
-  select: (...args: unknown[]) => SupabaseSelectQuery
-}
-
-type SupabaseLike = {
-  from: (table: string) => {
-    select: (...args: unknown[]) => SupabaseSelectQuery
-    insert: (rows: DbRow[]) => SupabaseInsertQuery
-  }
-}
+type SupabaseLike = ReturnType<typeof createRouteClient>
 
 function stringify(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2)
