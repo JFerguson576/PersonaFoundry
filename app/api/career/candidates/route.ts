@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 })
     }
 
+    const currentUserId = user.id
     const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
     const canViewAllCandidates = capabilities.isAdmin
     const supabase = createRouteClient(accessToken ?? undefined)
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
       }
 
       if (scope === "mine" || !canViewAllCandidates || !admin) {
-        query = query.eq("user_id", user.id)
+        query = query.eq("user_id", currentUserId)
       } else if (scope === "owner_preview") {
         if (ownerPreviewUserId) {
           query = query.eq("user_id", ownerPreviewUserId)
@@ -83,19 +84,19 @@ export async function GET(req: Request) {
     const [documentsResult, profilesResult, assetsResult, liveRunsResult, applicationsResult] = await Promise.all([
       canViewAllCandidates && admin
         ? admin.from("career_source_documents").select("candidate_id, source_type, created_at").in("candidate_id", candidateIds)
-        : supabase.from("career_source_documents").select("candidate_id, source_type, created_at").in("candidate_id", candidateIds).eq("user_id", user.id),
+        : supabase.from("career_source_documents").select("candidate_id, source_type, created_at").in("candidate_id", candidateIds).eq("user_id", currentUserId),
       canViewAllCandidates && admin
         ? admin.from("career_candidate_profiles").select("candidate_id, created_at").in("candidate_id", candidateIds)
-        : supabase.from("career_candidate_profiles").select("candidate_id, created_at").in("candidate_id", candidateIds).eq("user_id", user.id),
+        : supabase.from("career_candidate_profiles").select("candidate_id, created_at").in("candidate_id", candidateIds).eq("user_id", currentUserId),
       canViewAllCandidates && admin
         ? admin.from("career_generated_assets").select("candidate_id, asset_type, created_at").in("candidate_id", candidateIds)
-        : supabase.from("career_generated_assets").select("candidate_id, asset_type, created_at").in("candidate_id", candidateIds).eq("user_id", user.id),
+        : supabase.from("career_generated_assets").select("candidate_id, asset_type, created_at").in("candidate_id", candidateIds).eq("user_id", currentUserId),
       canViewAllCandidates && admin
         ? admin.from("career_live_job_runs").select("candidate_id, status, created_at").in("candidate_id", candidateIds)
-        : supabase.from("career_live_job_runs").select("candidate_id, status, created_at").in("candidate_id", candidateIds).eq("user_id", user.id),
+        : supabase.from("career_live_job_runs").select("candidate_id, status, created_at").in("candidate_id", candidateIds).eq("user_id", currentUserId),
       canViewAllCandidates && admin
         ? admin.from("career_applications").select("candidate_id, status, follow_up_date, updated_at").in("candidate_id", candidateIds)
-        : supabase.from("career_applications").select("candidate_id, status, follow_up_date, updated_at").in("candidate_id", candidateIds).eq("user_id", user.id),
+        : supabase.from("career_applications").select("candidate_id, status, follow_up_date, updated_at").in("candidate_id", candidateIds).eq("user_id", currentUserId),
     ])
 
     const documentCountByCandidate = new Map<string, number>()
