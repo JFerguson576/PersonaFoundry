@@ -59,20 +59,25 @@ function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value))
 }
 
-function normalizeTraits(input: Record<string, unknown>): Traits {
+function normalizeTraits(input: unknown): Traits {
+  const source: Record<string, unknown> =
+    input && typeof input === 'object' && !Array.isArray(input)
+      ? (input as Record<string, unknown>)
+      : {}
+
   return {
-    warmth: clamp(Number(input.warmth ?? 50)),
-    bluntness: clamp(Number(input.bluntness ?? 50)),
-    humor: clamp(Number(input.humor ?? 40)),
-    formality: clamp(Number(input.formality ?? 50)),
-    creativity: clamp(Number(input.creativity ?? 60)),
-    skepticism: clamp(Number(input.skepticism ?? 50)),
-    structure: clamp(Number(input.structure ?? 70)),
-    verbosity: clamp(Number(input.verbosity ?? 50)),
-    proactiveness: clamp(Number(input.proactiveness ?? 60)),
-    technicalDepth: clamp(Number(input.technicalDepth ?? 50)),
-    empathy: clamp(Number(input.empathy ?? 50)),
-    caution: clamp(Number(input.caution ?? 60)),
+    warmth: clamp(Number(source.warmth ?? 50)),
+    bluntness: clamp(Number(source.bluntness ?? 50)),
+    humor: clamp(Number(source.humor ?? 40)),
+    formality: clamp(Number(source.formality ?? 50)),
+    creativity: clamp(Number(source.creativity ?? 60)),
+    skepticism: clamp(Number(source.skepticism ?? 50)),
+    structure: clamp(Number(source.structure ?? 70)),
+    verbosity: clamp(Number(source.verbosity ?? 50)),
+    proactiveness: clamp(Number(source.proactiveness ?? 60)),
+    technicalDepth: clamp(Number(source.technicalDepth ?? 50)),
+    empathy: clamp(Number(source.empathy ?? 50)),
+    caution: clamp(Number(source.caution ?? 60)),
   }
 }
 
@@ -266,7 +271,7 @@ ${text.slice(0, 15000)}
     }
 
     const result: AnalysisResult = {
-      traits: normalizeTraits(parsed?.traits ?? {}),
+      traits: normalizeTraits(parsed?.traits),
       preset: typeof parsed?.preset === 'string' ? parsed.preset : 'Custom',
       summary:
         typeof parsed?.summary === 'string'
