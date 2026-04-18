@@ -13,6 +13,7 @@ create table if not exists public.career_premium_autopilot_settings (
   job_title text,
   job_description text,
   dossier_influence text not null default 'medium',
+  role_match_tightness smallint not null default 60 check (role_match_tightness >= 0 and role_match_tightness <= 100),
   last_run_at timestamptz,
   next_run_at timestamptz,
   created_at timestamptz not null default timezone('utc', now()),

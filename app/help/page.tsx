@@ -1,20 +1,21 @@
 import Link from "next/link"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
+import { resolveHelpModule } from "@/lib/help-context"
 
-const helpItems = [
-  {
-    title: "Getting started",
-    detail: "Begin at Tools, then open Career Intelligence, Persona Foundry, or TeamSync based on your priority.",
-  },
-  {
-    title: "Account and sign in",
-    detail: "Use the account panel to sign in once. Your session carries across all modules.",
-  },
-  {
-    title: "Support and contact",
-    detail: "For partnerships, enterprise, or technical help, use the Contact page.",
-  },
+const modulePaths = [
+  "/platform",
+  "/career",
+  "/persona-foundry",
+  "/teamsync",
+  "/community",
+  "/operations",
+  "/control-center/marketing-engine",
 ] as const
+
+const moduleItems = modulePaths.map((path) => ({
+  path,
+  context: resolveHelpModule(path),
+}))
 
 export default function HelpPage() {
   return (
@@ -23,12 +24,24 @@ export default function HelpPage() {
         <PlatformModuleNav />
         <section className="rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Help</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Support and guidance</h1>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {helpItems.map((item) => (
-              <article key={item.title} className="rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
-                <h2 className="text-base font-semibold">{item.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#475569]">{item.detail}</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Adaptive Help Center</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#475569]">
+            Help is now available inside every module via the <span className="font-semibold">Help me here</span> button in the top navigation. It reads the current page sections live so guidance stays aligned as workflows evolve.
+          </p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {moduleItems.map((item) => (
+              <article key={item.path} className="rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
+                <h2 className="text-base font-semibold">{item.context.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-[#475569]">{item.context.purpose}</p>
+                <div className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Suggested flow</div>
+                <ol className="mt-1 space-y-1 text-sm text-[#334155]">
+                  {item.context.workflowSteps.slice(0, 3).map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+                <Link href={item.path} className="mt-3 inline-flex text-xs font-semibold text-[#0a66c2] hover:underline">
+                  Open {item.context.title}
+                </Link>
               </article>
             ))}
           </div>

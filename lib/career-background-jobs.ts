@@ -2226,6 +2226,7 @@ async function runGeneratePremiumWeeklyAutopilot(
   const jobTitle = normalizeString(payload.job_title) || targetRole
   const jobDescription = normalizeString(payload.job_description)
   const dossierInfluence = normalizeString(payload.dossier_influence) || "medium"
+  const roleMatchTightness = Math.max(0, Math.min(100, Number(payload.role_match_tightness ?? 60)))
 
   if (!targetRole) {
     throw new Error("Premium autopilot requires target_role")
@@ -2238,6 +2239,7 @@ async function runGeneratePremiumWeeklyAutopilot(
     targetRole,
     location,
     marketNotes,
+    roleMatchTightness,
   })
 
   const completedSteps: string[] = ["live search"]
@@ -2272,6 +2274,7 @@ async function runGeneratePremiumWeeklyAutopilot(
     metadata: {
       target_role: targetRole,
       location: location || null,
+      role_match_tightness: roleMatchTightness,
       completed_steps: completedSteps,
       live_search_asset_id: liveResult.asset.id,
     },

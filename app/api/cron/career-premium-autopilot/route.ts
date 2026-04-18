@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const { data: dueRows, error } = await admin
     .from("career_premium_autopilot_settings")
-    .select("candidate_id, user_id, is_enabled, schedule_weekday, schedule_hour, schedule_timezone, target_role, location, market_notes, company_name, job_title, job_description, dossier_influence, next_run_at")
+    .select("*")
     .eq("is_enabled", true)
     .or(`next_run_at.is.null,next_run_at.lte.${nowIso}`)
     .order("updated_at", { ascending: true })
@@ -103,6 +103,7 @@ export async function POST(request: Request) {
       job_title: row.job_title || row.target_role,
       job_description: row.job_description,
       dossier_influence: row.dossier_influence || "medium",
+      role_match_tightness: Number(row.role_match_tightness ?? 60),
       trigger_source: "scheduled_run",
     }
 

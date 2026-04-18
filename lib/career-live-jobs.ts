@@ -100,8 +100,9 @@ export async function runLiveJobSearch(params: {
   targetRole: string
   location?: string
   marketNotes?: string
+  roleMatchTightness?: number
 }) {
-  const { supabase, userId, candidateId, targetRole, location = "", marketNotes = "" } = params
+  const { supabase, userId, candidateId, targetRole, location = "", marketNotes = "", roleMatchTightness = 60 } = params
 
   const { data: candidateRow } = await supabase
     .from("career_candidates")
@@ -157,6 +158,25 @@ export async function runLiveJobSearch(params: {
     latestByType.set(asset.asset_type, { title: asset.title ?? null, content: asset.content ?? null })
   }
 
+  const { data: executiveBioDocuments } = await supabase
+    .from("career_source_documents")
+    .select("source_type, content_text")
+    .eq("candidate_id", candidateId)
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .in("source_type", ["executive_bio", "bio", "cv", "linkedin", "notes"])
+    .order("created_at", { ascending: false })
+    .limit(8)
+
+  const executiveBioText = (executiveBioDocuments ?? [])
+    .map((doc) => normalizeString((doc as { content_text?: string | null }).content_text))
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 5000)
+
+  const tightness = Math.max(0, Math.min(100, Math.round(roleMatchTightness)))
+  const tightnessMode = tightness >= 75 ? "tight" : tightness <= 35 ? "loose" : "balanced"
+
   const model = process.env.OPENAI_JOB_SEARCH_MODEL || process.env.OPENAI_MODEL || "gpt-5"
 
   const response = await openai.responses.create({
@@ -204,6 +224,11 @@ Rules:
 - Keep why_fit concise and grounded in the candidate profile
 - Use the target role and location as the main search anchor
 - Do not invent listings
+- Search strictness: ${tightness}/100 (${tightnessMode})
+  - tight: prioritize close title/function match and similar seniority
+  - balanced: allow adjacent role families with clear transfer logic
+  - loose: include adjacent/stretch roles if evidence suggests fit
+- Use the executive bio signals to shape role-family breadth and ranking.
 
 Candidate:
 ${stringify(candidate)}
@@ -214,11 +239,15 @@ ${stringify(profile)}
 Supporting assets:
 ${stringify(Object.fromEntries(latestByType))}
 
+Executive bio signals:
+${executiveBioText || "No executive bio content provided."}
+
 Search target:
 ${stringify({
   target_role: targetRole,
   location,
   market_notes: marketNotes,
+  role_match_tightness: tightness,
 })}`,
           },
         ],
@@ -325,6 +354,7 @@ ${stringify({
       candidate_id: candidateId,
       target_role: targetRole,
       location: location || null,
+      role_match_tightness: tightness,
       source_count: sources.length,
     },
   })

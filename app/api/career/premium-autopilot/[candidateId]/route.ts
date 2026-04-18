@@ -25,6 +25,7 @@ type RawSettingsRow = {
   job_title: string | null
   job_description: string | null
   dossier_influence: string | null
+  role_match_tightness: number | null
   last_run_at: string | null
   next_run_at: string | null
   created_at?: string | null
@@ -67,6 +68,7 @@ function normalizeSettingsRow(row: RawSettingsRow | null | undefined) {
     job_title: normalizeString(row?.job_title),
     job_description: normalizeString(row?.job_description),
     dossier_influence: normalizeString(row?.dossier_influence) || "medium",
+    role_match_tightness: Math.max(0, Math.min(100, toInteger(row?.role_match_tightness, 60))),
     last_run_at: row?.last_run_at ?? null,
     next_run_at: row?.next_run_at ?? null,
     created_at: row?.created_at ?? null,
@@ -124,7 +126,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   const { data, error } = await supabase
     .from("career_premium_autopilot_settings")
-    .select("id, is_enabled, schedule_weekday, schedule_hour, schedule_timezone, target_role, location, market_notes, company_name, job_title, job_description, dossier_influence, last_run_at, next_run_at, created_at, updated_at")
+    .select("*")
     .eq("candidate_id", candidateId)
     .eq("user_id", user.id)
     .maybeSingle()
@@ -176,6 +178,7 @@ export async function PUT(request: Request, context: RouteContext) {
   const jobTitle = normalizeString(body.job_title) || null
   const jobDescription = normalizeString(body.job_description) || null
   const dossierInfluence = normalizeString(body.dossier_influence) || "medium"
+  const roleMatchTightness = Math.max(0, Math.min(100, toInteger(body.role_match_tightness, 60)))
 
   let resolvedTargetRole = targetRole
   if (isEnabled && !resolvedTargetRole) {
@@ -208,13 +211,14 @@ export async function PUT(request: Request, context: RouteContext) {
     job_title: jobTitle,
     job_description: jobDescription,
     dossier_influence: dossierInfluence,
+    role_match_tightness: roleMatchTightness,
     next_run_at: nextRunAt,
   }
 
   const { data, error } = await supabase
     .from("career_premium_autopilot_settings")
     .upsert(upsertPayload, { onConflict: "candidate_id,user_id" })
-    .select("id, is_enabled, schedule_weekday, schedule_hour, schedule_timezone, target_role, location, market_notes, company_name, job_title, job_description, dossier_influence, last_run_at, next_run_at, created_at, updated_at")
+    .select("*")
     .single()
 
   if (error) {
@@ -232,6 +236,7 @@ export async function PUT(request: Request, context: RouteContext) {
       schedule_weekday: scheduleWeekday,
       schedule_hour: scheduleHour,
       has_company_context: Boolean(companyName || jobDescription),
+      role_match_tightness: roleMatchTightness,
     },
   })
 
@@ -261,7 +266,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { data: settings } = await supabase
     .from("career_premium_autopilot_settings")
-    .select("is_enabled, schedule_weekday, schedule_hour, schedule_timezone, target_role, location, market_notes, company_name, job_title, job_description, dossier_influence")
+    .select("*")
     .eq("candidate_id", candidateId)
     .eq("user_id", user.id)
     .maybeSingle()
@@ -295,6 +300,7 @@ export async function POST(request: Request, context: RouteContext) {
     job_title: settings.job_title || settings.target_role,
     job_description: settings.job_description,
     dossier_influence: settings.dossier_influence || "medium",
+    role_match_tightness: Math.max(0, Math.min(100, toInteger(settings.role_match_tightness, 60))),
     trigger_source: "manual_run",
   }
 

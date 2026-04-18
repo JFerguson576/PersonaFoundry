@@ -22,6 +22,7 @@ type PremiumAutopilotSettings = {
   job_title: string
   job_description: string
   dossier_influence: string
+  role_match_tightness: number
   last_run_at: string | null
   next_run_at: string | null
 }
@@ -50,6 +51,7 @@ function defaultSettings(suggestedTargetRole?: string, defaultLocation?: string)
     job_title: "",
     job_description: "",
     dossier_influence: "medium",
+    role_match_tightness: 60,
     last_run_at: null,
     next_run_at: null,
   }
@@ -89,6 +91,7 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
           job_title: asInputString(next.job_title),
           job_description: asInputString(next.job_description),
           dossier_influence: asInputString(next.dossier_influence) || "medium",
+          role_match_tightness: Number.isFinite(Number(next.role_match_tightness)) ? Math.max(0, Math.min(100, Number(next.role_match_tightness))) : 60,
         })
       } catch (error) {
         setMessageTone("error")
@@ -244,6 +247,31 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
+        </label>
+        <label className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+          Role match strictness
+          <div className="mt-2">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={settings.role_match_tightness}
+              onChange={(event) =>
+                setSettings((current) => ({
+                  ...current,
+                  role_match_tightness: Math.max(0, Math.min(100, Number(event.target.value || 60))),
+                }))
+              }
+              className="w-full accent-[#0a66c2]"
+              disabled={loading}
+            />
+            <div className="mt-1 flex items-center justify-between text-[11px] font-semibold normal-case tracking-normal text-neutral-600">
+              <span>Loose (adjacent/stretch roles)</span>
+              <span>{settings.role_match_tightness}%</span>
+              <span>Tight (close role match)</span>
+            </div>
+          </div>
         </label>
       </div>
 

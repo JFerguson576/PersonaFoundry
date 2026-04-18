@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
 import { getAuthProviderLabel, type AuthProviderLabel } from "@/lib/auth-provider"
+import { ContextualHelpDrawer } from "@/components/navigation/ContextualHelpDrawer"
 
 type NavItem = { key: string; label: string; href: string }
 
@@ -195,6 +196,7 @@ export function PlatformModuleNav() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ContextualHelpDrawer />
           {isSignedIn && isModulePage ? (
             <button
               type="button"
