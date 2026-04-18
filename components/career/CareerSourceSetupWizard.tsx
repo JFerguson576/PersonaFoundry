@@ -6,6 +6,7 @@ import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
 import { CAREER_SOURCE_TYPE_OPTIONS, CAREER_SOURCE_WIZARD_STEPS, type CareerSourceTypeValue } from "@/lib/career-workflow"
 import { validateCareerUploadFile } from "@/lib/career-upload-client"
+const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
 
 type Props = {
   candidateId: string
@@ -74,6 +75,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   }
 
   async function handleUploadSelectedFile() {
+    if (fileLoading) return
     if (!pendingFile) {
       setMessage("Choose a file first.")
       return
@@ -81,6 +83,8 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
 
     setFileLoading(true)
     setMessage("")
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), UPLOAD_REQUEST_TIMEOUT_MS)
 
     try {
       const formData = new FormData()
@@ -92,7 +96,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       const headers = await getAuthHeaders()
       delete headers["Content-Type"]
 
-      const response = await fetch("/api/career/upload-source-file", { method: "POST", headers, body: formData })
+      const response = await fetch("/api/career/upload-source-file", { method: "POST", headers, body: formData, signal: controller.signal })
       const json = await response.json()
       if (!response.ok) throw new Error(json.error || "Failed to upload file")
 
@@ -106,8 +110,13 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       router.refresh()
       if (wizardMode) moveToNextMissing()
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setMessage("Upload timed out. Please try a smaller file or retry in a moment.")
+        return
+      }
       setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("upload the file")))
     } finally {
+      window.clearTimeout(timeout)
       setFileLoading(false)
     }
   }

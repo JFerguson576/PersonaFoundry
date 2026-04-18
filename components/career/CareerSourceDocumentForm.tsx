@@ -103,6 +103,7 @@ const sourceTypeOptions = [
 type SourceTypeValue = (typeof sourceTypeOptions)[number]["value"]
 
 const setupWizardSteps: SourceTypeValue[] = ["cv", "gallup_strengths", "linkedin", "cover_letter", "achievements", "recruiter_feedback", "job-target"]
+const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
 
 export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }: Props) {
   const router = useRouter()
@@ -144,6 +145,8 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
 
   function handleSourceTypeChange(nextValue: string) {
     setSourceType(nextValue)
+    setPendingFile(null)
+    setSelectedFileName("")
     const nextOption = sourceTypeOptions.find((option) => option.value === nextValue)
     if (!nextOption) return
 
@@ -176,6 +179,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
   }
 
   async function handleUploadSelectedFile() {
+    if (fileLoading) return
     if (!pendingFile) {
       setMessage("Choose a file first.")
       return
@@ -183,6 +187,8 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
 
     setFileLoading(true)
     setMessage("")
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), UPLOAD_REQUEST_TIMEOUT_MS)
 
     try {
       const formData = new FormData()
@@ -200,6 +206,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
         method: "POST",
         headers,
         body: formData,
+        signal: controller.signal,
       })
 
       const json = await response.json()
@@ -221,8 +228,13 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
         moveWizardToNextUnfinished()
       }
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setMessage("Upload timed out. Please try a smaller file or retry in a moment.")
+        return
+      }
       setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("upload the file")))
     } finally {
+      window.clearTimeout(timeout)
       setFileLoading(false)
     }
   }
