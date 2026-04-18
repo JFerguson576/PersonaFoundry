@@ -138,6 +138,7 @@ const LOCAL_RUNS_KEY = "teamsync-runs-v1"
 const LOCAL_GROUP_NAME_KEY = "teamsync-group-name-v1"
 const LOCAL_CUSTOM_SCENARIOS_KEY = "teamsync-custom-scenarios-v1"
 const LOCAL_ACTIVE_GROUP_ID_KEY = "teamsync-active-group-id-v1"
+const LOCAL_SIMPLE_VIEW_KEY = "teamsync-simple-view-v1"
 
 type WorkspaceGroupSummary = {
   id: string
@@ -1297,6 +1298,7 @@ export function TeamSyncWorkspaceClient() {
   const [activeStep, setActiveStep] = useState("overview")
   const [isFocusMode, setIsFocusMode] = useState(true)
   const [isMenuRolledUp, setIsMenuRolledUp] = useState(true)
+  const [isSimpleView, setIsSimpleView] = useState(true)
   const [groups, setGroups] = useState<WorkspaceGroupSummary[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState("")
   const [newGroupName, setNewGroupName] = useState("")
@@ -1334,11 +1336,22 @@ export function TeamSyncWorkspaceClient() {
   const [historyPressureFilter, setHistoryPressureFilter] = useState<"all" | "low" | "medium" | "high">("all")
   const [historyWithNotesOnly, setHistoryWithNotesOnly] = useState(false)
   const [historyNeedsReviewOnly, setHistoryNeedsReviewOnly] = useState(false)
-  const [savedRunsExpanded, setSavedRunsExpanded] = useState(true)
+  const [savedRunsExpanded, setSavedRunsExpanded] = useState(false)
+  const [membersListExpanded, setMembersListExpanded] = useState(false)
+  const [scenarioAdvancedOpen, setScenarioAdvancedOpen] = useState(false)
+  const [showAdvancedInsights, setShowAdvancedInsights] = useState(false)
   const [undoDeletedRuns, setUndoDeletedRuns] = useState<RunResult[]>([])
   const [message, setMessage] = useState("")
   const [savePulse, setSavePulse] = useState<{ id: number; label: string } | null>(null)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    return window.localStorage.getItem("teamsync-whats-new-hidden-v1") !== "1"
+  })
+  const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
+  const [issueType, setIssueType] = useState("Workflow confusion")
+  const [issueDetail, setIssueDetail] = useState("")
+  const [issueContactEmail, setIssueContactEmail] = useState("")
   const [syncing, setSyncing] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [sendingToSlack, setSendingToSlack] = useState(false)
@@ -1362,6 +1375,11 @@ export function TeamSyncWorkspaceClient() {
   }, [])
 
   useEffect(() => {
+    if (!session?.user?.email) return
+    setIssueContactEmail((current) => current || session.user.email || "")
+  }, [session?.user?.email])
+
+  useEffect(() => {
     if (typeof window === "undefined") return
 
     // Defer localStorage hydration until after first paint to avoid SSR/client mismatch.
@@ -1371,6 +1389,7 @@ export function TeamSyncWorkspaceClient() {
       const localMembers = window.localStorage.getItem(LOCAL_MEMBERS_KEY)
       const localRuns = window.localStorage.getItem(LOCAL_RUNS_KEY)
       const localCustomScenarios = window.localStorage.getItem(LOCAL_CUSTOM_SCENARIOS_KEY)
+      const localSimpleView = window.localStorage.getItem(LOCAL_SIMPLE_VIEW_KEY)
 
       if (localActiveGroupId) {
         setSelectedGroupId(localActiveGroupId)
@@ -1401,6 +1420,12 @@ export function TeamSyncWorkspaceClient() {
         try {
           setCustomScenarios(JSON.parse(localCustomScenarios) as ScenarioTemplate[])
         } catch {}
+      }
+
+      if (localSimpleView === "false") {
+        setIsSimpleView(false)
+      } else if (localSimpleView === "true") {
+        setIsSimpleView(true)
       }
     }, 0)
 
@@ -1455,8 +1480,15 @@ export function TeamSyncWorkspaceClient() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LOCAL_ACTIVE_GROUP_ID_KEY, selectedGroupId)
       window.localStorage.setItem(LOCAL_GROUP_NAME_KEY, groupName)
+      window.localStorage.setItem(LOCAL_SIMPLE_VIEW_KEY, isSimpleView ? "true" : "false")
     }
-  }, [groupName, selectedGroupId])
+  }, [groupName, isSimpleView, selectedGroupId])
+
+  useEffect(() => {
+    if (!isSimpleView) return
+    setIsFocusMode(true)
+    setIsMenuRolledUp(true)
+  }, [isSimpleView])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -2964,11 +2996,64 @@ export function TeamSyncWorkspaceClient() {
     openStep("insights", "#teamsync-insights")
   }
 
+  function dismissWhatsNewPanel() {
+    setIsWhatsNewOpen(false)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("teamsync-whats-new-hidden-v1", "1")
+    }
+  }
+
+  async function submitIssueReport() {
+    const trimmedDetail = issueDetail.trim()
+    if (!trimmedDetail) {
+      setMessage("Add a short issue description first.")
+      return
+    }
+
+    const payload = [
+      "Module: TeamSync",
+      `Current step: ${activeStepNavItem.label}`,
+      `Issue type: ${issueType}`,
+      `Contact: ${issueContactEmail || "Not provided"}`,
+      `Details: ${trimmedDetail}`,
+    ].join("\n")
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload)
+      }
+      setMessage("Issue report copied. Paste it into support chat or email.")
+    } catch {
+      setMessage("Issue captured. Clipboard copy failed in this browser.")
+    }
+
+    setIsReportIssueOpen(false)
+  }
+
   return (
     <main className="min-h-screen bg-[#f5f8fc] text-[#0f172a]">
       <div className="mx-auto max-w-[1200px] px-4 py-5 md:px-6">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="TeamSync" />
+        {isWhatsNewOpen ? (
+          <section className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">What&apos;s new</div>
+                <p className="mt-0.5 text-xs text-sky-900">
+                  Cleaner step flow, tighter controls, and faster setup cues are now live.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissWhatsNewPanel}
+                className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 hover:bg-sky-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          </section>
+        ) : null}
         <section className="rounded-3xl border border-[#d7e8f0] bg-[linear-gradient(180deg,#ffffff_0%,#f5fbfd_100%)] p-4 shadow-sm md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-3xl">
@@ -3053,20 +3138,41 @@ export function TeamSyncWorkspaceClient() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsFocusMode(false)
-                    setIsMenuRolledUp(false)
-                  }}
+                  onClick={() => setIsReportIssueOpen(true)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  Show menu
+                  Report issue
                 </button>
+                {isSimpleView ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSimpleView(false)
+                      setIsFocusMode(false)
+                      setIsMenuRolledUp(false)
+                    }}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Open full checklist
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFocusMode(false)
+                      setIsMenuRolledUp(false)
+                    }}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Show menu
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsFocusMode(false)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  Turn guided mode off
+                  Exit focus
                 </button>
               </div>
             </div>
@@ -3091,23 +3197,39 @@ export function TeamSyncWorkspaceClient() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsMenuRolledUp((current) => !current)}
+                  onClick={() => setIsReportIssueOpen(true)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  {isMenuRolledUp ? "Expand menu" : "Roll up menu"}
+                  Report issue
                 </button>
+                {isSimpleView ? null : (
+                  <button
+                    type="button"
+                    onClick={() => setIsMenuRolledUp((current) => !current)}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {isMenuRolledUp ? "Expand" : "Collapse"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsFocusMode((current) => !current)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  {isFocusMode ? "Guided mode on" : "Guided mode off"}
+                  {isFocusMode ? "Focus mode on" : "Focus mode off"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSimpleView((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isSimpleView ? "Simple mode on" : "Simple mode off"}
                 </button>
               </div>
             </div>
             {!isMenuRolledUp ? (
               <>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="ui-action-row mt-2">
                   {stepNav.map((item) => {
                     const active = item.key === activeStep
                     const complete = stepStatusByKey[item.key] ?? false
@@ -3162,6 +3284,23 @@ export function TeamSyncWorkspaceClient() {
           </nav>
         )}
 
+        <section className="sticky top-2 z-20 mt-2 rounded-xl border border-[#d8e4f2] bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 text-[11px] text-neutral-600">
+              <span className="font-semibold text-neutral-900">{activeStepNavItem.label}</span>
+              <span className="text-neutral-400"> · </span>
+              <span>{readinessCount}/{readinessItems.length} ready</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+              className="rounded-full bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+            >
+              Continue
+            </button>
+          </div>
+        </section>
+
         {message && (
           <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
             {message}
@@ -3169,7 +3308,7 @@ export function TeamSyncWorkspaceClient() {
         )}
 
         <div className="mt-3 grid gap-3">
-          <section id="teamsync-overview" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section id="teamsync-overview" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <h2 className="text-lg font-semibold">Step 1: Overview</h2>
             <p className="mt-1 text-sm text-[#475569]">
               A fast snapshot of how this group is likely to respond under pressure.
@@ -3222,12 +3361,12 @@ export function TeamSyncWorkspaceClient() {
             </details>
           </section>
 
-          <section id="teamsync-intake" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section id="teamsync-intake" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 2: Load Members</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Add names and Gallup strengths to build the group model.</p>
-                {!membersReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Coach tip: load at least 2 members to unlock simulation.</p> : null}
+                {!membersReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Add at least 2 members to run a simulation.</p> : null}
               </div>
               <button
                 type="button"
@@ -3244,8 +3383,11 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
 
-            <div className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
-              <div className="grid gap-2 md:grid-cols-2">
+            <details className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
+              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">
+                Group settings and backups
+              </summary>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Current Group</label>
                   <select
@@ -3323,10 +3465,15 @@ export function TeamSyncWorkspaceClient() {
                   />
                 </label>
               </div>
-            </div>
+            </details>
 
             <div className="mt-2 rounded-2xl border border-neutral-200 p-2.5">
-              <div className="text-sm font-semibold">Add One Member</div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold">Add one member</div>
+                <span className="rounded-full border border-[#d8e4f2] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                  1. Name  2. Strengths  3. Add
+                </span>
+              </div>
               <p className="mt-1 text-xs text-[#64748b]">Required: member name + strengths. Role is optional.</p>
 
               <div className="mt-2 grid gap-2 md:grid-cols-2">
@@ -3350,29 +3497,32 @@ export function TeamSyncWorkspaceClient() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="ui-action-row mt-3">
                 <button
                   type="button"
                   onClick={() => setIntakeMode("manual")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "manual" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Type strengths
+                  Paste text
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("upload")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "upload" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Upload Gallup file
+                  Upload file
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("quick")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "quick" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Pick from list
+                  Pick themes
                 </button>
               </div>
+              <p className="mt-1 text-[11px] text-[#64748b]">
+                Tip: use <span className="font-semibold">Upload file</span> first if they already have a Gallup report.
+              </p>
 
               {intakeMode === "upload" ? (
                 <div className="mt-2">
@@ -3439,7 +3589,20 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2">
+            <div className="mt-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748b]">
+                  Members loaded: {members.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMembersListExpanded((current) => !current)}
+                  className="ui-compact-pill"
+                >
+                  {membersListExpanded ? "Collapse list" : "Expand list"}
+                </button>
+              </div>
+            <div className={`grid gap-2 ${membersListExpanded ? "" : "hidden"}`}>
               {members.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
                   No members loaded yet. Add at least two members to run simulations.
@@ -3464,12 +3627,13 @@ export function TeamSyncWorkspaceClient() {
                 ))
               )}
             </div>
+            </div>
           </section>
 
-          <section id="teamsync-scenario" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section id="teamsync-scenario" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <h2 className="text-lg font-semibold">Step 3: Scenario Setup</h2>
-            <p className="mt-1 text-xs text-[#475569]">Use a saved scenario card or write your own scenario prompt.</p>
-            {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Coach tip: pick a saved scenario or enter custom scenario text.</p> : null}
+              <p className="mt-1 text-xs text-[#475569]">Choose a saved scenario or write your own.</p>
+            {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Pick a scenario before you run.</p> : null}
             <details className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
               <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">More info</summary>
               <div className="mt-2 space-y-1 text-xs text-[#334155]">
@@ -3482,7 +3646,7 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </details>
 
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="ui-action-row mt-2">
               <button
                 type="button"
                 onClick={() => setScenarioMode("library")}
@@ -3541,36 +3705,47 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </div>
 
-            <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Pressure level: {pressureLevel}/5</label>
-                <input
-                  type="range"
-                  min={1}
-                  max={5}
-                  value={pressureLevel}
-                  onChange={(e) => setPressureLevel(Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Desired outcome</label>
-                <input
-                  value={desiredOutcome}
-                  onChange={(e) => setDesiredOutcome(e.target.value)}
-                  placeholder="Example: clear ownership and faster decisions"
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
-                />
-              </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setScenarioAdvancedOpen((current) => !current)}
+                className="ui-compact-pill"
+              >
+                {scenarioAdvancedOpen ? "Hide advanced settings" : "Show advanced settings"}
+              </button>
             </div>
+            {scenarioAdvancedOpen ? (
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Pressure level: {pressureLevel}/5</label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={pressureLevel}
+                    onChange={(e) => setPressureLevel(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Desired outcome</label>
+                  <input
+                    value={desiredOutcome}
+                    onChange={(e) => setDesiredOutcome(e.target.value)}
+                    placeholder="Example: clear ownership and faster decisions"
+                    className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            ) : null}
           </section>
 
-          <section id="teamsync-run" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section id="teamsync-run" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 4: Run Simulation</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Generate behavior, risk, and action outputs for this scenario.</p>
-                {!canRunSimulation ? <p className="mt-1 text-xs font-medium text-[#b45309]">Coach tip: complete members + scenario first, then run.</p> : null}
+                {!canRunSimulation ? <p className="mt-1 text-xs font-medium text-[#b45309]">Complete members and scenario first.</p> : null}
               </div>
               <button
                 type="button"
@@ -3580,52 +3755,63 @@ export function TeamSyncWorkspaceClient() {
                   !canRunSimulation ? "cursor-not-allowed bg-[#94a3b8]" : "bg-[#1d4ed8] hover:bg-[#1e40af]"
                 }`}
               >
-                {simulating ? "Running simulation..." : "Run TeamSync simulation"}
+                {simulating ? "Running simulation..." : "Run simulation"}
               </button>
             </div>
-            <p className="mt-1 text-xs text-[#475569]">Output includes likely behavior, risks, adjustments, and clear next actions.</p>
+            <p className="mt-1 text-xs text-[#475569]">You will get behavior, risk, and next-action guidance.</p>
 
             <div className="mt-2 grid gap-2 md:grid-cols-4">
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Executor</div>
-                <div className="mt-1 text-xl font-semibold">{teamScores.executor}</div>
+                <div className="mt-0.5 text-lg font-semibold">{teamScores.executor}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Relationship</div>
-                <div className="mt-1 text-xl font-semibold">{teamScores.relationship}</div>
+                <div className="mt-0.5 text-lg font-semibold">{teamScores.relationship}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Strategy</div>
-                <div className="mt-1 text-xl font-semibold">{teamScores.strategy}</div>
+                <div className="mt-0.5 text-lg font-semibold">{teamScores.strategy}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Influence</div>
-                <div className="mt-1 text-xl font-semibold">{teamScores.influence}</div>
+                <div className="mt-0.5 text-lg font-semibold">{teamScores.influence}</div>
               </div>
             </div>
           </section>
 
-          <section id="teamsync-insights" className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section id="teamsync-insights" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Step 5: Insights</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Review priorities, scripts, and share-ready outputs.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="ui-action-row">
                 <button
                   type="button"
-                  onClick={() => setInsightsPanelsOpen(true)}
-                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
+                  onClick={() => setShowAdvancedInsights((current) => !current)}
+                  className="ui-compact-pill"
                 >
-                  Expand all
+                  {showAdvancedInsights ? "Hide advanced" : "Show advanced"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setInsightsPanelsOpen(false)}
-                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
-                >
-                  Collapse all
-                </button>
+                {showAdvancedInsights ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setInsightsPanelsOpen(true)}
+                      className="ui-compact-pill"
+                    >
+                      Expand all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInsightsPanelsOpen(false)}
+                      className="ui-compact-pill"
+                    >
+                      Collapse all
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -3638,34 +3824,34 @@ export function TeamSyncWorkspaceClient() {
                   <div className="mt-1 text-sm font-semibold text-[#0f172a]">{latestRun.scenarioTitle}</div>
                   <p className="mt-1 text-sm text-[#334155]">{latestRun.groupSummary}</p>
                   <p className="mt-2 text-xs text-[#475569]">{latestRun.semanticLens}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="ui-action-row mt-3">
                     <button
                       type="button"
                       onClick={() => startFollowUpPulse(24)}
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
                     >
-                      Schedule 24h pulse
+                      Pulse in 24h
                     </button>
                     <button
                       type="button"
                       onClick={() => startFollowUpPulse(168)}
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
                     >
-                      Schedule 7-day pulse
+                      Pulse in 7 days
                     </button>
                     <button
                       type="button"
                       onClick={() => downloadPulseInvite(24)}
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
                     >
-                      Download 24h invite
+                      24h invite
                     </button>
                     <button
                       type="button"
                       onClick={() => downloadPulseInvite(168)}
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-neutral-50"
                     >
-                      Download 7-day invite
+                      7-day invite
                     </button>
                   </div>
                 </div>
@@ -3695,7 +3881,7 @@ export function TeamSyncWorkspaceClient() {
 
                 {nextBestActions.length > 0 ? (
                   <div className="rounded-xl border border-[#d8e4f2] bg-white p-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Next best actions</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Next actions</div>
                     <div className="mt-2 grid gap-2 md:grid-cols-3">
                       {nextBestActions.map((action, index) => (
                         <div
@@ -3709,7 +3895,7 @@ export function TeamSyncWorkspaceClient() {
                           }`}
                         >
                           <div className="text-[11px] font-semibold uppercase tracking-[0.08em]">
-                            {action.tone === "high" ? "Do now" : action.tone === "medium" ? "Do next" : "Keep steady"}
+                            {action.tone === "high" ? "Now" : action.tone === "medium" ? "Next" : "Steady"}
                           </div>
                           <div className="mt-1 text-sm font-semibold">{action.title}</div>
                           <p className="mt-1 text-xs">{action.detail}</p>
@@ -3724,7 +3910,7 @@ export function TeamSyncWorkspaceClient() {
                                   ? "Open support simulation"
                                   : action.action === "open_checklist"
                                     ? "Open checklist"
-                                    : "Schedule 24h pulse"}
+                                    : "24h pulse"}
                               </button>
                             </div>
                           ) : null}
@@ -3734,6 +3920,8 @@ export function TeamSyncWorkspaceClient() {
                   </div>
                 ) : null}
 
+                {showAdvancedInsights ? (
+                <>
                 <ExpandableCard title="Support priority lane" subtitle="Top 3 priorities by urgency">
                   <div className="grid gap-2 md:grid-cols-3">
                     {priorityLane.map((item, index) => (
@@ -3812,9 +4000,11 @@ export function TeamSyncWorkspaceClient() {
                       ) : null}
                     </div>
                   ) : (
-                    <p className="text-sm text-[#64748b]">Run at least two simulations to unlock comparison view.</p>
+                    <p className="text-sm text-[#64748b]">Run at least two simulations to compare.</p>
                   )}
                 </ExpandableCard>
+                </>
+                ) : null}
 
                 <ExpandableCard title="Who needs support first" subtitle="Member-level support scoring">
                   {latestRun.memberSupportPriorities.length > 0 ? (
@@ -3836,7 +4026,7 @@ export function TeamSyncWorkspaceClient() {
                               onClick={() => startSupportConversation(item)}
                               className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0f172a] hover:bg-neutral-50"
                             >
-                              Open in conversation simulator
+                              Open simulator
                             </button>
                           </div>
                         </div>
@@ -3847,6 +4037,8 @@ export function TeamSyncWorkspaceClient() {
                   )}
                 </ExpandableCard>
 
+                {showAdvancedInsights ? (
+                <>
                 <ExpandableCard title="Relational heatmap" subtitle="Pair-level trust and friction signals">
                   {pairInsights.length > 0 ? (
                     <div className="grid gap-2">
@@ -3925,7 +4117,7 @@ export function TeamSyncWorkspaceClient() {
                 <ExpandableCard title="Action checklist" subtitle={`${checklistCompletedCount}/${checklistTotalCount} complete`} defaultOpen>
                   {latestRun.actionChecklist.length > 0 ? (
                     <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="ui-action-row">
                         <button
                           type="button"
                           onClick={() => autoAssignChecklistOwners(latestRun.runId)}
@@ -4056,7 +4248,7 @@ export function TeamSyncWorkspaceClient() {
                       {latestRun ? "Ready to share" : "Run a scenario first"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="ui-action-row">
                     <button
                       type="button"
                       onClick={() => void downloadRunDocx()}
@@ -4099,7 +4291,7 @@ export function TeamSyncWorkspaceClient() {
                       title="Copy a Slack-ready summary to your clipboard."
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Copy Slack update
+                      Slack update
                     </button>
                     <button
                       type="button"
@@ -4112,7 +4304,7 @@ export function TeamSyncWorkspaceClient() {
                       title="Copy a Microsoft Teams-ready summary."
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Copy Teams update
+                      Teams update
                     </button>
                     <button
                       type="button"
@@ -4125,7 +4317,7 @@ export function TeamSyncWorkspaceClient() {
                       title="Copy an email-ready brief with summary and actions."
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Copy email brief
+                      Email brief
                     </button>
                     <button
                       type="button"
@@ -4134,7 +4326,7 @@ export function TeamSyncWorkspaceClient() {
                       title="Open your default email app with a prefilled draft."
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Open email draft
+                      Email draft
                     </button>
                     <button
                       type="button"
@@ -4147,7 +4339,7 @@ export function TeamSyncWorkspaceClient() {
                       title="Copy a facilitation agenda for your next sync."
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Copy meeting agenda
+                      Meeting agenda
                     </button>
                   </div>
                   <p className="mt-2 text-xs text-[#64748b]">
@@ -4192,7 +4384,7 @@ export function TeamSyncWorkspaceClient() {
                     Simulation path: <span className="font-semibold">{selectedConversationFromMember?.name || "You"}</span> to{" "}
                     <span className="font-semibold">{selectedConversationToMember?.name || "selected member"}</span>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="ui-action-row mt-2">
                     <button
                       type="button"
                       onClick={swapConversationDirection}
@@ -4217,7 +4409,7 @@ export function TeamSyncWorkspaceClient() {
                       onClick={focusHighestPriorityConversation}
                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                     >
-                      Focus highest-priority person
+                      Focus top priority
                     </button>
                     <button
                       type="button"
@@ -4232,7 +4424,7 @@ export function TeamSyncWorkspaceClient() {
                   </div>
                   <div className="mt-2">
                     <div className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Quick templates</div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="ui-action-row">
                       {conversationTemplates.map((template) => (
                         <button
                           key={template.id}
@@ -4265,7 +4457,7 @@ export function TeamSyncWorkspaceClient() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="ui-action-row mt-2">
                     {([
                       { key: "clear", label: "Clear" },
                       { key: "warm", label: "Warm" },
@@ -4340,7 +4532,7 @@ export function TeamSyncWorkspaceClient() {
                               <div className="mt-1">Adjust: {turn.whatToAdjust.join(" ") || "No adjustments provided."}</div>
                               <div className="mt-1 font-medium text-[#0f172a]">Rewrite: {turn.improvedRewrite || "No rewrite provided."}</div>
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
+                            <div className="ui-action-row mt-2">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -4349,7 +4541,7 @@ export function TeamSyncWorkspaceClient() {
                                 }}
                                 className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                               >
-                                Practice again with rewrite
+                                Use rewrite
                               </button>
                               <button
                                 type="button"
@@ -4382,7 +4574,7 @@ export function TeamSyncWorkspaceClient() {
                                 }}
                                 className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                               >
-                                Use de-escalation version
+                                De-escalate version
                               </button>
                             </div>
                           </div>
@@ -4392,32 +4584,34 @@ export function TeamSyncWorkspaceClient() {
                   ) : null}
                 </ExpandableCard>
                 </div>
+                </>
+                ) : null}
               </div>
             ) : (
               <div className="mt-3 rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
-                No simulation run yet. Complete steps 2–4 and run your first TeamSync scenario.
+                No run yet. Complete steps 2-4, then run your first TeamSync scenario.
               </div>
             )}
           </section>
 
-          <section id="teamsync-history" className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section id="teamsync-history" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 6: Saved Runs</h2>
-                <p className="mt-0.5 text-xs text-[#64748b]">Search, compare, and reuse previous scenario runs.</p>
+                <p className="mt-0.5 text-[11px] text-[#64748b]">Search, compare, and reuse past runs.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="ui-action-row">
                 <button
                   type="button"
                   onClick={() => setSavedRunsExpanded((prev) => !prev)}
-                  className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50"
+                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                 >
                   {savedRunsExpanded ? "Collapse" : "Expand"}
                 </button>
                 <button
                   type="button"
                   onClick={clearRunHistory}
-                  className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50"
+                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
                 >
                   Clear run history
                 </button>
@@ -4425,7 +4619,7 @@ export function TeamSyncWorkspaceClient() {
                   type="button"
                   onClick={restoreDeletedRuns}
                   disabled={undoDeletedRuns.length === 0}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
                     undoDeletedRuns.length === 0
                       ? "cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400"
                       : "border-neutral-300 bg-white hover:bg-neutral-50"
@@ -4438,60 +4632,63 @@ export function TeamSyncWorkspaceClient() {
 
             {savedRunsExpanded ? (
               <>
-                <div className="mt-3 grid gap-2 md:grid-cols-5">
-                  <div className="md:col-span-2">
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Search runs</label>
-                    <input
-                      value={historySearch}
-                      onChange={(event) => setHistorySearch(event.target.value)}
-                      placeholder="Search by scenario, risk, or lens..."
-                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-xs"
-                    />
+                <details className="mt-1.5 rounded-lg border border-neutral-200 bg-[#fbfdff] px-2.5 py-1.5">
+                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                    Filters and presets
+                  </summary>
+                  <div className="mt-1.5 grid gap-1.5 md:grid-cols-5">
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Search runs</label>
+                      <input
+                        value={historySearch}
+                        onChange={(event) => setHistorySearch(event.target.value)}
+                        placeholder="Search by scenario, risk, or lens..."
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Category</label>
+                      <select
+                        value={historyCategoryFilter}
+                        onChange={(event) => setHistoryCategoryFilter(event.target.value)}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-[11px]"
+                      >
+                        <option value="all">All categories</option>
+                        <option value="professional">Professional</option>
+                        <option value="family">Family</option>
+                        <option value="learning">Learning</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Sort</label>
+                      <select
+                        value={historySort}
+                        onChange={(event) => setHistorySort(event.target.value as "newest" | "oldest")}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-[11px]"
+                      >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Pressure</label>
+                      <select
+                        value={historyPressureFilter}
+                        onChange={(event) => setHistoryPressureFilter(event.target.value as "all" | "low" | "medium" | "high")}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-[11px]"
+                      >
+                        <option value="all">All levels</option>
+                        <option value="low">Low (1-2)</option>
+                        <option value="medium">Medium (3)</option>
+                        <option value="high">High (4-5)</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Category</label>
-                    <select
-                      value={historyCategoryFilter}
-                      onChange={(event) => setHistoryCategoryFilter(event.target.value)}
-                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-xs"
-                    >
-                      <option value="all">All categories</option>
-                      <option value="professional">Professional</option>
-                      <option value="family">Family</option>
-                      <option value="learning">Learning</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Sort</label>
-                    <select
-                      value={historySort}
-                      onChange={(event) => setHistorySort(event.target.value as "newest" | "oldest")}
-                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-xs"
-                    >
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Pressure</label>
-                    <select
-                      value={historyPressureFilter}
-                      onChange={(event) => setHistoryPressureFilter(event.target.value as "all" | "low" | "medium" | "high")}
-                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-2 text-xs"
-                    >
-                      <option value="all">All levels</option>
-                      <option value="low">Low (1-2)</option>
-                      <option value="medium">Medium (3)</option>
-                      <option value="high">High (4-5)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => setHistoryFavoritesOnly((prev) => !prev)}
-                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                      className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
                         historyFavoritesOnly
                           ? "border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
                           : "border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
@@ -4502,7 +4699,7 @@ export function TeamSyncWorkspaceClient() {
                     <button
                       type="button"
                       onClick={() => setHistoryWithNotesOnly((prev) => !prev)}
-                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                      className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
                         historyWithNotesOnly
                           ? "border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
                           : "border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
@@ -4513,7 +4710,7 @@ export function TeamSyncWorkspaceClient() {
                     <button
                       type="button"
                       onClick={() => setHistoryNeedsReviewOnly((prev) => !prev)}
-                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                      className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
                         historyNeedsReviewOnly
                           ? "border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
                           : "border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
@@ -4522,79 +4719,79 @@ export function TeamSyncWorkspaceClient() {
                       {historyNeedsReviewOnly ? "Needs review only on" : "Show needs review only"}
                     </button>
                   </div>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-2">
-                  <div className="text-xs text-[#334155]">
+                </details>
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
+                  <div className="text-[11px] text-[#334155]">
                     Showing <span className="font-semibold">{filteredRunHistory.length}</span> of{" "}
                     <span className="font-semibold">{runHistory.length}</span> runs
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={exportFilteredRunsCsv}
-                      className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                      className="ui-compact-pill"
                     >
                       Export CSV
                     </button>
                     <button
                       type="button"
                       onClick={deleteFilteredRuns}
-                      className="rounded-lg border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+                      className="ui-compact-pill border-rose-300 text-rose-700 hover:bg-rose-50"
                     >
                       Delete filtered
                     </button>
                     <button
                       type="button"
                       onClick={resetHistoryFilters}
-                      className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                      className="ui-compact-pill"
                     >
                       Reset filters
                     </button>
                   </div>
                 </div>
-                <div className="mt-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-2">
+                <div className="mt-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-2 text-[11px] text-[#475569]">
+                    <div className="flex flex-wrap gap-1.5 text-[10px] text-[#475569]">
                       <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Total {historyQuickStats.total}</span>
-                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Favorites {historyQuickStats.favorites}</span>
-                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">High pressure {historyQuickStats.highPressure}</span>
-                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">With notes {historyQuickStats.withNotes}</span>
-                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Reviewed {historyQuickStats.reviewed}</span>
-                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Needs review {historyQuickStats.needsReview}</span>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Fav {historyQuickStats.favorites}</span>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">High {historyQuickStats.highPressure}</span>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Notes {historyQuickStats.withNotes}</span>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Rev {historyQuickStats.reviewed}</span>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Need {historyQuickStats.needsReview}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         onClick={() => applyHistoryPreset("favorites")}
-                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        className="ui-compact-pill"
                       >
                         Favorites
                       </button>
                       <button
                         type="button"
                         onClick={() => applyHistoryPreset("highPressure")}
-                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        className="ui-compact-pill"
                       >
                         High pressure
                       </button>
                       <button
                         type="button"
                         onClick={() => applyHistoryPreset("recent")}
-                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        className="ui-compact-pill"
                       >
                         Most recent
                       </button>
                       <button
                         type="button"
                         onClick={() => applyHistoryPreset("withNotes")}
-                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        className="ui-compact-pill"
                       >
                         With notes
                       </button>
                       <button
                         type="button"
                         onClick={() => applyHistoryPreset("needsReview")}
-                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        className="ui-compact-pill"
                       >
                         Needs review
                       </button>
@@ -4602,7 +4799,7 @@ export function TeamSyncWorkspaceClient() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-2">
+                <div className="mt-2 grid gap-2">
                   {filteredRunHistory.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
                       {runHistory.length === 0 ? "Run history is empty." : "No runs match your current filters."}
@@ -4631,7 +4828,7 @@ export function TeamSyncWorkspaceClient() {
                             {run.scenarioCategory} · Pressure {run.pressureLevel}/5
                           </div>
                         </button>
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="ui-action-row mt-2">
                           <button
                             type="button"
                             onClick={() => reuseRunScenario(run)}
@@ -4698,7 +4895,7 @@ export function TeamSyncWorkspaceClient() {
             )}
           </section>
 
-          <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
             <ExpandableCard
               title="Useful resources"
               subtitle={resourcesLoading ? "Searching online..." : onlineResources.length > 0 ? "Live web results (top 5)" : "Context fallback links"}
@@ -4724,6 +4921,86 @@ export function TeamSyncWorkspaceClient() {
           </section>
         </div>
       </div>
+      {isReportIssueOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/35 px-4"
+          onClick={() => setIsReportIssueOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report an issue"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Report issue</div>
+                <h3 className="mt-1 text-base font-semibold text-neutral-900">Tell us what is blocking you</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Type
+                <select
+                  value={issueType}
+                  onChange={(event) => setIssueType(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                >
+                  <option>Workflow confusion</option>
+                  <option>Button or link not working</option>
+                  <option>Missing saved run</option>
+                  <option>Simulation result issue</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Contact email
+                <input
+                  value={issueContactEmail}
+                  onChange={(event) => setIssueContactEmail(event.target.value)}
+                  placeholder="Optional"
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                />
+              </label>
+            </div>
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+              What happened?
+              <textarea
+                value={issueDetail}
+                onChange={(event) => setIssueDetail(event.target.value)}
+                rows={4}
+                placeholder="Example: I added members and the run still used old data."
+                className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+              />
+            </label>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitIssueReport()}
+                className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+              >
+                Copy report
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div
         className={`pointer-events-none fixed bottom-4 left-4 z-40 transition-all duration-200 ${
           showFloatingWizardCta ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
@@ -4734,7 +5011,7 @@ export function TeamSyncWorkspaceClient() {
           onClick={() => openStep(nextAction.stepKey, nextAction.href)}
           className="pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff]"
         >
-          Resume TeamSync setup
+          Resume wizard
         </button>
       </div>
     </main>

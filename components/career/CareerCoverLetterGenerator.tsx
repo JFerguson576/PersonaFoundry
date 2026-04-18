@@ -73,24 +73,24 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Step</div>
-        <h2 className="text-xl font-semibold">Generate cover letter</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <h2 className="text-lg font-semibold">Generate cover letter</h2>
+        <p className="mt-1 text-xs text-neutral-600">
           Paste a job description and the Career Intelligence engine will generate a tailored letter using the candidate&apos;s positioning and CV/LinkedIn drafts.
         </p>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-500">
           Saved cover letters appear in the generated outputs and output history panels on the right.
         </p>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-500">
           If you have already generated a company dossier for this employer, you can choose how strongly it should influence the language and tone of the letter.
         </p>
       </div>
 
-      <details className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-neutral-800">More info</summary>
-        <div className="mt-3 space-y-2 text-sm leading-6 text-neutral-700">
+      <details className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+        <summary className="cursor-pointer text-xs font-semibold text-neutral-800">More info</summary>
+        <div className="mt-2 space-y-1.5 text-xs leading-5 text-neutral-700">
           <p>
             <span className="font-semibold text-neutral-900">Best used after:</span> generate the candidate profile and CV/LinkedIn drafts first.
           </p>
@@ -109,7 +109,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
           <select
             value={selectedDossierId}
             onChange={(event) => handleDossierSelect(event.target.value)}
-            className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+            className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
           >
             <option value="">Select a saved company dossier...</option>
             {companyDossiers.map((dossier) => (
@@ -118,9 +118,9 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
               </option>
             ))}
           </select>
-          <p className="mt-2 text-sm text-neutral-500">Selecting a dossier fills the company field and makes it easy to match the cover letter to the researched company.</p>
+          <p className="mt-1 text-xs text-neutral-500">Selecting a dossier fills company and applies dossier tone options.</p>
           {selectedDossier ? (
-            <div className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Selected dossier</div>
@@ -129,13 +129,13 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
                 <button
                   type="button"
                   onClick={() => navigateCareerWorkspace("company", "#current-company-dossiers")}
-                  className="rounded-full border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  className="ui-compact-pill"
                 >
                   View dossier library
                 </button>
               </div>
               {selectedDossierPreview ? (
-                <p className="mt-3 text-sm leading-6 text-neutral-600">
+                <p className="mt-2 text-xs leading-5 text-neutral-600">
                   {selectedDossierPreview}
                   {selectedDossier.content && selectedDossier.content.length > 280 ? "..." : ""}
                 </p>
@@ -145,13 +145,13 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium">Job title</label>
           <input
             value={jobTitle}
             onChange={(event) => setJobTitle(event.target.value)}
-            className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+            className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
             placeholder="e.g. Head of Partnerships"
           />
         </div>
@@ -160,7 +160,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
-            className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+            className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
             placeholder="e.g. LinkedIn"
           />
         </div>
@@ -171,16 +171,16 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
         <textarea
           value={jobDescription}
           onChange={(event) => setJobDescription(event.target.value)}
-          className="min-h-[220px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
+          className="min-h-[170px] w-full rounded-xl border border-neutral-300 px-2.5 py-2 text-sm leading-5"
           placeholder="Paste the role description here..."
         />
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-medium text-neutral-900">Use company dossier tone</div>
-            <p className="mt-1 text-sm leading-6 text-neutral-600">
+            <p className="mt-1 text-xs leading-5 text-neutral-600">
               Turn this on when you want the cover letter to mirror the company&apos;s public language, culture signals, and messaging.
             </p>
           </div>
@@ -195,9 +195,9 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
           </label>
         </div>
 
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium">Dossier influence strength</label>
-          <div className="grid gap-2 md:grid-cols-3">
+        <div className="mt-3">
+          <label className="mb-1 block text-sm font-medium">Dossier influence strength</label>
+          <div className="grid gap-1.5 md:grid-cols-3">
             {[
               {
                 value: "low",
@@ -217,7 +217,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
             ].map((option) => (
               <label
                 key={option.value}
-                className={`cursor-pointer rounded-2xl border px-4 py-3 text-sm ${
+                className={`cursor-pointer rounded-xl border px-3 py-2 text-xs ${
                   dossierInfluence === option.value && useCompanyDossier
                     ? "border-neutral-900 bg-white text-neutral-900"
                     : "border-neutral-300 bg-neutral-100 text-neutral-700"
@@ -233,19 +233,19 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
                   className="sr-only"
                 />
                 <div className="font-semibold">{option.label}</div>
-                <p className="mt-1 leading-6">{option.description}</p>
+                <p className="mt-0.5 leading-4">{option.description}</p>
               </label>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3">
         <div className="text-sm font-medium text-neutral-900">Strength voice influence</div>
-        <p className="mt-1 text-sm leading-6 text-neutral-600">
+        <p className="mt-1 text-xs leading-5 text-neutral-600">
           Controls how strongly Gallup strengths language shapes the letter tone and phrasing.
         </p>
-        <div className="mt-3 grid gap-2 md:grid-cols-3">
+        <div className="mt-2 grid gap-1.5 md:grid-cols-3">
           {[
             {
               value: "low",
@@ -265,7 +265,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
           ].map((option) => (
             <label
               key={option.value}
-              className={`cursor-pointer rounded-2xl border px-4 py-3 text-sm ${
+              className={`cursor-pointer rounded-xl border px-3 py-2 text-xs ${
                 strengthVoiceInfluence === option.value
                   ? "border-indigo-700 bg-white text-neutral-900"
                   : "border-indigo-200 bg-indigo-100 text-neutral-700"
@@ -280,7 +280,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
                 className="sr-only"
               />
               <div className="font-semibold">{option.label}</div>
-              <p className="mt-1 leading-6">{option.description}</p>
+              <p className="mt-0.5 leading-4">{option.description}</p>
             </label>
           ))}
         </div>
@@ -290,12 +290,12 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
         type="submit"
         disabled={loading || !canGenerate}
         title="Generate a tailored cover letter and save it to this workspace."
-        className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Generating..." : "Generate cover letter"}
       </button>
       <div
-        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
           canGenerate ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-500"
         }`}
       >

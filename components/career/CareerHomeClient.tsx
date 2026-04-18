@@ -32,16 +32,17 @@ export function CareerHomeClient() {
   const searchParams = useSearchParams()
   const requestedView = searchParams.get("view")
   const ownerPreviewUserId = searchParams.get("owner")
+  const isNewUserSimulation = searchParams.get("test") === "new-user"
   const careerViewMode = requestedView === "preview" ? "preview" : requestedView === "owner-preview" ? "owner-preview" : "control"
   const isCandidatePreviewMode = careerViewMode === "preview"
   const isOwnerPreviewMode = careerViewMode === "owner-preview" && Boolean(ownerPreviewUserId)
   const [session, setSession] = useState<Session | null>(null)
   const [candidates, setCandidates] = useState<CandidateRow[]>([])
   const [message, setMessage] = useState("")
-  const [activeSection, setActiveSection] = useState("career-overview")
-  const [activeAnchor, setActiveAnchor] = useState("#career-overview")
-  const [isFocusMode, setIsFocusMode] = useState(true)
-  const [isMenuRolledUp, setIsMenuRolledUp] = useState(true)
+  const [activeSection, setActiveSection] = useState(() => (isNewUserSimulation ? "setup-workflow" : "career-overview"))
+  const [activeAnchor, setActiveAnchor] = useState(() => (isNewUserSimulation ? "#setup-workflow" : "#career-overview"))
+  const [isFocusMode, setIsFocusMode] = useState(() => !isNewUserSimulation)
+  const [isMenuRolledUp, setIsMenuRolledUp] = useState(() => !isNewUserSimulation)
   const [showWorkflowMap, setShowWorkflowMap] = useState(false)
   const [showAdvancedTools, setShowAdvancedTools] = useState(false)
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false)
@@ -101,6 +102,17 @@ export function CareerHomeClient() {
 
     return () => subscription.unsubscribe()
   }, [isCandidatePreviewMode, isOwnerPreviewMode, ownerPreviewUserId, showToast])
+
+  useEffect(() => {
+    if (!isNewUserSimulation || typeof window === "undefined") return
+
+    const localStorageKeys = Object.keys(window.localStorage)
+    for (const key of localStorageKeys) {
+      if (key.startsWith("career-")) {
+        window.localStorage.removeItem(key)
+      }
+    }
+  }, [isNewUserSimulation])
 
   const totalProfiles = candidates.reduce((sum, candidate) => sum + candidate.profile_count, 0)
   const totalAssets = candidates.reduce((sum, candidate) => sum + candidate.asset_count, 0)
@@ -201,7 +213,7 @@ export function CareerHomeClient() {
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <section id="career-overview" className="scroll-mt-24 mb-8 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-7 shadow-sm">
+        <section id="career-overview" className="scroll-mt-24 mb-6 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
@@ -215,6 +227,11 @@ export function CareerHomeClient() {
                 >
                   {isOwnerPreviewMode ? "Candidate preview mode (selected owner)" : isCandidatePreviewMode ? "Candidate preview mode" : "Control center mode"}
                 </span>
+                {isNewUserSimulation ? (
+                  <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800">
+                    New user simulation
+                  </span>
+                ) : null}
                 {authProviderBadge ? (
                   <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                     {authProviderBadge} login
@@ -235,6 +252,11 @@ export function CareerHomeClient() {
               <p className="mt-4 max-w-2xl text-sm leading-6 text-[#475569]">
                 This is the separate Career Intelligence module inside Persona Foundry. It is designed to help users move from raw career material to sharper positioning, stronger applications, better interview performance, and live opportunity matching.
               </p>
+              {isNewUserSimulation ? (
+                <p className="mt-2 max-w-2xl text-xs font-medium text-emerald-800">
+                  New user simulation is active. We&apos;re showing the first-time setup journey so you can test onboarding clarity.
+                </p>
+              ) : null}
               {isOwnerPreviewMode ? (
                 <p className="mt-2 max-w-2xl text-xs font-medium text-sky-800">
                   You are previewing a selected candidate owner view from Admin. This helps validate the real user journey without leaving control center workflows.
@@ -262,6 +284,9 @@ export function CareerHomeClient() {
               >
                 Candidate view preview
               </Link>
+              <Link href="/career?view=preview&test=new-user#create-workspace" className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100">
+                Test as new user
+              </Link>
               <Link href="/admin" className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-medium text-[#0f172a] hover:bg-[#f8fafc]">
                 Open admin dashboard
               </Link>
@@ -271,7 +296,7 @@ export function CareerHomeClient() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Candidate workspaces" value={String(candidates.length)} hint="One workspace per person" />
             <MetricCard label="Profiles generated" value={String(totalProfiles)} hint="Professional narrative packs saved" />
             <MetricCard label="Saved outputs" value={String(totalAssets)} hint="CVs, cover letters, dossiers and more" />
@@ -308,18 +333,41 @@ export function CareerHomeClient() {
             </div>
           </section>
         ) : (
-          <section data-sticky-nav="true" className="sticky top-3 z-30 mb-4 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm backdrop-blur">
+          <section
+            data-sticky-nav="true"
+            className={`sticky top-3 z-30 mb-4 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] shadow-sm backdrop-blur ${
+              isMenuRolledUp ? "px-3 py-2" : "p-3"
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Setup menu</div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current: {activeQuickLink.label}</div>
                 <button
                   type="button"
-                  onClick={() => setIsMenuRolledUp((current) => !current)}
+                  onClick={() =>
+                    setIsMenuRolledUp((current) => {
+                      const next = !current
+                      if (next) {
+                        setShowAdvancedTools(false)
+                        setShowWorkflowMap(false)
+                      }
+                      return next
+                    })
+                  }
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
                   {isMenuRolledUp ? "Expand menu" : "Roll up menu"}
                 </button>
+                {isMenuRolledUp ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsFocusMode((current) => !current)}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {isFocusMode ? "Focus off" : "Focus on"}
+                  </button>
+                ) : null}
               </div>
             </div>
             {!isMenuRolledUp ? (
@@ -368,7 +416,8 @@ export function CareerHomeClient() {
                 </div>
               </>
             ) : null}
-            <div className="mt-2 flex justify-end gap-1.5">
+            {!isMenuRolledUp ? (
+              <div className="mt-2 flex justify-end gap-1.5">
               <button
                 type="button"
                 onClick={() => setIsFocusMode((current) => !current)}
@@ -383,7 +432,8 @@ export function CareerHomeClient() {
               >
                 {showAdvancedTools ? "Hide advanced tools" : "Show advanced tools"}
               </button>
-            </div>
+              </div>
+            ) : null}
             {showAdvancedTools ? (
               <div className="mt-2 rounded-xl border border-neutral-200 bg-white p-2.5">
                 <div className="flex flex-wrap gap-2">
@@ -447,35 +497,35 @@ export function CareerHomeClient() {
           </section>
         )}
 
-        <section id="priority-signals" className="scroll-mt-24 mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section id="priority-signals" className="scroll-mt-24 mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           <UrgencyCard
             title="Overdue follow-ups"
             value={String(overdueFollowUps)}
-            description="Applications that need attention now because their follow-up date has passed."
+            description="Follow-up date passed."
             tone={overdueFollowUps > 0 ? "danger" : "neutral"}
           />
           <UrgencyCard
             title="Due today"
             value={String(dueTodayFollowUps)}
-            description="Applications with a follow-up scheduled for today."
+            description="Need action today."
             tone={dueTodayFollowUps > 0 ? "warning" : "neutral"}
           />
           <UrgencyCard
             title="Active applications"
             value={String(candidates.reduce((sum, candidate) => sum + candidate.active_application_count, 0))}
-            description="Live roles still being actively pursued across all candidate workspaces."
+            description="Roles in progress."
             tone="neutral"
           />
           <UrgencyCard
             title="Market-ready workspaces"
             value={String(marketReadyCount)}
-            description="Candidates with enough inputs, outputs, and execution activity to be considered ready to push harder into market action."
+            description="Ready for market push."
             tone={marketReadyCount > 0 ? "neutral" : "warning"}
           />
           <UrgencyCard
             title="Jobs running"
             value={String(activeRuns)}
-            description="Background searches and generators still processing."
+            description="Background processing."
             tone={activeRuns > 0 ? "neutral" : "neutral"}
           />
         </section>
@@ -676,10 +726,10 @@ function GuideCard({ step, title, description }: { step: string; title: string; 
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-3xl border border-[#d9e2ec] bg-white/90 p-5 shadow-sm backdrop-blur">
+    <div className="rounded-2xl border border-[#d9e2ec] bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-[#0f172a]">{value}</div>
-      <div className="mt-2 text-sm text-[#475569]">{hint}</div>
+      <div className="mt-1 text-2xl font-semibold text-[#0f172a]">{value}</div>
+      <div className="mt-1 text-sm text-[#475569]">{hint}</div>
     </div>
   )
 }
@@ -721,10 +771,10 @@ function UrgencyCard({
         : "border-[#d9e2ec] bg-white"
 
   return (
-    <section className={`rounded-3xl border p-5 shadow-sm ${toneClass}`}>
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">{title}</div>
-      <div className="mt-2 text-3xl font-semibold text-[#0f172a]">{value}</div>
-      <p className="mt-2 text-sm leading-6 text-[#475569]">{description}</p>
+    <section className={`rounded-xl border px-3 py-2 shadow-sm ${toneClass}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">{title}</div>
+      <div className="mt-0.5 text-2xl font-semibold text-[#0f172a]">{value}</div>
+      <p className="mt-0.5 text-[12px] text-[#475569]">{description}</p>
     </section>
   )
 }

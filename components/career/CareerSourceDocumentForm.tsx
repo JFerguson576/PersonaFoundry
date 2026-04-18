@@ -108,6 +108,7 @@ const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
 export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [sourceType, setSourceType] = useState("cv")
   const [title, setTitle] = useState("")
   const [contentText, setContentText] = useState("")
@@ -132,6 +133,12 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
   const wizardProgressLabel = `${wizardCompletionCount}/${setupWizardSteps.length}`
   const currentWizardType = setupWizardSteps[Math.min(wizardStepIndex, setupWizardSteps.length - 1)]
   const currentWizardOption = sourceTypeOptions.find((option) => option.value === currentWizardType) ?? sourceTypeOptions[0]
+  const normalizedMessage = message.trim().toLowerCase()
+  const showUploadRecoveryActions =
+    Boolean(normalizedMessage) &&
+    (normalizedMessage.includes("timed out") ||
+      normalizedMessage.includes("failed to upload") ||
+      normalizedMessage.includes("upload the file"))
 
   const nextWizardIndex = useMemo(() => {
     const nextUnfinished = setupWizardSteps.findIndex((step) => !wizardCompletedTypes.has(step))
@@ -454,6 +461,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
       <div>
         <label className="mb-1 block text-sm font-medium">Content</label>
         <textarea
+          ref={contentTextareaRef}
           value={contentText}
           onChange={(event) => setContentText(event.target.value)}
           className="min-h-[220px] w-full rounded-xl border border-neutral-300 px-3 py-2"
@@ -470,6 +478,28 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
       </button>
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
+      {showUploadRecoveryActions ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => void handleUploadSelectedFile()}
+            disabled={fileLoading || !pendingFile}
+            className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Retry upload
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              contentTextareaRef.current?.focus()
+              contentTextareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+            }}
+            className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100"
+          >
+            Paste text instead
+          </button>
+        </div>
+      ) : null}
       <p className="text-xs text-neutral-500">
         Next step: go to Step 3 and generate the profile.
       </p>

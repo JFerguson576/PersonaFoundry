@@ -640,7 +640,35 @@ export function OperationsJobsClient() {
         ) : null}
 
         {overview ? (
-          <>
+          <div className="mt-3 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
+            <aside className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Operations menu</div>
+              <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                  Workflow
+                </summary>
+                <div className="px-2 pb-2">
+                  <button type="button" onClick={() => togglePanel("digest")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Daily digest</button>
+                  <button type="button" onClick={() => togglePanel("recovery")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recovery activity</button>
+                  <button type="button" onClick={() => togglePanel("filters")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Status filters</button>
+                  <button type="button" onClick={() => togglePanel("healthInbox")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Candidate health</button>
+                  <button type="button" onClick={() => togglePanel("background")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Background jobs</button>
+                  <button type="button" onClick={() => togglePanel("live")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Live search runs</button>
+                </div>
+              </details>
+              <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                  Actions
+                </summary>
+                <div className="px-2 pb-2 space-y-1.5">
+                  <button type="button" onClick={() => setAllPanelsCollapsed(true)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Collapse all</button>
+                  <button type="button" onClick={() => setAllPanelsCollapsed(false)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Expand all</button>
+                  <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
+                </div>
+              </details>
+            </aside>
+
+            <div>
             <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -1017,7 +1045,8 @@ export function OperationsJobsClient() {
                 </div>
               ) : null}
             </section>
-          </>
+            </div>
+          </div>
         ) : null}
       </div>
     </main>
@@ -1026,7 +1055,13 @@ export function OperationsJobsClient() {
 
 function MetricCard({ label, value, tone = "normal" }: { label: string; value: string; tone?: "normal" | "danger" }) {
   return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${tone === "danger" ? "border-rose-200 bg-rose-50" : "border-[#d8e4f2] bg-white"}`}>
+    <div
+      className={`rounded-2xl border px-4 py-3 shadow-sm ${
+        tone === "danger"
+          ? "border-rose-200 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)]"
+          : "border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)]"
+      }`}
+    >
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</div>
       <div className={`mt-1 text-2xl font-semibold ${tone === "danger" ? "text-rose-700" : "text-[#0f172a]"}`}>{value}</div>
     </div>

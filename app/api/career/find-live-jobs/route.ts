@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { normalizeString } from "@/lib/career"
+import { sanitizeCareerTargetCountries } from "@/lib/career-country-targeting"
 import { runLiveJobSearch } from "@/lib/career-live-jobs"
 import { getRequestAuth } from "@/lib/supabase/auth"
 import { createRouteClient } from "@/lib/supabase/route"
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     const targetRole = normalizeString(body?.target_role)
     const location = normalizeString(body?.location)
     const marketNotes = normalizeString(body?.market_notes)
+    const targetCountries = sanitizeCareerTargetCountries(body?.target_countries)
 
     if (!candidateId || !targetRole) {
       return NextResponse.json({ error: "candidate_id and target_role are required" }, { status: 400 })
@@ -32,6 +34,7 @@ export async function POST(req: Request) {
       targetRole,
       location,
       marketNotes,
+      targetCountries,
     })
 
     return NextResponse.json({ asset: result.asset })

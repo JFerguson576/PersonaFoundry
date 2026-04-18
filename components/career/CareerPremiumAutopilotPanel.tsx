@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { getAuthHeaders, notifyCareerWorkspaceRefresh } from "@/lib/career-client"
 
 type Props = {
@@ -23,8 +23,27 @@ type PremiumAutopilotSettings = {
   job_description: string
   dossier_influence: string
   role_match_tightness: number
+  auto_research_from_matches: boolean
+  auto_generate_cover_letters: boolean
   last_run_at: string | null
   next_run_at: string | null
+}
+
+type PremiumAutopilotReviewItem = {
+  id: string
+  trigger_source: string | null
+  target_role: string | null
+  company_name: string | null
+  job_title: string | null
+  location: string | null
+  job_url: string | null
+  live_search_asset_id: string | null
+  company_dossier_asset_id: string | null
+  cover_letter_asset_id: string | null
+  status: "pending" | "approved" | "rejected"
+  review_notes: string | null
+  created_at: string | null
+  reviewed_at: string | null
 }
 
 const weekdayOptions = [
@@ -52,6 +71,8 @@ function defaultSettings(suggestedTargetRole?: string, defaultLocation?: string)
     job_description: "",
     dossier_influence: "medium",
     role_match_tightness: 60,
+    auto_research_from_matches: true,
+    auto_generate_cover_letters: true,
     last_run_at: null,
     next_run_at: null,
   }
@@ -64,10 +85,32 @@ function asInputString(value: string | null | undefined) {
 export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole = "", defaultLocation = "" }: Props) {
   const [settings, setSettings] = useState<PremiumAutopilotSettings>(defaultSettings(suggestedTargetRole, defaultLocation))
   const [loading, setLoading] = useState(false)
+  const [queueLoading, setQueueLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
+  const [queueItems, setQueueItems] = useState<PremiumAutopilotReviewItem[]>([])
+  const [actingQueueId, setActingQueueId] = useState("")
   const [message, setMessage] = useState("")
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info")
+
+  const loadQueue = useCallback(async () => {
+    setQueueLoading(true)
+    try {
+      const response = await fetch(`/api/career/premium-autopilot-review/${candidateId}`, {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Could not load review queue.")
+      }
+      setQueueItems((json.queue ?? []) as PremiumAutopilotReviewItem[])
+    } catch (error) {
+      setMessageTone("error")
+      setMessage(error instanceof Error ? error.message : "Could not load review queue.")
+    } finally {
+      setQueueLoading(false)
+    }
+  }, [candidateId])
 
   useEffect(() => {
     async function load() {
@@ -102,7 +145,8 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
     }
 
     void load()
-  }, [candidateId, defaultLocation, suggestedTargetRole])
+    void loadQueue()
+  }, [candidateId, defaultLocation, loadQueue, suggestedTargetRole])
 
   async function saveSettings() {
     setSaving(true)
@@ -146,11 +190,47 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
       setMessageTone("success")
       setMessage("Premium autopilot started in the background. You can keep working while it runs.")
       notifyCareerWorkspaceRefresh()
+      void loadQueue()
     } catch (error) {
       setMessageTone("error")
       setMessage(error instanceof Error ? error.message : "Could not start premium autopilot run.")
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function reviewQueueItem(item: PremiumAutopilotReviewItem, action: "approve" | "reject") {
+    setActingQueueId(item.id)
+    setMessage("")
+    try {
+      const response = await fetch(`/api/career/premium-autopilot-review/${candidateId}`, {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          queue_id: item.id,
+          action,
+          review_notes:
+            action === "approve"
+              ? "Approved for application workflow."
+              : "Rejected from review queue.",
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Could not update review queue.")
+      }
+      setMessageTone("success")
+      setMessage(action === "approve" ? "Review item approved and added to applications." : "Review item rejected.")
+      await loadQueue()
+      notifyCareerWorkspaceRefresh()
+    } catch (error) {
+      setMessageTone("error")
+      setMessage(error instanceof Error ? error.message : "Could not update review queue.")
+    } finally {
+      setActingQueueId("")
     }
   }
 
@@ -247,6 +327,41 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
+        </label>
+        <label className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+          Automation choices
+          <div className="mt-2 space-y-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-900">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={settings.auto_research_from_matches}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    auto_research_from_matches: event.target.checked,
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+                disabled={loading}
+              />
+              <span>Auto-research company dossier from top matched role</span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={settings.auto_generate_cover_letters}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    auto_generate_cover_letters: event.target.checked,
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+                disabled={loading}
+              />
+              <span>Auto-generate tailored cover letters from profile + dossier</span>
+            </label>
+          </div>
         </label>
         <label className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
           Role match strictness
@@ -364,6 +479,88 @@ export function CareerPremiumAutopilotPanel({ candidateId, suggestedTargetRole =
         </div>
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
           Next scheduled run: {settings.next_run_at ? new Date(settings.next_run_at).toLocaleString() : "Will be activated in scheduler phase"}
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Review queue</div>
+            <div className="mt-1 text-sm text-neutral-700">Approve or reject autopilot batches before applying.</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadQueue()}
+            disabled={queueLoading}
+            className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+          >
+            {queueLoading ? "Refreshing..." : "Refresh queue"}
+          </button>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {queueItems.length === 0 ? (
+            <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-600">
+              No review items yet. Run autopilot and new batches will appear here.
+            </div>
+          ) : (
+            queueItems.map((item) => (
+              <div key={item.id} className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-neutral-900">
+                    {item.job_title || item.target_role || "Autopilot role batch"}
+                    {item.company_name ? ` | ${item.company_name}` : ""}
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                      item.status === "pending"
+                        ? "bg-amber-100 text-amber-800"
+                        : item.status === "approved"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-neutral-600">
+                  {item.location || "Location not set"} | {item.created_at ? new Date(item.created_at).toLocaleString() : "Unknown time"}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.job_url ? (
+                    <a
+                      href={item.job_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-50"
+                    >
+                      Open job link
+                    </a>
+                  ) : null}
+                  {item.status === "pending" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void reviewQueueItem(item, "approve")}
+                        disabled={actingQueueId === item.id}
+                        className="rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                      >
+                        {actingQueueId === item.id ? "Saving..." : "Approve"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void reviewQueueItem(item, "reject")}
+                        disabled={actingQueueId === item.id}
+                        className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        {actingQueueId === item.id ? "Saving..." : "Reject"}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </section>

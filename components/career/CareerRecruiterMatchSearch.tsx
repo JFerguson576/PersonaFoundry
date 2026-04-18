@@ -102,6 +102,7 @@ export function CareerRecruiterMatchSearch({ candidateId, applications, suggeste
         location,
         specialty,
         notes,
+        target_countries: ["NZ"],
       })
       setMessage(
         careerBackgroundStartedMessage({
@@ -163,6 +164,21 @@ export function CareerRecruiterMatchSearch({ candidateId, applications, suggeste
         <div>
           <label className="mb-1 block text-sm font-medium">Recruiter specialty</label>
           <input value={specialty} onChange={(event) => setSpecialty(event.target.value)} className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2" placeholder="Optional: executive search, product, transformation..." />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+        <div className="mb-2 text-sm font-medium">Recruiter market</div>
+        <p className="mb-3 text-xs text-neutral-600">
+          Recruiter mapping is currently focused on New Zealand. International recruiter targeting is coming soon.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-xs font-semibold text-[#0a66c2]">
+            ✓ New Zealand
+          </span>
+          <span className="cursor-not-allowed rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-500">
+            International (Coming soon)
+          </span>
         </div>
       </div>
 

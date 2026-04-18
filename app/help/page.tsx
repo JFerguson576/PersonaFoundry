@@ -24,9 +24,9 @@ export default function HelpPage() {
         <PlatformModuleNav />
         <section className="rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Help</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Adaptive Help Center</h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Step Coach Help Center</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[#475569]">
-            Help is now available inside every module via the <span className="font-semibold">Help me here</span> button in the top navigation. It reads the current page sections live so guidance stays aligned as workflows evolve.
+            Guidance is available inside every module via the <span className="font-semibold">Step Coach</span> button in the top navigation so users can get step-by-step help while they work.
           </p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {moduleItems.map((item) => (

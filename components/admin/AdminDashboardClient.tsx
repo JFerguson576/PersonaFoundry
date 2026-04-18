@@ -113,6 +113,12 @@ type RoleAssignment = {
   roles: Array<"admin" | "support" | "superuser">
 }
 
+type AccessLevelAssignment = {
+  user_id: string
+  email: string | null
+  access_level: "viewer" | "editor" | "manager"
+}
+
 type AdminNotebookEntry = {
   id: string
   title: string | null
@@ -141,6 +147,15 @@ type CommunityModerationPost = {
 }
 
 export function AdminDashboardClient() {
+  const siteOrigin =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000")
+  const platformUrl = `${siteOrigin.replace(/\/$/, "")}/platform`
+  const careerIntelligenceUrl = `${siteOrigin.replace(/\/$/, "")}/career-intelligence`
   const [session, setSession] = useState<Session | null>(null)
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [message, setMessage] = useState("")
@@ -153,10 +168,15 @@ export function AdminDashboardClient() {
   const [candidateFilter, setCandidateFilter] = useState("all")
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [roleAssignments, setRoleAssignments] = useState<RoleAssignment[]>([])
+  const [accessLevelAssignments, setAccessLevelAssignments] = useState<AccessLevelAssignment[]>([])
   const [roleEmailDraft, setRoleEmailDraft] = useState("")
   const [roleDraft, setRoleDraft] = useState<"admin" | "support" | "superuser">("support")
   const [roleActionDraft, setRoleActionDraft] = useState<"grant" | "revoke">("grant")
+  const [accessEmailDraft, setAccessEmailDraft] = useState("")
+  const [accessLevelDraft, setAccessLevelDraft] = useState<"viewer" | "editor" | "manager">("editor")
+  const [accessActionDraft, setAccessActionDraft] = useState<"assign" | "revoke">("assign")
   const [isUpdatingRoles, setIsUpdatingRoles] = useState(false)
+  const [isUpdatingAccessLevels, setIsUpdatingAccessLevels] = useState(false)
   const [authProviderStatus, setAuthProviderStatus] = useState<AuthProviderStatus[]>([])
   const [notebookEntries, setNotebookEntries] = useState<AdminNotebookEntry[]>([])
   const [notebookTitleDraft, setNotebookTitleDraft] = useState("")
@@ -265,6 +285,22 @@ export function AdminDashboardClient() {
     }
   }, [showToast])
 
+  const loadAccessLevelAssignments = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/users/access", {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load access levels")
+      }
+      setAccessLevelAssignments((json.assignments ?? []) as AccessLevelAssignment[])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load access levels"
+      showToast({ tone: "error", message: errorMessage })
+    }
+  }, [showToast])
+
   const loadNotebookEntries = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/notebook", {
@@ -335,6 +371,7 @@ export function AdminDashboardClient() {
       await loadCommunityPosts()
       if (nextOverview.permissions.is_superuser) {
         await loadRoleAssignments()
+        await loadAccessLevelAssignments()
       }
 
       try {
@@ -353,7 +390,7 @@ export function AdminDashboardClient() {
     })
 
     return () => subscription.unsubscribe()
-  }, [loadCommunityPosts, loadNotebookEntries, loadRoleAssignments, showToast])
+  }, [loadAccessLevelAssignments, loadCommunityPosts, loadNotebookEntries, loadRoleAssignments, showToast])
 
   async function handleCommunityModeration(
     postId: string,
@@ -645,6 +682,55 @@ export function AdminDashboardClient() {
     }
   }
 
+  async function handleAccessLevelSubmit() {
+    const normalizedEmail = accessEmailDraft.trim().toLowerCase()
+
+    if (!normalizedEmail) {
+      const errorMessage = "Enter a user email first."
+      setActionMessage(errorMessage)
+      showToast({ tone: "error", message: errorMessage })
+      return
+    }
+
+    setIsUpdatingAccessLevels(true)
+    setActionMessage("")
+
+    try {
+      const response = await fetch("/api/admin/users/access", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          access_level: accessLevelDraft,
+          action: accessActionDraft,
+        }),
+      })
+      const json = await response.json()
+
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to update access level")
+      }
+
+      await loadAccessLevelAssignments()
+      const successMessage =
+        accessActionDraft === "assign"
+          ? `Assigned ${accessLevelDraft} access to ${normalizedEmail}.`
+          : `Removed access level from ${normalizedEmail}.`
+      setActionMessage(successMessage)
+      showToast({ tone: "success", message: successMessage })
+      setAccessEmailDraft("")
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update access level"
+      setActionMessage(errorMessage)
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setIsUpdatingAccessLevels(false)
+    }
+  }
+
   async function handleNotebookSubmit() {
     if (!notebookNoteDraft.trim()) {
       const errorMessage = "Add a note before saving."
@@ -887,6 +973,9 @@ export function AdminDashboardClient() {
       return haystack.includes(normalizedOwnerSearch)
     })
     .sort((a, b) => b.active - a.active || b.total - a.total || a.displayName.localeCompare(b.displayName))
+  const accessLevelByUserId = new Map(
+    accessLevelAssignments.map((assignment) => [assignment.user_id, assignment.access_level] as const)
+  )
   const signupTrend = buildDailyTrend(
     overview.recent_signups.map((user) => ({ created_at: user.created_at })),
     () => 1
@@ -1144,7 +1233,6 @@ export function AdminDashboardClient() {
     { sectionKey: "admin-notebook", href: "#admin-notebook", label: "10. Notebook" },
     { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "11. Workspace manager" },
   ]
-  const activeQuickLink = quickLinks.find((link) => link.sectionKey === activeSection) ?? quickLinks[0]
   const sectionSubmenuLinks: Record<string, Array<{ label: string; sectionKey: string; href: string }>> = {
     "dashboard-overview": [
       { label: "Platform pulse", sectionKey: "dashboard-overview", href: "#dashboard-overview" },
@@ -1201,6 +1289,26 @@ export function AdminDashboardClient() {
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
+  const dashboardRailGroups = [
+    {
+      title: "Core",
+      links: quickLinks.filter((link) =>
+        ["dashboard-overview", "dashboard-help", "openai-usage", "operating-signals"].includes(link.sectionKey)
+      ),
+    },
+    {
+      title: "Activity",
+      links: quickLinks.filter((link) =>
+        ["acquisition-snapshot", "feature-activity", "api-usage-by-feature", "recent-activity", "recent-api-calls"].includes(link.sectionKey)
+      ),
+    },
+    {
+      title: "Control",
+      links: quickLinks.filter((link) =>
+        ["community-moderation", "access-control", "admin-notebook", "candidate-workspace-manager"].includes(link.sectionKey)
+      ),
+    },
+  ]
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -1234,141 +1342,96 @@ export function AdminDashboardClient() {
           </p>
         </div>
 
-        <section data-sticky-nav="true" className="top-2 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-2.5 shadow-sm backdrop-blur md:sticky md:top-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <aside data-sticky-nav="true" className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Dashboard menu</div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-              Current: {activeQuickLink.label}
+            <div className="mt-1 text-[11px] text-neutral-600">
+              Current: <span className="font-semibold text-neutral-800">{activeSectionLabel}</span> /{" "}
+              <span className="font-semibold text-neutral-800">{activeSubsectionLabel}</span>
             </div>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-600">
-            <span className="font-semibold text-neutral-700">Path:</span>
-            <button
-              type="button"
-              onClick={() => openAndScroll("dashboard-overview", "#dashboard-overview")}
-              className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-700 hover:bg-neutral-100"
-            >
-              Admin
-            </button>
-            <span className="text-neutral-400">/</span>
-            <button
-              type="button"
-              onClick={() => openAndScroll(activeSection, activeQuickLink?.href || "#dashboard-overview")}
-              className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-700 hover:bg-neutral-100"
-            >
-              {activeSectionLabel}
-            </button>
-            <span className="text-neutral-400">/</span>
-            <button
-              type="button"
-              onClick={() => openAndScroll(activeSection, activeAnchor)}
-              className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 font-semibold text-neutral-700 hover:bg-neutral-100"
-            >
-              {activeSubsectionLabel}
-            </button>
-          </div>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1 whitespace-nowrap">
-            {quickLinks.map((link) => (
-              <button
-                key={`admin-menu-${link.href}`}
-                type="button"
-                onClick={() => openAndScroll(link.sectionKey, link.href)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  activeSection === link.sectionKey
-                    ? "border-sky-300 bg-sky-100 text-sky-900"
-                    : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-2 flex justify-start md:justify-end">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setAllSectionsCollapsed(true)}
-                className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100 sm:text-[11px]"
-              >
-                Collapse all sections
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllSectionsCollapsed(false)}
-                className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100 sm:text-[11px]"
-              >
-                Expand all sections
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedTools((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100 sm:text-[11px]"
-              >
-                {showAdvancedTools ? "Hide advanced tools" : "Show advanced tools"}
-              </button>
-            </div>
-          </div>
-          {showAdvancedTools ? (
-            <div className="mt-2 rounded-xl border border-neutral-200 bg-white p-2.5">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowWorkflowMap((current) => !current)}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${
-                    showWorkflowMap ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
-                  }`}
-                >
-                  {showWorkflowMap ? "Map on" : "Map off"}
-                </button>
-              </div>
-              {activeSubmenuLinks.length > 0 ? (
-                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                  {activeSubmenuLinks.map((item) => (
-                    <button
-                      key={`admin-submenu-${item.sectionKey}-${item.href}-${item.label}`}
-                      type="button"
-                      onClick={() => openAndScroll(item.sectionKey, item.href)}
-                      className="shrink-0 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {showAdvancedTools && showWorkflowMap ? (
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {workflowMapSections.map((section) => (
-                <div key={`admin-map-${section.sectionKey}`} className="rounded-xl border border-neutral-200 bg-white p-2.5">
-                  <button
-                    type="button"
-                    onClick={() => openAndScroll(section.sectionKey, section.href)}
-                    className={`w-full rounded-lg border px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] transition ${
-                      activeSection === section.sectionKey
-                        ? "border-sky-300 bg-sky-50 text-sky-900"
-                        : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100"
-                    }`}
-                  >
-                    {section.label}
-                  </button>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {section.items.map((item) => (
+            <div className="mt-3 space-y-2">
+              {dashboardRailGroups.map((group) => (
+                <details key={`admin-rail-${group.title}`} open className="rounded-xl border border-neutral-200 bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                    {group.title}
+                  </summary>
+                  <div className="px-2 pb-2">
+                    {group.links.map((link) => (
                       <button
-                        key={`admin-map-item-${section.sectionKey}-${item.href}-${item.label}`}
+                        key={`admin-rail-link-${link.sectionKey}`}
                         type="button"
-                        onClick={() => openAndScroll(item.sectionKey, item.href)}
-                        className="rounded-full border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                        onClick={() => openAndScroll(link.sectionKey, link.href)}
+                        className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold transition ${
+                          activeSection === link.sectionKey
+                            ? "border-sky-300 bg-sky-100 text-sky-900"
+                            : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                        }`}
                       >
-                        {item.label}
+                        {link.label}
                       </button>
                     ))}
                   </div>
-                </div>
+                </details>
               ))}
             </div>
-          ) : null}
-        </section>
+            <details className="mt-2 rounded-xl border border-neutral-200 bg-white" open={showAdvancedTools}>
+              <summary
+                className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600"
+                onClick={(event) => {
+                  event.preventDefault()
+                  setShowAdvancedTools((current) => !current)
+                }}
+              >
+                Advanced tools
+              </summary>
+              {showAdvancedTools ? (
+                <div className="px-2 pb-2">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setAllSectionsCollapsed(true)}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      Collapse all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAllSectionsCollapsed(false)}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      Expand all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWorkflowMap((current) => !current)}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        showWorkflowMap ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
+                      }`}
+                    >
+                      {showWorkflowMap ? "Map on" : "Map off"}
+                    </button>
+                  </div>
+                  {showWorkflowMap ? (
+                    <div className="space-y-2">
+                      {workflowMapSections.map((section) => (
+                        <div key={`admin-rail-map-${section.sectionKey}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
+                          <button
+                            type="button"
+                            onClick={() => openAndScroll(section.sectionKey, section.href)}
+                            className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-left text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                          >
+                            {section.label}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </details>
+          </aside>
+
+          <div className="min-w-0">
 
           <section id="dashboard-overview" className="scroll-mt-24 mb-5 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -1551,10 +1614,10 @@ export function AdminDashboardClient() {
                     <li>
                       3. Supabase to Authentication to URL Configuration: add
                       <span className="ml-1 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[12px]">
-                        http://localhost:3000/platform
+                        {platformUrl}
                       </span>
                       <span className="ml-1 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[12px]">
-                        http://localhost:3000/career-intelligence
+                        {careerIntelligenceUrl}
                       </span>
                     </li>
                     <li>
@@ -2381,12 +2444,18 @@ export function AdminDashboardClient() {
             <div>
               <h2 className="text-[1.6rem] font-semibold tracking-tight text-[#0f172a]">User and role control center</h2>
               <p className="mt-2 text-sm text-neutral-600">
-                Manage who can view all candidates, who can support users, and who can manage platform settings.
+                Manage platform roles plus workflow access levels (viewer, editor, manager).
               </p>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Active role assignments</div>
-              <div className="mt-1 text-2xl font-semibold">{roleAssignments.length}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Active role assignments</div>
+                <div className="mt-1 text-2xl font-semibold">{roleAssignments.length}</div>
+              </div>
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Access level assignments</div>
+                <div className="mt-1 text-2xl font-semibold">{accessLevelAssignments.length}</div>
+              </div>
             </div>
           </div>
 
@@ -2441,6 +2510,51 @@ export function AdminDashboardClient() {
                 </div>
               </div>
 
+              <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Access email</label>
+                  <input
+                    value={accessEmailDraft}
+                    onChange={(event) => setAccessEmailDraft(event.target.value)}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Access level</label>
+                  <select
+                    value={accessLevelDraft}
+                    onChange={(event) => setAccessLevelDraft(event.target.value as "viewer" | "editor" | "manager")}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="viewer">Viewer (read-only)</option>
+                    <option value="editor">Editor (can update content)</option>
+                    <option value="manager">Manager (can coordinate workflows)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Action</label>
+                  <select
+                    value={accessActionDraft}
+                    onChange={(event) => setAccessActionDraft(event.target.value as "assign" | "revoke")}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="assign">Assign level</option>
+                    <option value="revoke">Remove level</option>
+                  </select>
+                </div>
+                <div className="md:self-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleAccessLevelSubmit()}
+                    disabled={isUpdatingAccessLevels}
+                    className="w-full rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#004182] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isUpdatingAccessLevels ? "Updating..." : "Apply"}
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-5 rounded-2xl border border-neutral-200 bg-white p-4">
                 {roleAssignments.length === 0 ? (
                   <p className="text-sm text-neutral-600">No database role assignments yet. Use the form above to add your first support/admin user.</p>
@@ -2459,9 +2573,38 @@ export function AdminDashboardClient() {
                                 {role}
                               </span>
                             ))}
+                            {accessLevelByUserId.get(assignment.user_id) ? (
+                              <span className="rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+                                {accessLevelByUserId.get(assignment.user_id)}
+                              </span>
+                            ) : (
+                              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                                no access level
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="mt-2 text-xs text-neutral-500 break-all">User ID: {assignment.user_id}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                <div className="text-sm font-semibold text-neutral-900">Access level directory</div>
+                {accessLevelAssignments.length === 0 ? (
+                  <p className="mt-2 text-sm text-neutral-600">No access level assignments yet.</p>
+                ) : (
+                  <div className="mt-3 grid gap-2">
+                    {accessLevelAssignments.map((assignment) => (
+                      <div key={`access-${assignment.user_id}`} className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-neutral-900">{assignment.email || assignment.user_id}</div>
+                          <span className="rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+                            {assignment.access_level}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2933,6 +3076,8 @@ export function AdminDashboardClient() {
             </>
           )}
         </section>
+          </div>
+        </div>
       </div>
       {toast ? (
         <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm">
@@ -2964,29 +3109,29 @@ export function AdminDashboardClient() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
-      <div className="mt-3 text-3xl font-semibold">{value}</div>
+    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 shadow-sm">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
   )
 }
 
 function PulseCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-3xl border border-[#d9e2ec] bg-white/90 p-5 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-[#0f172a]">{value}</div>
-      <div className="mt-2 text-sm text-[#475569]">{hint}</div>
+    <div className="rounded-xl border border-[#d9e2ec] bg-white/90 px-3 py-2.5 shadow-sm">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-[#0f172a]">{value}</div>
+      <div className="mt-1 text-xs text-[#475569]">{hint}</div>
     </div>
   )
 }
 
 function MiniSignalCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-neutral-900">{value}</div>
-      <div className="mt-2 text-sm text-neutral-600">{hint}</div>
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-neutral-900">{value}</div>
+      <div className="mt-1 text-xs text-neutral-600">{hint}</div>
     </div>
   )
 }
@@ -3012,10 +3157,10 @@ function ExecutiveAdminSignalCard({
           : "border-neutral-200 bg-white"
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-neutral-900">{value}</div>
-      <div className="mt-2 text-sm leading-6 text-neutral-600">{detail}</div>
+    <div className={`rounded-xl border px-3 py-2.5 ${toneClass}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-neutral-900">{value}</div>
+      <div className="mt-1 text-xs leading-5 text-neutral-600">{detail}</div>
     </div>
   )
 }

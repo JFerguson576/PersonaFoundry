@@ -1,5 +1,11 @@
 import OpenAI from "openai"
 import { normalizeString } from "@/lib/career"
+import {
+  extractTargetCountriesFromMarketNotes,
+  formatCareerTargetCountries,
+  sanitizeCareerTargetCountries,
+  stripTargetCountriesFromMarketNotes,
+} from "@/lib/career-country-targeting"
 import { logApiUsage, logUsageEvent } from "@/lib/telemetry"
 import type { createRouteClient } from "@/lib/supabase/route"
 
@@ -100,9 +106,15 @@ export async function runLiveJobSearch(params: {
   targetRole: string
   location?: string
   marketNotes?: string
+  targetCountries?: string[]
   roleMatchTightness?: number
 }) {
   const { supabase, userId, candidateId, targetRole, location = "", marketNotes = "", roleMatchTightness = 60 } = params
+  const explicitCountryCodes = sanitizeCareerTargetCountries(params.targetCountries)
+  const detectedCountryCodes = extractTargetCountriesFromMarketNotes(marketNotes)
+  const targetCountryCodes = explicitCountryCodes.length > 0 ? explicitCountryCodes : detectedCountryCodes
+  const targetCountryNames = formatCareerTargetCountries(targetCountryCodes)
+  const cleanMarketNotes = stripTargetCountriesFromMarketNotes(marketNotes)
 
   const { data: candidateRow } = await supabase
     .from("career_candidates")
@@ -223,6 +235,7 @@ Rules:
 - Return 5 to 8 opportunities when possible
 - Keep why_fit concise and grounded in the candidate profile
 - Use the target role and location as the main search anchor
+- If target countries are provided, prioritize listings and recruiters in those countries first
 - Do not invent listings
 - Search strictness: ${tightness}/100 (${tightnessMode})
   - tight: prioritize close title/function match and similar seniority
@@ -246,7 +259,8 @@ Search target:
 ${stringify({
   target_role: targetRole,
   location,
-  market_notes: marketNotes,
+  target_countries: targetCountryNames,
+  market_notes: cleanMarketNotes,
   role_match_tightness: tightness,
 })}`,
           },
@@ -337,6 +351,7 @@ ${stringify({
     metadata: {
       target_role: targetRole,
       location: location || null,
+      target_countries: targetCountryCodes,
       source_count: sources.length,
     },
   })
@@ -354,6 +369,7 @@ ${stringify({
       candidate_id: candidateId,
       target_role: targetRole,
       location: location || null,
+      target_countries: targetCountryCodes,
       role_match_tightness: tightness,
       source_count: sources.length,
     },
@@ -362,5 +378,12 @@ ${stringify({
   return {
     asset: savedAsset,
     sourceCount: sources.length,
+    opportunities: (parsed.opportunities ?? []).map((opportunity) => ({
+      title: normalizeString(opportunity.title),
+      company: normalizeString(opportunity.company),
+      location: normalizeString(opportunity.location),
+      why_fit: normalizeString(opportunity.why_fit),
+      apply_url: normalizeUrl(opportunity.apply_url),
+    })),
   }
 }

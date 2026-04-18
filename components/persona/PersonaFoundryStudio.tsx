@@ -1116,8 +1116,17 @@ export default function Home() {
   const [beginnerMode, setBeginnerMode] = useState(true)
   const [showQuickStartWizard, setShowQuickStartWizard] = useState(true)
   const [showGallupExplainer, setShowGallupExplainer] = useState(false)
+  const [showHeaderSetup, setShowHeaderSetup] = useState(false)
   const [compactWorkflowMode, setCompactWorkflowMode] = useState(true)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.localStorage.getItem('persona-whats-new-hidden-v1') !== '1'
+  })
+  const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
+  const [issueType, setIssueType] = useState('Workflow confusion')
+  const [issueDetail, setIssueDetail] = useState('')
+  const [issueContactEmail, setIssueContactEmail] = useState('')
   const [collapsedPanels, setCollapsedPanels] = useState<Record<string, boolean>>({
     analysis: false,
     traits: false,
@@ -1181,6 +1190,11 @@ export default function Home() {
     }, 2400)
     return () => window.clearTimeout(timeout)
   }, [flashNotice])
+
+  useEffect(() => {
+    if (!session?.user?.email) return
+    setIssueContactEmail((current) => current || session.user.email || '')
+  }, [session?.user?.email])
 
   function togglePanel(panelKey: string) {
     setCollapsedPanels((current) => ({
@@ -2158,6 +2172,40 @@ export default function Home() {
     flashMessage('Quick start applied. Fine-tune traits, then export when ready.')
   }
 
+  function dismissWhatsNewPanel() {
+    setIsWhatsNewOpen(false)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('persona-whats-new-hidden-v1', '1')
+    }
+  }
+
+  async function submitIssueReport() {
+    const trimmedDetail = issueDetail.trim()
+    if (!trimmedDetail) {
+      flashMessage('Add a short issue description first.')
+      return
+    }
+
+    const payload = [
+      'Module: Persona Foundry',
+      `Current step: ${activePersonaLink.label.replace(/^\d+\.\s*/, '')}`,
+      `Issue type: ${issueType}`,
+      `Contact: ${issueContactEmail || 'Not provided'}`,
+      `Details: ${trimmedDetail}`,
+    ].join('\n')
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload)
+      }
+      flashMessage('Issue report copied. Paste it into support chat or email.')
+    } catch {
+      flashMessage('Issue captured. Clipboard copy failed in this browser.')
+    }
+
+    setIsReportIssueOpen(false)
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
       {uploadingFile && (
@@ -2172,11 +2220,30 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-6">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Persona Foundry" />
-        <div className="mb-4 overflow-hidden rounded-[1.5rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_45%,#f3f8ff_100%)] shadow-sm">
-          <div className="p-4">
+        {isWhatsNewOpen ? (
+          <section className="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">What&apos;s new</div>
+                <p className="mt-0.5 text-xs text-sky-900">
+                  Cleaner wizard guidance, tighter top controls, and faster step navigation are now live.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissWhatsNewPanel}
+                className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 hover:bg-sky-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          </section>
+        ) : null}
+        <div className="mb-3 overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_45%,#f3f8ff_100%)] shadow-sm">
+          <div className="p-3">
             <div>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -2250,93 +2317,95 @@ export default function Home() {
                   ) : null}
                 </div>
               </div>
-              <p className="mt-1.5 max-w-4xl text-sm leading-5 text-[#475569]">
-                Start with Gallup Strengths, tune the voice, then export a production-ready AI personality.
+              <p className="mt-1 max-w-4xl text-xs leading-5 text-[#475569]">
+                Start with Gallup Strengths, tune your voice, then export your profile.
               </p>
-              <div className="mt-2 grid gap-1.5 md:grid-cols-3">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {personaReadinessItems.map((item) => (
                   <button
-                    key={`persona-readiness-${item.label}`}
+                    key={`persona-readiness-pill-${item.label}`}
                     type="button"
                     onClick={() => openPersonaSection(item.sectionKey, item.href)}
-                    className={`rounded-xl border px-2.5 py-2 text-left ${
-                      item.ready ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
+                    className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
+                      item.ready
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                        : "border-amber-300 bg-amber-50 text-amber-800"
                     }`}
                   >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{item.label}</div>
-                    <div className="mt-0.5 text-xs font-medium text-neutral-800">{item.ready ? item.readyText : item.nextText}</div>
+                    {item.label}: {item.ready ? "Ready" : "Next"}
                   </button>
                 ))}
-              </div>
-              <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-white px-3 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Do this next</div>
-                <p className="mt-0.5 text-xs text-neutral-700">{nextPersonaStep.description}</p>
                 <button
                   type="button"
                   onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
-                  className="mt-1.5 rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                  className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
                 >
                   {nextPersonaStep.actionLabel}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHeaderSetup((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {showHeaderSetup ? "Hide helper" : "Show helper"}
+                </button>
               </div>
 
-              <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-white px-3 py-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#334155]">Gallup source</div>
-                    <p className="text-[11px] text-[#64748b]">Use saved Career Strengths, or jump to Analyze and paste/upload now.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openPersonaSection("analysis", "#persona-analysis")}
-                    className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                  >
-                    Open analyze step
-                  </button>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <select
-                    value={selectedGallupSourceId}
-                    onChange={(e) => setSelectedGallupSourceId(e.target.value)}
-                    disabled={isLoadingGallupSources || careerGallupSources.length === 0 || isApplyingGallupSource}
-                    className="min-w-[240px] rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {careerGallupSources.length === 0 ? (
-                      <option value="">{isLoadingGallupSources ? "Loading strengths..." : "No saved Career Gallup source"}</option>
-                    ) : (
-                      careerGallupSources.map((source) => (
-                        <option key={source.id} value={source.id}>
-                          {source.candidate_name} | {source.title}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => void applyCareerGallupSource()}
-                    disabled={careerGallupSources.length === 0 || !selectedGallupSourceId || isApplyingGallupSource}
-                    className="rounded-full bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isApplyingGallupSource ? "Applying..." : "Use strengths"}
-                  </button>
-                  {careerGallupSources.length === 0 && !isLoadingGallupSources ? (
+              {showHeaderSetup ? (
+                <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-white px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Next action</div>
+                  <p className="mt-0.5 text-xs text-neutral-700">{nextPersonaStep.description}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={selectedGallupSourceId}
+                      onChange={(e) => setSelectedGallupSourceId(e.target.value)}
+                      disabled={isLoadingGallupSources || careerGallupSources.length === 0 || isApplyingGallupSource}
+                      className="min-w-[220px] rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {careerGallupSources.length === 0 ? (
+                        <option value="">{isLoadingGallupSources ? "Loading strengths..." : "No saved Career Gallup source"}</option>
+                      ) : (
+                        careerGallupSources.map((source) => (
+                          <option key={source.id} value={source.id}>
+                            {source.candidate_name} | {source.title}
+                          </option>
+                        ))
+                      )}
+                    </select>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          window.location.href = "/career-intelligence"
-                        }
-                      }}
+                      onClick={() => void applyCareerGallupSource()}
+                      disabled={careerGallupSources.length === 0 || !selectedGallupSourceId || isApplyingGallupSource}
+                      className="rounded-full bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isApplyingGallupSource ? "Applying..." : "Use strengths"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPersonaSection("analysis", "#persona-analysis")}
                       className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      Add in Career Intelligence
+                      Open analyze
                     </button>
-                  ) : null}
+                    {careerGallupSources.length === 0 && !isLoadingGallupSources ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            window.location.href = "/career-intelligence"
+                          }
+                        }}
+                        className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                      >
+                        Add in Career
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className="mt-1 text-xs text-[#64748b]">
-                Current voice: <span className="font-semibold text-[#334155]">{personaDNA(traits)}</span>
+              <div className="mt-1 text-[11px] text-[#64748b]">
+                Voice: <span className="font-semibold text-[#334155]">{personaDNA(traits)}</span>
               </div>
               <div className="mt-1.5">
                 <button
@@ -2350,16 +2419,14 @@ export default function Home() {
               {showGallupExplainer ? (
                 <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#334155]">
                   <p className="font-semibold text-[#0f172a]">
-                    A Gallup-aligned personality makes your AI feel natural from day one.
+                    A Gallup-based profile makes your AI feel natural from day one.
                   </p>
-                  <p className="mt-1">
-                    Instead of forcing you to adapt to a generic assistant, Personara tunes the assistant to your natural strengths, communication style, and decision patterns.
-                  </p>
+                  <p className="mt-1">Personara tunes your assistant to your strengths, communication style, and decision patterns.</p>
                   <ul className="mt-1.5 space-y-1 text-[#475569]">
-                    <li>Better fit and faster onboarding</li>
+                    <li>Faster onboarding</li>
                     <li>Higher trust, engagement, and repeat use</li>
-                    <li>Stronger output quality and actionability</li>
-                    <li>Less friction in daily workflows</li>
+                    <li>Stronger output quality</li>
+                    <li>Less day-to-day friction</li>
                   </ul>
                   <a
                     href="/docs/personara-ai-gallup-strengths-explainer.docx"
@@ -2373,11 +2440,11 @@ export default function Home() {
               ) : null}
             </div>
 
-            <div className="mt-1 text-xs text-[#64748b]">
-              Mode: <span className="font-semibold text-[#334155]">{activePreset}</span> | Saved versions:{" "}
-              <span className="font-semibold text-[#334155]">{versions.length}</span> | Cloud:{" "}
-              <span className="font-semibold text-[#334155]">{session?.user ? "Connected" : "Local draft mode"}</span>
-            </div>
+              <div className="mt-1 text-[11px] text-[#64748b]">
+                Mode: <span className="font-semibold text-[#334155]">{activePreset}</span> | Saved versions:{" "}
+                <span className="font-semibold text-[#334155]">{versions.length}</span> | Cloud:{" "}
+                <span className="font-semibold text-[#334155]">{session?.user ? "Connected" : "Local draft mode"}</span>
+              </div>
           </div>
         </div>
 
@@ -2391,21 +2458,25 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Step-by-step menu</div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                {activePersonaIndex + 1}/{personaQuickLinks.length} steps
-              </div>
+              {compactWorkflowMode ? null : (
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                  {activePersonaIndex + 1}/{personaQuickLinks.length} steps
+                </div>
+              )}
               {savePulse ? (
                 <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
                   {savePulse.label}
                 </span>
               ) : null}
-              <button
-                type="button"
-                onClick={() => setIsMenuRolledUp((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                {isMenuRolledUp ? "Expand menu" : "Roll up menu"}
-              </button>
+              {compactWorkflowMode ? null : (
+                <button
+                  type="button"
+                  onClick={() => setIsMenuRolledUp((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isMenuRolledUp ? "Expand" : "Collapse"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={resetWorkspaceView}
@@ -2415,10 +2486,17 @@ export default function Home() {
               </button>
               <button
                 type="button"
+                onClick={() => setIsReportIssueOpen(true)}
+                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Report issue
+              </button>
+              <button
+                type="button"
                 onClick={() => setCompactWorkflowMode((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {compactWorkflowMode ? "Guided mode on" : "Guided mode off"}
+                {compactWorkflowMode ? "Simple mode on" : "Simple mode off"}
               </button>
             </div>
           </div>
@@ -2443,7 +2521,7 @@ export default function Home() {
                           : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                     }`}
                   >
-                    {isComplete ? "✓ " : ""}
+                    {isComplete ? "? " : ""}
                     {link.label}
                   </button>
                 )
@@ -2459,6 +2537,18 @@ export default function Home() {
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${personaSmartCheckTone}`}>
                   {personaReadyCount}/{personaReadinessItems.length} ready
                 </span>
+                {compactWorkflowMode ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompactWorkflowMode(false)
+                      setIsMenuRolledUp(false)
+                    }}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Full checklist
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
@@ -2517,7 +2607,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-1.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Do next</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Next action</div>
                 <div className="mt-1 text-[11px] font-semibold text-[#0f172a]">{nextPersonaStep.label}</div>
                 <p className="mt-0.5 text-[10px] leading-4 text-[#475569]">{nextPersonaStep.description}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -2549,6 +2639,22 @@ export default function Home() {
               </div>
             </div>
           )}
+        </section>
+        <section className="sticky top-2 z-20 mb-2 rounded-xl border border-[#d8e4f2] bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 text-[11px] text-neutral-600">
+              <span className="font-semibold text-neutral-900">{activePersonaLink.label.replace(/^\d+\.\s*/, "")}</span>
+              <span className="text-neutral-400"> · </span>
+              <span>{personaReadyCount}/{personaReadinessItems.length} ready</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
+              className="rounded-full bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+            >
+              Continue
+            </button>
+          </div>
         </section>
 
         {showQuickStartWizard ? (
@@ -2606,14 +2712,14 @@ export default function Home() {
             <h2 className="text-lg font-semibold">Step 1: Choose a starting preset</h2>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
               <div className="text-[11px] text-neutral-700">
-                <span className="font-semibold">Primary action:</span> Choose a preset baseline to start fast.
+                <span className="font-semibold">Next action:</span> Choose a preset baseline.
               </div>
               <button
                 type="button"
                 onClick={() => togglePersonaStepDetails("presets")}
                 className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {personaStepDetails.presets ? "Hide details" : "Show details"}
+                {personaStepDetails.presets ? "Hide" : "Details"}
               </button>
             </div>
             {personaStepDetails.presets ? (
@@ -2664,14 +2770,14 @@ export default function Home() {
             <h2 className="text-lg font-semibold">Step 2: Pick a role template</h2>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
               <div className="text-[11px] text-neutral-700">
-                <span className="font-semibold">Primary action:</span> Pick one role template that matches your main use case.
+                <span className="font-semibold">Next action:</span> Pick one role template.
               </div>
               <button
                 type="button"
                 onClick={() => togglePersonaStepDetails("templates")}
                 className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {personaStepDetails.templates ? "Hide details" : "Show details"}
+                {personaStepDetails.templates ? "Hide" : "Details"}
               </button>
             </div>
             {personaStepDetails.templates ? (
@@ -2735,14 +2841,14 @@ export default function Home() {
                   <h2 className="text-lg font-semibold">Step 3: Analyze source writing</h2>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Primary action:</span> Upload or paste source writing, then run AI analysis.
+                      <span className="font-semibold">Next action:</span> Upload or paste writing, then run analysis.
                     </div>
                     <button
                       type="button"
                       onClick={() => togglePersonaStepDetails("analysis")}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {personaStepDetails.analysis ? "Hide details" : "Show details"}
+                      {personaStepDetails.analysis ? "Hide" : "Details"}
                     </button>
                   </div>
                   {personaStepDetails.analysis ? (
@@ -2754,7 +2860,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => togglePanel('analysis')}
-                  className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  className="ui-compact-pill"
                 >
                   {collapsedPanels.analysis ? 'Expand' : 'Collapse'}
                 </button>
@@ -2906,7 +3012,7 @@ export default function Home() {
                 <p className="mt-1 text-sm text-sky-900">
                   Step 4: Fine-tune traits to match your voice, then Step 5: Export your final personality profile.
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="ui-action-row mt-3">
                   <button
                     type="button"
                     onClick={() => openPersonaSection('traits', '#persona-traits')}
@@ -2935,14 +3041,14 @@ export default function Home() {
                   <h2 className="text-lg font-semibold">Step 4: Tune trait controls</h2>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Primary action:</span> Tune sliders, then save a profile version.
+                      <span className="font-semibold">Next action:</span> Tune sliders, then save a version.
                     </div>
                     <button
                       type="button"
                       onClick={() => togglePersonaStepDetails("traits")}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {personaStepDetails.traits ? "Hide details" : "Show details"}
+                      {personaStepDetails.traits ? "Hide" : "Details"}
                     </button>
                   </div>
                   {personaStepDetails.traits ? (
@@ -2950,7 +3056,7 @@ export default function Home() {
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="ui-action-row">
                   <button
                     type="button"
                     onClick={() => togglePanel('traits')}
@@ -2991,7 +3097,7 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="ui-action-row mt-3">
                   <button
                     onClick={saveCurrentProfile}
                     disabled={!session?.user}
@@ -3029,7 +3135,7 @@ export default function Home() {
               {personaStepDetails.traits ? (
               <div className="mb-5">
                 <div className="mb-2 text-sm font-semibold">Outcome tuning</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="ui-action-row">
                   <button onClick={() => applyTuning('persuasive')} className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium hover:bg-neutral-50">
                     More persuasive
                   </button>
@@ -3061,7 +3167,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="ui-action-row mt-3">
                   {previewScenarios.map((scenario) => {
                     const isActive = scenario.id === activePreviewScenario.id
                     return (
@@ -3128,7 +3234,7 @@ export default function Home() {
             ) : null}
 
             {isStepVisible(['traits']) ? (
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-semibold">Personality explainer</h2>
                 <button
@@ -3194,7 +3300,7 @@ export default function Home() {
             ) : null}
 
             {showAdvancedPanels && isStepVisible(['traits']) ? (
-              <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <h2 className="text-xl font-semibold">Compare + trait delta</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
@@ -3301,9 +3407,9 @@ export default function Home() {
             ) : null}
 
             {isStepVisible(['traits']) ? (
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Your saved profiles</h2>
+                <h2 className="text-lg font-semibold">Your saved profiles</h2>
                 <button
                   type="button"
                   onClick={() => togglePanel('savedProfiles')}
@@ -3318,9 +3424,9 @@ export default function Home() {
               ) : savedProfiles.length === 0 ? (
                 <p className="mt-3 text-sm text-neutral-500">No saved profiles yet.</p>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {savedProfiles.map((profile) => (
-                    <div key={profile.id} className="rounded-2xl border border-neutral-200 p-4">
+                    <div key={profile.id} className="rounded-xl border border-neutral-200 p-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="font-semibold">{profile.name}</div>
@@ -3329,10 +3435,10 @@ export default function Home() {
                         </div>
 
                         <div className="flex gap-2">
-                          <button onClick={() => loadProfile(profile)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50">
+                  <button onClick={() => loadProfile(profile)} className="ui-compact-btn">
                             Load
                           </button>
-                          <button onClick={() => deleteProfile(profile.id)} className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50">
+                  <button onClick={() => deleteProfile(profile.id)} className="ui-compact-btn text-red-700 border-red-300 hover:bg-red-50">
                             Delete
                           </button>
                         </div>
@@ -3347,18 +3453,18 @@ export default function Home() {
           ) : null}
 
           {showRightWorkspaceColumn ? (
-          <section id="persona-sandbox" className="space-y-6">
+          <section id="persona-sandbox" className="space-y-4">
             {isStepVisible(['sandbox']) ? (
-            <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-neutral-900">Step 5: Sandbox test</h2>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="ui-action-row items-center">
                   <button
                     type="button"
                     onClick={() => togglePersonaStepDetails("sandbox")}
                     className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                   >
-                    {personaStepDetails.sandbox ? "Hide details" : "Show details"}
+                    {personaStepDetails.sandbox ? "Hide" : "Details"}
                   </button>
                   <button type="button" onClick={() => togglePanel('sandbox')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
                     {collapsedPanels.sandbox ? 'Expand' : 'Collapse'}
@@ -3366,7 +3472,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="mb-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[11px] text-neutral-700">
-                <span className="font-semibold">Primary action:</span> Run one scenario test and save the best output.
+                <span className="font-semibold">Next action:</span> Run one test and save the best output.
               </div>
               {!collapsedPanels.sandbox ? (
               <PersonaChatSandbox
@@ -3388,10 +3494,10 @@ export default function Home() {
 
             {showAdvancedPanels && isStepVisible(['sandbox']) ? (
               <>
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Version history</h2>
-                <button type="button" onClick={() => togglePanel('versionHistory')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                <h2 className="text-lg font-semibold">Version history</h2>
+                <button type="button" onClick={() => togglePanel('versionHistory')} className="ui-compact-pill">
                   {collapsedPanels.versionHistory ? 'Expand' : 'Collapse'}
                 </button>
               </div>
@@ -3400,13 +3506,13 @@ export default function Home() {
               {versions.length === 0 ? (
                 <p className="mt-3 text-sm text-neutral-500">No saved versions yet.</p>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {versions.map((version, index) => {
                     const previous = versions[index + 1]
                     const deltaSummary = previous ? summarizeVersionDelta(version.traits, previous.traits) : []
 
                     return (
-                      <div key={version.id} className="rounded-2xl border border-neutral-200 p-4">
+                      <div key={version.id} className="rounded-xl border border-neutral-200 p-3">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="font-semibold">{version.label}</div>
@@ -3434,7 +3540,7 @@ export default function Home() {
                               {version.source} | {new Date(version.createdAt).toLocaleString()}
                             </div>
                           </div>
-                          <button onClick={() => restoreVersion(version)} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50">
+                          <button onClick={() => restoreVersion(version)} className="ui-compact-btn">
                             Restore
                           </button>
                         </div>
@@ -3447,10 +3553,10 @@ export default function Home() {
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Recommendation history</h2>
-                <button type="button" onClick={() => togglePanel('recommendationHistory')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                <h2 className="text-lg font-semibold">Recommendation history</h2>
+                <button type="button" onClick={() => togglePanel('recommendationHistory')} className="ui-compact-pill">
                   {collapsedPanels.recommendationHistory ? 'Expand' : 'Collapse'}
                 </button>
               </div>
@@ -3459,9 +3565,9 @@ export default function Home() {
               {recommendationHistory.length === 0 ? (
                 <p className="mt-3 text-sm text-neutral-500">No recommendations yet.</p>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {recommendationHistory.map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border border-neutral-200 p-4">
+                    <div key={entry.id} className="rounded-xl border border-neutral-200 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="font-semibold">{entry.preset}</div>
@@ -3476,7 +3582,7 @@ export default function Home() {
                             setActivePreset(`${entry.preset} (history)`)
                             flashMessage(`Loaded recommendation: ${entry.preset}`)
                           }}
-                          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+                          className="ui-compact-btn"
                         >
                           Load
                         </button>
@@ -3489,10 +3595,10 @@ export default function Home() {
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Saved sandbox runs</h2>
-                <button type="button" onClick={() => togglePanel('sandboxRuns')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                <h2 className="text-lg font-semibold">Saved sandbox runs</h2>
+                <button type="button" onClick={() => togglePanel('sandboxRuns')} className="ui-compact-pill">
                   {collapsedPanels.sandboxRuns ? 'Expand' : 'Collapse'}
                 </button>
               </div>
@@ -3501,14 +3607,14 @@ export default function Home() {
               {sandboxRuns.length === 0 ? (
                 <p className="mt-3 text-sm text-neutral-500">No sandbox runs saved yet.</p>
               ) : (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {sandboxRuns.map((run) => (
-                    <div key={run.id} className="rounded-2xl border border-neutral-200 p-4">
+                    <div key={run.id} className="rounded-xl border border-neutral-200 p-3">
                       <div className="font-semibold">{run.prompt}</div>
                       <div className="mt-1 text-xs text-neutral-400">{new Date(run.createdAt).toLocaleString()}</div>
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-2 space-y-1.5">
                         {run.outputs.map((output) => (
-                          <div key={output.label} className="rounded-xl bg-neutral-50 px-3 py-2">
+                          <div key={output.label} className="rounded-lg bg-neutral-50 px-2.5 py-1.5">
                             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{output.label}</div>
                             <div className="mt-1 text-sm text-neutral-700 line-clamp-3">{output.output}</div>
                           </div>
@@ -3522,10 +3628,10 @@ export default function Home() {
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Warnings</h2>
-                <button type="button" onClick={() => togglePanel('warnings')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                <h2 className="text-lg font-semibold">Warnings</h2>
+                <button type="button" onClick={() => togglePanel('warnings')} className="ui-compact-pill">
                   {collapsedPanels.warnings ? 'Expand' : 'Collapse'}
                 </button>
               </div>
@@ -3548,9 +3654,9 @@ export default function Home() {
               </>
             ) : isStepVisible(['sandbox']) ? (
               <div className="rounded-3xl border border-sky-200 bg-sky-50 p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-sky-950">Advanced tools are hidden in Beginner Mode</h2>
+                <h2 className="text-xl font-semibold text-sky-950">Advanced tools are hidden in Beginner mode</h2>
                 <p className="mt-2 text-sm leading-6 text-sky-900">
-                  Complete your first export to unlock version history, recommendation history, sandbox run archive, and advanced diagnostics.
+                  Complete your first export to unlock history, run archive, and advanced diagnostics.
                 </p>
                 <button
                   type="button"
@@ -3563,7 +3669,7 @@ export default function Home() {
             ) : null}
 
             {isStepVisible(['exports']) ? (
-            <div id="persona-exports" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div id="persona-exports" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Step 5: Export your persona profile</h2>
                 <div className="flex flex-wrap items-center gap-2">
@@ -3572,7 +3678,7 @@ export default function Home() {
                     onClick={() => togglePersonaStepDetails("exports")}
                     className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                   >
-                    {personaStepDetails.exports ? "Hide details" : "Show details"}
+                    {personaStepDetails.exports ? "Hide" : "Details"}
                   </button>
                   <button type="button" onClick={() => togglePanel('exports')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
                     {collapsedPanels.exports ? 'Expand' : 'Collapse'}
@@ -3585,7 +3691,7 @@ export default function Home() {
               {!collapsedPanels.exports ? (
               <>
               <div className="mt-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[11px] text-neutral-700">
-                <span className="font-semibold">Primary action:</span> Choose export format, copy output, then deploy.
+                <span className="font-semibold">Next action:</span> Choose format, copy output, then deploy.
               </div>
               {personaStepDetails.exports ? (
                 <>
@@ -3600,7 +3706,7 @@ export default function Home() {
                 </>
               ) : null}
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="ui-action-row mt-4">
                 {(['custom', 'gpt', 'api', 'claude', 'json'] as ExportTab[]).map((tab) => (
                   <button
                     key={tab}
@@ -3631,7 +3737,7 @@ export default function Home() {
             ) : null}
 
             {showAdvancedPanels && isStepVisible(['share']) ? (
-            <div id="persona-share" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div id="persona-share" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-semibold">Share / Import JSON</h2>
                 <button type="button" onClick={() => togglePanel('share')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
@@ -3676,6 +3782,86 @@ export default function Home() {
           ) : null}
         </div>
       </div>
+      {isReportIssueOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/35 px-4"
+          onClick={() => setIsReportIssueOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report an issue"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Report issue</div>
+                <h3 className="mt-1 text-base font-semibold text-neutral-900">Tell us what is blocking you</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Type
+                <select
+                  value={issueType}
+                  onChange={(event) => setIssueType(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                >
+                  <option>Workflow confusion</option>
+                  <option>Button or link not working</option>
+                  <option>Missing saved profile</option>
+                  <option>Unexpected output</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Contact email
+                <input
+                  value={issueContactEmail}
+                  onChange={(event) => setIssueContactEmail(event.target.value)}
+                  placeholder="Optional"
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                />
+              </label>
+            </div>
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+              What happened?
+              <textarea
+                value={issueDetail}
+                onChange={(event) => setIssueDetail(event.target.value)}
+                rows={4}
+                placeholder="Example: Analyze source writing ran but did not produce updated traits."
+                className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+              />
+            </label>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitIssueReport()}
+                className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+              >
+                Copy report
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div
         className={`pointer-events-none fixed bottom-4 left-4 z-40 transition-all duration-200 ${
           showFloatingWizardCta ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
@@ -3686,10 +3872,11 @@ export default function Home() {
           onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
           className="pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff]"
         >
-          Resume Persona setup
+          Resume wizard
         </button>
       </div>
     </main>
   )
 }
+
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { normalizeString } from "@/lib/career"
+import { appendTargetCountriesToMarketNotes, sanitizeCareerTargetCountries } from "@/lib/career-country-targeting"
 import { processCareerLiveJobRun } from "@/lib/career-background-jobs"
 import { getRequestAuth } from "@/lib/supabase/auth"
 import { createRouteClient } from "@/lib/supabase/route"
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
     const targetRole = normalizeString(body?.target_role)
     const location = normalizeString(body?.location)
     const marketNotes = normalizeString(body?.market_notes)
+    const targetCountries = sanitizeCareerTargetCountries(body?.target_countries)
+    const marketNotesWithCountryTargets = appendTargetCountriesToMarketNotes(marketNotes, targetCountries)
 
     if (!candidateId || !targetRole) {
       return NextResponse.json({ error: "candidate_id and target_role are required" }, { status: 400 })
@@ -42,7 +45,7 @@ export async function POST(req: Request) {
           user_id: user.id,
           target_role: targetRole,
           location: location || null,
-          market_notes: marketNotes || null,
+          market_notes: marketNotesWithCountryTargets || null,
           status: "queued",
         },
       ])
@@ -62,6 +65,7 @@ export async function POST(req: Request) {
         run_id: run.id,
         target_role: targetRole,
         location: location || null,
+        target_countries: targetCountries,
       },
     })
 

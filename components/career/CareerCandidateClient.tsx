@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import type { ReactNode } from "react"
@@ -187,6 +187,23 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [showSourceSecondaryPanels, setShowSourceSecondaryPanels] = useState(false)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
   const [isMyFilesDrawerOpen, setIsMyFilesDrawerOpen] = useState(false)
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    return window.localStorage.getItem(`career-whats-new-hidden-${candidateId}`) !== "1"
+  })
+  const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
+  const [issueType, setIssueType] = useState("Workflow confusion")
+  const [issueDetail, setIssueDetail] = useState("")
+  const [issueContactEmail, setIssueContactEmail] = useState("")
+  const [manualOutputChecks, setManualOutputChecks] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {}
+    try {
+      const raw = window.localStorage.getItem(`career-manual-output-checks-${candidateId}`)
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {}
+    } catch {
+      return {}
+    }
+  })
   const [focusedApplicationId, setFocusedApplicationId] = useState(() => {
     if (typeof window === "undefined") return ""
     return window.localStorage.getItem(`career-workspace-target-${candidateId}`) || ""
@@ -385,6 +402,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   }, [candidateId, isGuidedMode])
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(`career-manual-output-checks-${candidateId}`, JSON.stringify(manualOutputChecks))
+  }, [candidateId, manualOutputChecks])
+
+  useEffect(() => {
     if (!openGuideHintId || typeof window === "undefined") return
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
@@ -434,6 +456,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  useEffect(() => {
+    if (!session?.user?.email) return
+    setIssueContactEmail((current) => current || session.user.email || "")
+  }, [session?.user?.email])
 
   useEffect(() => {
     setOpenSections(openSectionsFor(activeStep))
@@ -799,6 +826,32 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }
   }
   const hasOutreachStrategy = outreachStrategyHistory.length > 0
+  const keyOutputChecklist = [
+    {
+      id: "profile",
+      label: "Profile",
+      systemDone: hasProfile,
+      done: hasProfile || Boolean(manualOutputChecks.profile),
+      sectionKey: "positioning",
+      href: "#positioning",
+    },
+    {
+      id: "dossier",
+      label: "Company dossier",
+      systemDone: companyDossiers.length > 0,
+      done: companyDossiers.length > 0 || Boolean(manualOutputChecks.dossier),
+      sectionKey: "company",
+      href: companyDossiers.length > 0 ? "#current-company-dossiers" : "#company-dossier",
+    },
+    {
+      id: "cover_letter",
+      label: "Cover letter",
+      systemDone: coverLetterHistory.length > 0,
+      done: coverLetterHistory.length > 0 || Boolean(manualOutputChecks.cover_letter),
+      sectionKey: "documents",
+      href: coverLetterHistory.length > 0 ? "#current-cover-letters" : "#cover-letter",
+    },
+  ] as const
   const activeApplications = applications.filter((application) => {
     const status = application.status ?? ""
     return !["offer", "rejected", "archived"].includes(status)
@@ -1278,6 +1331,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const showTargetRoleDetails = !isMenuRolledUp || !isFocusMode || showAdvancedTools
   const sourceRemainingCount = sourceChecklist.filter((item) => !item.ready).length
   const sourceWizardFocusMode = openSections.source && sourceRemainingCount > 0 && !showAdvancedTools
+  const hideWorkspaceGuideToggle = activeStep === "source" && sourceWizardFocusMode
   const showSourceSupplementary = isGuidedMode
     ? showSourceSecondaryPanels
     : !sourceWizardFocusMode || showSourceSecondaryPanels
@@ -1342,58 +1396,67 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   } as const
   const primaryActionBySection = {
     workflow: {
-      title: "Do next",
+      title: "Next action",
       label: nextUndoneStep?.actionLabel || "Open workflow guide",
       detail: nextUndoneStep?.description || "Follow the recommended sequence to keep momentum and avoid rework.",
       sectionKey: nextUndoneStep?.sectionKey || "workflow",
       href: nextUndoneStep?.href || "#workflow-guide",
     },
     source: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.source.actionLabel,
       detail: sectionActionGuides.source.summary,
       sectionKey: "source",
       href: sectionActionGuides.source.href,
     },
     positioning: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.positioning.actionLabel,
       detail: sectionActionGuides.positioning.summary,
       sectionKey: "positioning",
       href: sectionActionGuides.positioning.href,
     },
     documents: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.documents.actionLabel,
       detail: sectionActionGuides.documents.summary,
       sectionKey: "documents",
       href: sectionActionGuides.documents.href,
     },
     company: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.company.actionLabel,
       detail: sectionActionGuides.company.summary,
       sectionKey: "company",
       href: sectionActionGuides.company.href,
     },
     interview: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.interview.actionLabel,
       detail: sectionActionGuides.interview.summary,
       sectionKey: "interview",
       href: sectionActionGuides.interview.href,
     },
     jobs: {
-      title: "Do next",
+      title: "Next action",
       label: sectionActionGuides.jobs.actionLabel,
       detail: sectionActionGuides.jobs.summary,
       sectionKey: "jobs",
       href: sectionActionGuides.jobs.href,
     },
   } as const
+  const nextActionHelpBySection = {
+    workflow: "Follow this one action first. The rest of the page can wait.",
+    source: "Load missing source files first so every downstream output is stronger.",
+    positioning: "Generate or refine the profile before creating new application assets.",
+    documents: "Create or improve the core documents next, then tailor by company.",
+    company: "Research the target company next so tone matching and messaging are specific.",
+    interview: "Run interview prep before your next conversation, then save reflections.",
+    jobs: "Search and shortlist roles next, then move them into your tracker.",
+  } as const
   const activePrimaryAction = primaryActionBySection[activeStep as keyof typeof primaryActionBySection] ?? primaryActionBySection.workflow
   const wizardAction = {
-    label: nextUndoneStep?.actionLabel || "Open wizard",
+    label: nextUndoneStep?.actionLabel || "Open Step Coach",
     sectionKey: nextUndoneStep?.sectionKey || "source",
     href: nextUndoneStep?.href || "#source-material",
   }
@@ -1529,19 +1592,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         asset.asset_type !== latestLinkedInDraft?.asset_type
     ) ||
     null
-  const mostUsefulSavedAssets = [
-    latestCoverLetters[0],
-    latestCompanyDossiers[0],
-    latestInterviewPrep[0],
-    latestLiveJobSearches[0],
-    latestFitAnalysis[0],
-    latestSalaryAnalysis[0],
-    latestCvDraft,
-    latestLinkedInDraft,
-  ]
-    .filter((asset): asset is AssetRow => Boolean(asset))
-    .filter((asset, index, array) => array.findIndex((candidateAsset) => candidateAsset.id === asset.id) === index)
-    .slice(0, 4)
   const savedMarketComparisons = [
     ...liveJobSearchHistory.slice(0, 2),
     ...recruiterMatchSearchHistory.slice(0, 2),
@@ -1559,52 +1609,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     !latestProfile?.recommended_target_roles?.length ? "Recommend specific target roles." : null,
     !latestProfile?.core_strengths?.length ? "Capture the candidate's strongest themes." : null,
   ].filter((item): item is string => Boolean(item))
-  const savedLibraryGroups = [
-    {
-      key: "documents",
-      title: "Application documents",
-      description: "CV drafts, LinkedIn drafts, cover letters, and strategy files used for applications.",
-      count: draftHistory.length + coverLetterHistory.length,
-      latestAsset: latestCoverLetters[0] || latestCvDraft || latestLinkedInDraft || latestStrategyDraft || null,
-      href: coverLetterHistory.length > 0 ? "#current-cover-letters" : "#current-application-documents",
-      sectionKey: "documents",
-      toneClass: "border-emerald-200 bg-emerald-50",
-      actionLabel: coverLetterHistory.length > 0 ? "Open latest letter" : "Open document workbench",
-    },
-    {
-      key: "research",
-      title: "Company and market research",
-      description: "Company dossiers, recruiter routes, prospect research, and live opportunity reports.",
-      count: companyDossiers.length + recruiterMatchSearchHistory.length + deepProspectResearchHistory.length + liveJobSearchHistory.length,
-      latestAsset: latestCompanyDossiers[0] || latestRecruiterMatchSearches[0] || latestDeepProspectResearch[0] || latestLiveJobSearches[0] || null,
-      href: companyDossiers.length > 0 ? "#current-company-dossiers" : "#current-live-opportunities",
-      sectionKey: companyDossiers.length > 0 ? "company" : "jobs",
-      toneClass: "border-sky-200 bg-sky-50",
-      actionLabel: companyDossiers.length > 0 ? "Open latest dossier" : "Open market research",
-    },
-    {
-      key: "interview",
-      title: "Interview and coaching",
-      description: "Interview prep packs, reflections, and strategic coaching outputs for live processes.",
-      count: interviewPrepHistory.length + interviewReflections.length,
-      latestAsset: latestInterviewPrep[0] || null,
-      href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#recent-interview-assessments",
-      sectionKey: "interview",
-      toneClass: "border-amber-200 bg-amber-50",
-      actionLabel: interviewPrepHistory.length > 0 ? "Open prep pack" : "Open interview notes",
-    },
-    {
-      key: "career-intelligence",
-      title: "Career Intelligence analysis",
-      description: "Fit, salary, course, and role-direction outputs used to guide smarter decisions.",
-      count: fitAnalysisHistory.length + salaryAnalysisHistory.length + courseRecommendationHistory.length,
-      latestAsset: latestFitAnalysis[0] || latestSalaryAnalysis[0] || latestCourseRecommendations[0] || null,
-      href: latestFitAnalysis[0] ? "#current-fit-analysis" : latestSalaryAnalysis[0] ? "#current-salary-analysis" : "#current-course-recommendations",
-      sectionKey: latestFitAnalysis[0] || latestSalaryAnalysis[0] ? "jobs" : "positioning",
-      toneClass: "border-violet-200 bg-violet-50",
-      actionLabel: latestFitAnalysis[0] || latestSalaryAnalysis[0] ? "Open decision tools" : "Open course guidance",
-    },
-  ]
   const priorityItems = [
     ...overdueApplications.slice(0, 3).map((application) => ({
       id: `overdue-${application.id}`,
@@ -2165,10 +2169,99 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }))
   }
 
+  function dismissWhatsNewPanel() {
+    setIsWhatsNewOpen(false)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(`career-whats-new-hidden-${candidateId}`, "1")
+    }
+  }
+
+  function getRecoveryAnchorForBackgroundJob(jobType: string | null | undefined) {
+    switch (jobType) {
+      case "generate_recruiter_match_search":
+        return { sectionKey: "jobs", href: "#recruiter-match-search" }
+      case "generate_salary_analysis":
+        return { sectionKey: "jobs", href: "#salary-analysis" }
+      case "generate_application_fit_analysis":
+        return { sectionKey: "jobs", href: "#fit-analysis" }
+      case "generate_company_dossier":
+        return { sectionKey: "company", href: "#company-dossier" }
+      case "generate_interview_prep":
+        return { sectionKey: "interview", href: "#interview-prep" }
+      case "generate_assets":
+      case "generate_cover_letter":
+      case "generate_strategy_document":
+      case "generate_target_company_workflow":
+        return { sectionKey: "documents", href: "#document-workbench" }
+      default:
+        return { sectionKey: "workflow", href: "#workflow-guide" }
+    }
+  }
+
+  function markOutputChecked(outputId: string) {
+    setManualOutputChecks((current) => ({
+      ...current,
+      [outputId]: !current[outputId],
+    }))
+  }
+
+  async function submitIssueReport() {
+    const trimmedDetail = issueDetail.trim()
+    if (!trimmedDetail) {
+      showToast({ tone: "error", message: "Add a short issue description so support can help quickly." })
+      return
+    }
+
+    const payload = [
+      `Module: Career Intelligence`,
+      `Candidate: ${candidate.full_name || candidate.id}`,
+      `Candidate ID: ${candidate.id}`,
+      `Current step: ${activeSectionLabel} / ${activeSubsectionLabel}`,
+      `Issue type: ${issueType}`,
+      `Contact: ${issueContactEmail || "Not provided"}`,
+      `Details: ${trimmedDetail}`,
+    ].join("\n")
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload)
+      }
+      showToast({ tone: "success", message: "Issue report copied. Paste it into support chat or email." })
+    } catch {
+      showToast({ tone: "info", message: "Issue captured. Copy failed on this browser, but your notes are kept." })
+    }
+
+    setIsReportIssueOpen(false)
+  }
+
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
       <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
+        {isWhatsNewOpen ? (
+          <section className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">What&apos;s new</div>
+                <p className="mt-0.5 text-xs text-sky-900">
+                  Wizard-first guidance, tighter work cards, and faster progress controls are now live.
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Wizard focus</span>
+                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Compact cards</span>
+                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Faster step nav</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissWhatsNewPanel}
+                className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 hover:bg-sky-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          </section>
+        ) : null}
         {previewOwnerUserId ? (
           <div className="mb-2 rounded-2xl border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-medium text-sky-900">
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
@@ -2251,7 +2344,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   onClick={() => openAndScroll(firstFiveNextItem.sectionKey, firstFiveNextItem.href)}
                   className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
                 >
-                  Do next
+                  Next action
                 </button>
               ) : null}
             </div>
@@ -2289,14 +2382,54 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                 ))}
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Quick complete</div>
+                {keyOutputChecklist.map((item) => (
+                  <button
+                    key={`output-check-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      if (item.systemDone) {
+                        openAndScroll(item.sectionKey, item.href)
+                      } else {
+                        markOutputChecked(item.id)
+                      }
+                    }}
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                      item.done
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                    }`}
+                  >
+                    {item.systemDone ? "Open" : item.done ? "Undo" : "Mark done"} | {item.label}
+                  </button>
+                ))}
+              </div>
             </>
           ) : isFirstTimeMinimalMode ? (
             <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-              Keep this simple: load CV + Gallup, then generate profile. The rest of the workspace will expand automatically after that.
+              Keep this simple: load CV + Gallup, then generate profile. Everything else opens after that.
             </div>
           ) : null}
         </section>
         ) : null}
+
+        <section className="sticky top-2 z-20 mb-2 rounded-xl border border-[#d8e4f2] bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 text-[11px] text-neutral-600">
+              <span className="font-semibold text-neutral-900">{activeWorkflowStepLabel}</span>
+              <span className="text-neutral-400"> · </span>
+              <span>{completionCount}/{preparationSteps.length} done</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => openAndScroll(activePrimaryAction.sectionKey, activePrimaryAction.href)}
+              className="rounded-full bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+            >
+              Continue
+            </button>
+          </div>
+        </section>
 
         {showSetupCelebration && !isWizardFocusActive ? (
           <section className="mb-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 shadow-sm">
@@ -2343,17 +2476,19 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     {savePulse.label}
                   </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setGuidedModeEnabled(!isGuidedMode)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                    isGuidedMode
-                      ? "border-[#0a66c2] bg-[#0a66c2] text-white"
-                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                  }`}
-                >
-                  {isGuidedMode ? "Guided mode on" : "Guided mode off"}
-                </button>
+                {!hideWorkspaceGuideToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                      isGuidedMode
+                        ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                    }`}
+                  >
+                    {isGuidedMode ? "Workspace guide on" : "Workspace guide off"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={resetWorkspaceView}
@@ -2367,6 +2502,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
                   {isMyFilesDrawerOpen ? "Hide files" : "My files"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsReportIssueOpen(true)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  Report issue
                 </button>
                 <button
                   type="button"
@@ -2405,17 +2547,19 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     {savePulse.label}
                   </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setGuidedModeEnabled(!isGuidedMode)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                    isGuidedMode
-                      ? "border-[#0a66c2] bg-[#0a66c2] text-white"
-                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                  }`}
-                >
-                  {isGuidedMode ? "Guided mode on" : "Guided mode off"}
-                </button>
+                {!hideWorkspaceGuideToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                      isGuidedMode
+                        ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                    }`}
+                  >
+                    {isGuidedMode ? "Workspace guide on" : "Workspace guide off"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={openWizardFlow}
@@ -2423,7 +2567,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight-soft" : ""
                   }`}
                 >
-                  Wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  Source wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 <button
                   type="button"
@@ -2441,10 +2585,17 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </button>
                 <button
                   type="button"
+                  onClick={() => setIsReportIssueOpen(true)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  Report issue
+                </button>
+                <button
+                  type="button"
                   onClick={() => setIsMenuRolledUp((current) => !current)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  {isMenuRolledUp ? "Expand menu" : "Roll up menu"}
+                  {isMenuRolledUp ? "Expand" : "Collapse"}
                 </button>
               </div>
             </div>
@@ -2523,14 +2674,14 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       }
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {isFocusMode ? "Turn focus mode off" : "Turn focus mode on"}
+                      {isFocusMode ? "Focus mode on" : "Focus mode off"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsContextRailOpen((current) => !current)}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {isContextRailOpen ? "Hide sidebar" : "Open sidebar"}
+                      {isContextRailOpen ? "Hide rail" : "Show rail"}
                     </button>
                   </div>
                 ) : null}
@@ -2595,7 +2746,17 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </div>
                 {showStepGuidance ? (
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">{activePrimaryAction.title}</div>
+                    <div className="flex items-center gap-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">{activePrimaryAction.title}</div>
+                      <button
+                        type="button"
+                        title={nextActionHelpBySection[activeStep as keyof typeof nextActionHelpBySection] ?? nextActionHelpBySection.workflow}
+                        className="rounded-full border border-sky-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-100"
+                        aria-label="Next action help"
+                      >
+                        ?
+                      </button>
+                    </div>
                     <div className="min-w-0 flex-1 truncate text-[11px] text-sky-900">{activePrimaryAction.detail}</div>
                     <button
                       type="button"
@@ -2624,21 +2785,21 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       }
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {isFocusMode ? "Turn focus mode off" : "Turn focus mode on"}
+                      {isFocusMode ? "Focus mode on" : "Focus mode off"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsContextRailOpen((current) => !current)}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {isContextRailOpen ? "Hide sidebar" : "Open sidebar"}
+                      {isContextRailOpen ? "Hide rail" : "Show rail"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAdvancedTools((current) => !current)}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {showAdvancedTools ? "Hide advanced tools" : "Show advanced tools"}
+                      {showAdvancedTools ? "Hide advanced" : "Show advanced"}
                     </button>
                   </div>
                 ) : (
@@ -2663,7 +2824,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         {showOnboardingGuide && !isGuidedMode && !showStepGuidance ? (
           <section className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 shadow-sm">
             <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-800">New user quick start</div>
-            <div className="mt-1 text-sm text-amber-900">Load CV and Gallup Strengths first, then generate the profile before creating documents.</div>
+            <div className="mt-1 text-sm text-amber-900">Load CV + Gallup first, then generate the profile before documents.</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {!hasCv ? (
                 <button
@@ -2767,7 +2928,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           >
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Career Intelligence guide</div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#0f172a]">What to prepare and what to do next</h2>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#0f172a]">What to prepare next</h2>
               <div className="mt-1 text-[11px] text-neutral-500">You are here: {sectionBreadcrumbByKey.workflow}</div>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${sectionHeaderMeta.workflow.badgeClass}`}>
@@ -2914,317 +3075,152 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           ) : null}
         </section>
 
-        <section id="saved-library" className={`mb-7 rounded-[2rem] border border-[#d9e6f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f3f8fc_100%)] p-7 shadow-sm ${activeStep === "documents" && !isWizardFocusActive ? "" : "hidden"}`}>
+        <section id="saved-library" className={`mb-5 rounded-3xl border border-[#d9e6f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f3f8fc_100%)] p-4 shadow-sm ${activeStep === "documents" && !isWizardFocusActive ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Saved library</div>
-              <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-[#0f172a]">Where your files are saved</h2>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">Use the compact steps below to find any output quickly.</p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#0f172a]">Saved files</h2>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Total saved outputs</div>
-              <div className="mt-1 text-2xl font-semibold">{assets.length}</div>
+              <div className="mt-0.5 text-lg font-semibold">{assets.length}</div>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 md:grid-cols-3">
-            <button
-              type="button"
-              onClick={() => setIsSavedWorkExpanded(true)}
-              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">1</span>
-                <span className="text-xs font-semibold text-neutral-900">Browse saved groups</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsSavedWorkExpanded(true)}
-              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">2</span>
-                <span className="text-xs font-semibold text-neutral-900">Open recent files</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsFindSavedWorkExpanded(true)}
-              className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-left transition hover:shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">3</span>
-                <span className="text-xs font-semibold text-sky-950">Search by keyword</span>
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700">
+              {recentSavedAssets[0]?.created_at
+                ? `Latest saved: ${new Date(recentSavedAssets[0].created_at).toLocaleString()}`
+                : "No saved files yet. Generate an output and it will appear here."}
+            </div>
+            <div className="ui-action-row">
               <button
                 type="button"
                 onClick={() => setIsSavedWorkExpanded((current) => !current)}
                 aria-expanded={isSavedWorkExpanded}
-                className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-              {isSavedWorkExpanded ? "Collapse saved work" : "Expand saved work"}
-            </button>
+                {isSavedWorkExpanded ? "Hide recent files" : "Show recent files"}
+              </button>
               <button
                 type="button"
                 onClick={() => setIsFindSavedWorkExpanded((current) => !current)}
                 aria-expanded={isFindSavedWorkExpanded}
-                className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-              {isFindSavedWorkExpanded ? "Collapse find work" : "Expand find work"}
-            </button>
+                {isFindSavedWorkExpanded ? "Hide search" : "Find a file"}
+              </button>
+            </div>
           </div>
 
           {isSavedWorkExpanded ? (
-            <>
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {savedLibraryLinks.map((link) => (
-              <button
-                key={link.href}
-                type="button"
-                onClick={() => openAndScroll(getSectionKeyForSavedLink(link.href), link.href)}
-                className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${savedLinkToneClass(link.tone)}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="font-semibold text-neutral-900">{link.label}</div>
-                  <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-neutral-700">{link.count}</div>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-neutral-600">{link.description}</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Where things are saved</div>
-                <h3 className="mt-2 text-lg font-semibold">Open saved work by area</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                  Use these shortcuts when you know the type of output you want to reopen, but not the exact file name. Each card jumps to the main work area for that category.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Visible groups</div>
-                <div className="mt-1 text-2xl font-semibold">{savedLibraryGroups.length}</div>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {savedLibraryGroups.map((group) => (
-                <button
-                  key={group.key}
-                  type="button"
-                  onClick={() => openAndScroll(group.sectionKey, group.href)}
-                  className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${group.toneClass}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="font-semibold text-neutral-900">{group.title}</div>
-                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-700">{group.count}</span>
+            <div className="mt-3 space-y-2">
+              <div className="rounded-xl border border-neutral-200 bg-white p-2.5">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Recent files</div>
+                {recentSavedAssets.length === 0 ? (
+                  <p className="text-xs text-neutral-600">No saved files yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {recentSavedAssets.slice(0, 8).map((asset) => {
+                      const target = getSectionTargetForAssetType(asset.asset_type)
+                      return (
+                        <button
+                          key={`recent-row-${asset.id}`}
+                          type="button"
+                          onClick={() => openAndScroll(target.sectionKey, target.href)}
+                          className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-neutral-300 hover:bg-white"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-semibold text-neutral-900">{asset.title || "Untitled file"}</div>
+                            <div className="mt-0.5 text-[11px] text-neutral-600">
+                              {formatAssetType(asset.asset_type)} • {asset.created_at ? new Date(asset.created_at).toLocaleString() : "Recently"}
+                            </div>
+                          </div>
+                          <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                            Open
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">{group.description}</p>
-                  <div className="mt-3 rounded-2xl border border-white/70 bg-white/80 p-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Latest item in this area</div>
-                    <div className="mt-2 text-sm font-semibold text-neutral-900">{group.latestAsset?.title || "Nothing saved yet"}</div>
-                    <div className="mt-1 text-xs text-neutral-500">
-                      {group.latestAsset?.created_at ? new Date(group.latestAsset.created_at).toLocaleString() : "Waiting for first file"}
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700">{group.actionLabel}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-3xl border border-sky-200 bg-sky-50 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Most useful right now</div>
-                <h3 className="mt-2 text-lg font-semibold text-neutral-900">Start from the files most likely to move the application forward</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-700">
-                  These are the strongest next-action files in the workspace right now, so the user can open the most useful material first rather than hunting through everything.
-                </p>
+                )}
               </div>
-              <div className="rounded-2xl border border-sky-200 bg-white px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Priority files</div>
-                <div className="mt-1 text-2xl font-semibold text-sky-950">{mostUsefulSavedAssets.length}</div>
-              </div>
-            </div>
-            {mostUsefulSavedAssets.length === 0 ? (
-              <p className="mt-4 text-sm text-neutral-600">As files are generated, the most useful current assets will appear here for faster action.</p>
-            ) : (
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {mostUsefulSavedAssets.map((asset) => {
-                  const target = getSectionTargetForAssetType(asset.asset_type)
 
-                  return (
+              <div className="rounded-xl border border-neutral-200 bg-white p-2.5">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">File categories</div>
+                <div className="flex flex-wrap gap-2">
+                  {savedLibraryLinks.map((link) => (
                     <button
-                      key={`useful-${asset.id}`}
+                      key={`saved-link-${link.href}`}
                       type="button"
-                      onClick={() => openAndScroll(target.sectionKey, target.href)}
-                      className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${assetToneClass(asset.asset_type)}`}
+                      onClick={() => openAndScroll(getSectionKeyForSavedLink(link.href), link.href)}
+                      className="rounded-full border border-neutral-300 bg-neutral-50 px-2.5 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-white"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-600">Action-ready file</div>
-                        <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                          {formatAssetType(asset.asset_type)}
-                        </div>
-                      </div>
-                      <div className="mt-3 font-semibold leading-6 text-neutral-900">{asset.title || "Untitled asset"}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-600">{summarizeAssetContent(asset.content)}</p>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Open working area</div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                          {savedFileUseLabel(asset.asset_type)}
-                        </div>
-                      </div>
+                      {link.label} ({link.count})
                     </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Latest saved work</div>
-                <h3 className="mt-2 text-lg font-semibold">Where your newest files were saved</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                  Start here right after generating something. These cards always show the newest saved items first and take you to the correct working area.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Last saved</div>
-                <div className="mt-1 text-sm font-semibold text-neutral-900">
-                  {recentSavedAssets[0]?.created_at ? new Date(recentSavedAssets[0].created_at).toLocaleString() : "No saved outputs yet"}
+                  ))}
                 </div>
               </div>
             </div>
-
-            {recentSavedAssets.length === 0 ? (
-              <p className="mt-4 text-sm text-neutral-600">Generate a file and it will appear here with a direct link to the right workspace area.</p>
-            ) : (
-              <div className="mt-4 grid gap-3 xl:grid-cols-3">
-                {recentSavedAssets.map((asset, index) => {
-                  const target = getSectionTargetForAssetType(asset.asset_type)
-
-                  return (
-                    <button
-                      key={`recent-${asset.id}`}
-                      type="button"
-                      onClick={() => openAndScroll(target.sectionKey, target.href)}
-                      className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${assetToneClass(asset.asset_type)}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-600">
-                          {index === 0 ? "Most recent file" : `Recent file ${index + 1}`}
-                        </div>
-                        <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                          {formatAssetType(asset.asset_type)}
-                        </div>
-                      </div>
-                      <div className="mt-3 font-semibold leading-6 text-neutral-900">{asset.title || "Untitled asset"}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-600">{summarizeAssetContent(asset.content)}</p>
-                  <div className="mt-3 text-xs text-neutral-500">
-                    Saved {asset.created_at ? new Date(asset.created_at).toLocaleString() : "recently"}
-                  </div>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Open this saved file</div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                          {savedFileUseLabel(asset.asset_type)}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-            </>
           ) : null}
 
           {isFindSavedWorkExpanded ? (
-            <>
-          <div className="mt-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Find saved work</div>
-                <h3 className="mt-2 text-lg font-semibold">Search all saved outputs</h3>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                  Search by keyword or file type if you remember part of the title but are not sure where the file was saved.
+            <div className="mt-3 space-y-2">
+              <div className="rounded-xl border border-neutral-200 bg-white p-2.5">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Find saved files</div>
+                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_200px]">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Search</label>
+                    <input
+                      value={savedSearch}
+                      onChange={(event) => setSavedSearch(event.target.value)}
+                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+                      placeholder="Search CV, cover letter, dossier..."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Type</label>
+                    <select
+                      value={savedAssetTypeFilter}
+                      onChange={(event) => setSavedAssetTypeFilter(event.target.value)}
+                      className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+                    >
+                      {savedLibraryAssetTypes.map((assetType) => (
+                        <option key={assetType} value={assetType}>
+                          {assetType === "all" ? "All file types" : formatAssetType(assetType)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {filteredLatestSavedAssets.length === 0 ? (
+                <p className="text-xs text-neutral-600">
+                  {assets.length === 0 ? "No saved files yet." : "No files match that search."}
                 </p>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Matching outputs</div>
-                <div className="mt-1 text-2xl font-semibold">{filteredSavedAssets.length}</div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Search by title, type, or content</label>
-                <input
-                  value={savedSearch}
-                  onChange={(event) => setSavedSearch(event.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500"
-                  placeholder="Search CV, cover letter, dossier, interview prep..."
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">File type</label>
-                <select
-                  value={savedAssetTypeFilter}
-                  onChange={(event) => setSavedAssetTypeFilter(event.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500"
-                >
-                  {savedLibraryAssetTypes.map((assetType) => (
-                    <option key={assetType} value={assetType}>
-                      {assetType === "all" ? "All file types" : formatAssetType(assetType)}
-                    </option>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredLatestSavedAssets.slice(0, 9).map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      onClick={() => {
+                        const target = getSectionTargetForAssetType(asset.asset_type)
+                        openAndScroll(target.sectionKey, target.href)
+                      }}
+                      className="rounded-xl border border-neutral-200 bg-white p-3 text-left transition hover:border-neutral-300 hover:shadow-sm"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-600">{formatAssetType(asset.asset_type)}</div>
+                      <div className="mt-1.5 line-clamp-2 text-sm font-semibold leading-5 text-neutral-900">{asset.title || "Untitled file"}</div>
+                      <div className="mt-1 text-[11px] text-neutral-500">
+                        {asset.created_at ? new Date(asset.created_at).toLocaleString() : "Recently"}
+                      </div>
+                    </button>
                   ))}
-                </select>
-              </div>
+                </div>
+              )}
             </div>
-          </div>
-
-          {filteredLatestSavedAssets.length === 0 ? (
-            <p className="mt-4 text-sm text-neutral-600">
-              {assets.length === 0
-                ? "No saved outputs yet. Start with source material, then generate positioning and documents."
-                : "No saved outputs match the current search or file-type filter."}
-            </p>
-          ) : (
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {filteredLatestSavedAssets.map((asset) => (
-                <button
-                  key={asset.id}
-                  type="button"
-                  onClick={() => {
-                    const target = getSectionTargetForAssetType(asset.asset_type)
-                    openAndScroll(target.sectionKey, target.href)
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${assetToneClass(asset.asset_type)}`}
-                >
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-600">{formatAssetType(asset.asset_type)}</div>
-                  <div className="mt-2 font-semibold leading-6">{asset.title || "Untitled asset"}</div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">{summarizeAssetContent(asset.content)}</p>
-                  <div className="mt-2 text-xs text-neutral-500">
-                    Version {asset.version ?? "?"} {asset.created_at ? `| ${new Date(asset.created_at).toLocaleString()}` : ""}
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Open saved file area</div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                      {savedFileUseLabel(asset.asset_type)}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-            </>
           ) : null}
         </section>
 
@@ -3379,7 +3375,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
           <div className="space-y-7">
             <div className="grid gap-7 xl:grid-cols-[1.05fr_0.95fr]">
-            <section className={`rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm ${activeStep === "workflow" ? "" : "hidden"}`}>
+            <section className={`rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5 ${activeStep === "workflow" ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-base font-semibold">Today at a glance</h2>
                 <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
@@ -3455,7 +3451,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             </section>
 
             {showWorkflowSecondary ? (
-            <section className={`rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm ${activeStep === "workflow" ? "" : "hidden"}`}>
+            <section className={`rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5 ${activeStep === "workflow" ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-base font-semibold">Recent files</h2>
                 <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
@@ -3686,7 +3682,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             ) : null}
 
             {showWorkflowSecondary ? (
-            <details className={`group rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm ${activeStep === "workflow" ? "" : "hidden"}`}>
+            <details className={`group rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5 ${activeStep === "workflow" ? "" : "hidden"}`}>
               <summary className="cursor-pointer list-none">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -3727,7 +3723,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         Started: {job.created_at ? new Date(job.created_at).toLocaleString() : "Unknown"}
                         {job.completed_at ? ` | Finished: ${new Date(job.completed_at).toLocaleString()}` : ""}
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="ui-action-row mt-4">
                         {job.status === "completed" ? (
                           <button
                             type="button"
@@ -3741,13 +3737,25 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                           </button>
                         ) : null}
                         {job.status === "failed" ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleRetryBackgroundJob(job.id)}
-                            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-                          >
-                            Retry
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleRetryBackgroundJob(job.id)}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Retry
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const target = getRecoveryAnchorForBackgroundJob(job.job_type)
+                                openAndScroll(target.sectionKey, target.href)
+                              }}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Adjust inputs
+                            </button>
+                          </>
                         ) : null}
                       </div>
                     </div>
@@ -3772,7 +3780,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         Started: {run.created_at ? new Date(run.created_at).toLocaleString() : "Unknown"}
                         {run.completed_at ? ` | Finished: ${new Date(run.completed_at).toLocaleString()}` : ""}
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="ui-action-row mt-4">
                         {run.status === "completed" ? (
                           <button
                             type="button"
@@ -3783,13 +3791,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                           </button>
                         ) : null}
                         {run.status === "failed" ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleRetryLiveJobRun(run.id)}
-                            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-                          >
-                            Retry
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleRetryLiveJobRun(run.id)}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Retry
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openAndScroll("jobs", "#live-job-search")}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Adjust search
+                            </button>
+                          </>
                         ) : null}
                       </div>
                     </div>
@@ -3832,14 +3849,14 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
               {openSections.source ? (
                 <div className={stepContentCompactClass}>
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-neutral-700">
-                  <span className="font-semibold">Primary action:</span> Load CV, Gallup Strengths, LinkedIn, then supporting proof.
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
+                <div className="text-[10px] text-neutral-700">
+                  <span className="font-semibold">Next action:</span> Load CV, Gallup Strengths, LinkedIn, then supporting proof.
                 </div>
                 <button
                   type="button"
                   onClick={() => toggleSectionContext("source")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  className="ui-compact-pill"
                 >
                   {showSectionContext.source ? "Hide details" : "Show details"}
                 </button>
@@ -3938,7 +3955,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Source files</div>
                     <h3 className="mt-2 text-lg font-semibold">Loaded source material</h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                      These are the editable source inputs the workspace will reuse when building positioning, documents, interview prep, and market outputs.
+                      These are editable source inputs reused for positioning, documents, interview prep, and market outputs.
                     </p>
                   </div>
                   <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
@@ -4011,7 +4028,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Primary action:</span> Generate your profile, then refine positioning.
+                      <span className="font-semibold">Next action:</span> Generate your profile, then refine positioning.
                     </div>
                     <button
                       type="button"
@@ -4049,7 +4066,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       <CareerGenerateProfileButton candidateId={candidate.id} />
                     </div>
                   </div>
-                <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <h2 className="text-xl font-semibold">Current career positioning</h2>
               {!latestProfile ? (
                 <EmptyStateActionCard
@@ -4254,7 +4271,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   ))}
                 </HistoryArchiveSection>
 
-                <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
                   <h2 className="text-xl font-semibold">Learning and course search</h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
                     Search for relevant courses and certifications based on the CV, Gallup Strengths, and target-role direction so the candidate can close the right gaps.
@@ -4264,7 +4281,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </div>
                 </section>
 
-                <section id="current-course-recommendations" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-course-recommendations" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
                   <h2 className="text-xl font-semibold">Current course recommendations</h2>
                   {latestCourseRecommendations.length === 0 ? (
                     <p className="mt-3 text-sm text-neutral-600">Generate course recommendations and the latest learning plan will appear here.</p>
@@ -4342,7 +4359,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                 <div className="text-[11px] text-neutral-700">
-                  <span className="font-semibold">Primary action:</span> Create base assets, then tailor for your target role.
+                  <span className="font-semibold">Next action:</span> Create base assets, then tailor for your target role.
                 </div>
                 <button
                   type="button"
@@ -4355,7 +4372,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {showSectionContext.documents && showStepGuidance ? (
                 <>
                   <SectionGuideBanner
-                    className="mb-5"
+                    className="mb-3"
                     statusLabel={sectionActionGuides.documents.statusLabel}
                     summary={sectionActionGuides.documents.summary}
                     actionLabel={sectionActionGuides.documents.actionLabel}
@@ -4363,7 +4380,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     onClick={() => openAndScroll("documents", sectionActionGuides.documents.href)}
                   />
                   <SectionSubnav
-                    className="mb-5"
+                    className="mb-3"
                     title="Inside asset builder"
                     items={[
                       { label: "Application tracker", href: "#document-workbench" },
@@ -4376,62 +4393,62 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </>
               ) : null}
               {showSectionContext.documents ? (
-              <section className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <section className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Application lane</div>
-                    <p className="mt-1 text-sm text-neutral-700">Pick role, align company language, tailor assets, then track and follow up.</p>
+                    <p className="mt-1 text-xs text-neutral-700">Pick role, align company language, tailor assets, then track and follow up.</p>
                   </div>
-                  <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700">
+                  <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700">
                     Ready {applicationFlowSteps.filter((step) => step.ready).length}/{applicationFlowSteps.length}
                   </div>
                 </div>
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-4">
                   {applicationFlowSteps.map((step) => (
                     <button
                       key={step.id}
                       type="button"
                       onClick={() => openAndScroll(step.sectionKey, step.href)}
-                      className={`rounded-xl border px-3 py-2 text-left transition ${
+                      className={`rounded-lg border px-2.5 py-1.5 text-left transition ${
                         step.ready ? "border-emerald-300 bg-emerald-50" : "border-neutral-200 bg-white hover:border-neutral-300"
                       }`}
                     >
-                      <div className="text-xs font-semibold text-neutral-900">{step.title}</div>
-                      <div className="mt-1 text-[11px] leading-4 text-neutral-600">{step.description}</div>
+                      <div className="text-[11px] font-semibold text-neutral-900">{step.title}</div>
+                      <div className="mt-1 text-[10px] leading-4 text-neutral-600">{step.description}</div>
                     </button>
                   ))}
                 </div>
-                <div className="mt-3 rounded-xl border border-sky-200 bg-white px-3 py-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-700">Do next</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                <div className="mt-2 rounded-lg border border-sky-200 bg-white px-2.5 py-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Next action</div>
+                  <div className="mt-0.5 text-xs font-semibold text-neutral-900">
                     {applicationFlowSteps.find((step) => !step.ready)?.title || "Application lane is set up well."}
                   </div>
                 </div>
               </section>
               ) : null}
 
-              <section className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+              <section className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Application tracker</div>
-                    <h3 className="mt-1 text-base font-semibold">Live roles being pursued</h3>
-                    <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
+                    <h3 className="mt-0.5 text-sm font-semibold">Live roles being pursued</h3>
+                    <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-neutral-600">
                       Keep application status, follow-up notes, and next actions in one place.
                     </p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+                    <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Tracked roles</div>
-                      <div className="mt-0.5 text-lg font-semibold">{applications.length}</div>
+                      <div className="mt-0.5 text-base font-semibold">{applications.length}</div>
                     </div>
-                    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+                    <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Active roles</div>
-                      <div className="mt-0.5 text-lg font-semibold">{activeApplications.length}</div>
+                      <div className="mt-0.5 text-base font-semibold">{activeApplications.length}</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-5">
+                <div className="mt-3">
                   <CareerApplicationTracker
                     candidateId={candidate.id}
                     applications={applications}
@@ -4445,33 +4462,30 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </div>
               </section>
 
-              <div id="document-actions" className="space-y-6">
-                <section className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+              <div id="document-actions" className="space-y-4">
+                <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Document tools</div>
-                      <h3 className="mt-1 text-base font-semibold">Create and tailor application outputs</h3>
-                      <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
-                        Fast order: generate base assets, tailor letter, then add support packs.
-                      </p>
+                      <h3 className="mt-0.5 text-sm font-semibold">Create and tailor application outputs</h3>
                     </div>
-                    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+                    <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Order</div>
-                      <div className="mt-0.5 text-xs font-semibold text-neutral-900">Assets → Letter → Strategy</div>
+                      <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets → Letter → Strategy</div>
                     </div>
                   </div>
-                  <div className="mt-3 grid gap-2 md:grid-cols-3">
-                    <div className="rounded-xl border border-white/80 bg-white p-3">
+                  <div className="mt-2 grid gap-1.5 md:grid-cols-3">
+                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">1. Base assets</div>
-                      <p className="mt-1 text-xs leading-5 text-neutral-600">Generate CV and LinkedIn drafts first.</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate CV and LinkedIn drafts first.</p>
                     </div>
-                    <div className="rounded-xl border border-white/80 bg-white p-3">
+                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">2. Tailored letter</div>
-                      <p className="mt-1 text-xs leading-5 text-neutral-600">Create role or dossier-matched letter next.</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Create role or dossier-matched letter next.</p>
                     </div>
-                    <div className="rounded-xl border border-white/80 bg-white p-3">
+                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">3. Support documents</div>
-                      <p className="mt-1 text-xs leading-5 text-neutral-600">Generate packs only when needed.</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate packs only when needed.</p>
                     </div>
                   </div>
                 </section>
@@ -4489,7 +4503,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <CareerStrategicDocumentGenerator candidateId={candidate.id} assetType="job_hit_list" />
               </div>
 
-              <div className="mt-6">
+              <div className="mt-4">
                 <section id="current-application-documents" className="rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
               <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
                 <div>
@@ -4667,7 +4681,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Primary action:</span> Generate company dossier, then align message and outreach.
+                      <span className="font-semibold">Next action:</span> Generate company dossier, then align message and outreach.
                     </div>
                     <button
                       type="button"
@@ -4919,7 +4933,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Primary action:</span> Generate interview prep, then save reflections after interviews.
+                      <span className="font-semibold">Next action:</span> Generate interview prep, then save reflections after interviews.
                     </div>
                     <button
                       type="button"
@@ -4952,7 +4966,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   {showSectionContext.interview ? (
                     <>
                       <p className="max-w-2xl text-xs leading-5 text-neutral-600">
-                        Build prep packs, then log real interview reflections to improve the next round.
+                        Build prep packs, then log interview reflections to improve the next round.
                       </p>
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-700">
                         Fast path: prep pack first, reflection after interview.
@@ -5153,7 +5167,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                 <div className="text-[11px] text-neutral-700">
-                  <span className="font-semibold">Primary action:</span> Run live search, then shortlist and apply from saved roles.
+                  <span className="font-semibold">Next action:</span> Run live search, then shortlist and apply from saved roles.
                 </div>
                 <button
                   type="button"
@@ -5162,6 +5176,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 >
                   {showSectionContext.jobs ? "Hide details" : "Show details"}
                 </button>
+              </div>
+              <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
+                Search scope is currently <span className="font-semibold">New Zealand only</span>. International targeting is coming soon.
               </div>
               {showSectionContext.jobs && showStepGuidance ? (
                 <>
@@ -5222,7 +5239,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Pipeline lane</div>
                     <h3 className="mt-1 text-base font-semibold text-neutral-900">Search, review, then apply</h3>
-                    <p className="mt-1 text-xs text-neutral-600">Use this single lane to run jobs, auto-create research/drafts, then approve in queue.</p>
+                    <p className="mt-1 text-xs text-neutral-600">Use this lane to run jobs, auto-create drafts, then approve in queue.</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${latestLiveJobSearches[0] ? "border border-emerald-300 bg-emerald-50 text-emerald-800" : "border border-amber-300 bg-amber-50 text-amber-900"}`}>
@@ -5394,7 +5411,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Search operations</div>
@@ -5446,7 +5463,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section id="current-deep-prospect-research" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-deep-prospect-research" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <h2 className="text-xl font-semibold">Latest prospect research</h2>
               {latestDeepProspectResearch.length === 0 ? (
                 <EmptyStateActionCard
@@ -5481,7 +5498,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section id="current-recruiter-match-searches" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-recruiter-match-searches" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Access workbench</div>
@@ -5521,7 +5538,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section id="current-fit-analysis" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-fit-analysis" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Decision workbench</div>
@@ -5561,7 +5578,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section id="current-salary-analysis" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-salary-analysis" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Compensation workbench</div>
@@ -5601,7 +5618,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
 
               <div className="mt-6">
-                <section id="current-live-opportunities" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+                <section id="current-live-opportunities" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Opportunity workbench</div>
@@ -5653,7 +5670,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                           </span>
                         </div>
                         {opportunity.whyFit ? <p className="mt-3 text-sm leading-6 text-neutral-600">{opportunity.whyFit}</p> : null}
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="ui-action-row mt-4">
                           <button
                             type="button"
                             onClick={() => void handleQuickSaveOpportunity(opportunityKey, opportunity, "shortlisted")}
@@ -5736,7 +5753,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                                   {formatRunStatus(application.status)}
                                 </span>
                               </div>
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="ui-action-row mt-2">
                                 <button
                                   type="button"
                                   onClick={() => void handleQuickUpdateApplicationStatus(application.id, "targeting")}
@@ -6192,9 +6209,92 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             showOnboardingGuide ? "wizard-spotlight-soft" : ""
           }`}
         >
-          Resume setup{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+          Resume wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
         </button>
       </div>
+      {isReportIssueOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/35 px-4"
+          onClick={() => setIsReportIssueOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report an issue"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Report issue</div>
+                <h3 className="mt-1 text-base font-semibold text-neutral-900">Tell us what is blocking you</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Type
+                <select
+                  value={issueType}
+                  onChange={(event) => setIssueType(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                >
+                  <option>Workflow confusion</option>
+                  <option>Button or link not working</option>
+                  <option>Missing saved file</option>
+                  <option>Data issue</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Contact email
+                <input
+                  value={issueContactEmail}
+                  onChange={(event) => setIssueContactEmail(event.target.value)}
+                  placeholder="Optional"
+                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+                />
+              </label>
+            </div>
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+              What happened?
+              <textarea
+                value={issueDetail}
+                onChange={(event) => setIssueDetail(event.target.value)}
+                placeholder="Example: I clicked Generate cover letter and nothing happened."
+                rows={4}
+                className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal normal-case text-neutral-800"
+              />
+            </label>
+            <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-600">
+              We will include your current step ({activeSectionLabel} / {activeSubsectionLabel}) automatically.
+            </div>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReportIssueOpen(false)}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitIssueReport()}
+                className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+              >
+                Copy report
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {toast ? (
         <div className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-sm">
           <div
@@ -6655,7 +6755,7 @@ function SectionSubnav({
   return (
     <div className={`rounded-2xl border border-neutral-200 bg-white/85 p-4 ${className}`.trim()}>
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{title}</div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="ui-action-row mt-3">
         {items.map((item) => (
           <button
             key={`${title}-${item.href}-${item.label}`}
@@ -6691,7 +6791,7 @@ function HistoryArchiveSection({
   children: ReactNode
 }) {
   return (
-    <details className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <details className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
       <summary className="cursor-pointer list-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -6758,30 +6858,6 @@ function assetToneClass(assetType: string | null | undefined) {
       return "border-indigo-200 bg-indigo-50 hover:border-indigo-300 hover:bg-white"
     default:
       return "border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white"
-  }
-}
-
-function savedFileUseLabel(assetType: string | null | undefined) {
-  switch (assetType) {
-    case "cover_letter":
-      return "Use for application"
-    case "company_dossier":
-    case "deep_prospect_research":
-    case "outreach_strategy":
-      return "Use for targeting"
-    case "interview_prep":
-    case "executive_interview_playbook":
-    case "interview_training_pack":
-    case "job_hit_list":
-      return "Use for interviews"
-    case "salary_analysis":
-    case "application_fit_analysis":
-    case "course_recommendations":
-    case "live_job_search":
-    case "recruiter_match_search":
-      return "Use for decisions"
-    default:
-      return "Use in workspace"
   }
 }
 

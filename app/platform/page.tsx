@@ -147,18 +147,6 @@ export default function PlatformLandingPage() {
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Personara" />
-        <section className="mb-5 rounded-[2rem] border border-[#d9e2ec] bg-white p-4 shadow-sm">
-          <div className="overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[#f8fbff]">
-            <Image
-              src="/images/personara-platform-anatomy.png"
-              alt="The Anatomy of Personara.ai platform overview"
-              width={1366}
-              height={768}
-              className="h-auto w-full"
-              priority
-            />
-          </div>
-        </section>
         {!isSignedIn || message ? (
           <section
             id="overview"
@@ -291,6 +279,19 @@ export default function PlatformLandingPage() {
               </Link>
             </article>
           ))}
+        </section>
+
+        <section className="mt-5 rounded-[2rem] border border-[#d9e2ec] bg-white p-4 shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[#f8fbff]">
+            <Image
+              src="/images/personara-platform-anatomy.png"
+              alt="The Anatomy of Personara.ai platform overview"
+              width={1366}
+              height={768}
+              className="h-auto w-full"
+              priority
+            />
+          </div>
         </section>
 
       </div>

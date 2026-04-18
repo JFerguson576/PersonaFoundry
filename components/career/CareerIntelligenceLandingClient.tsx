@@ -260,7 +260,61 @@ export function CareerIntelligenceLandingClient() {
           </div>
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold">Step 1: Sign in</h2>
+            <p className="text-sm text-neutral-600">Sign in first, then return to Step 2 to create the workspace.</p>
+
+            {session?.user ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                Signed in as <span className="font-semibold">{session.user.email}</span>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              {session?.user ? (
+                <button
+                  type="button"
+                  onClick={() => void handleSwitchAccount()}
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  Switch account
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void signInWithProvider("google")}
+                disabled={busyProvider !== null || !providerStatus.google.enabled}
+                className="w-full rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busyProvider === "google" ? "Connecting..." : "Continue with Google"}
+              </button>
+              {!providerStatus.google.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.google.reason || "Not configured yet."}</p> : null}
+              <button
+                type="button"
+                onClick={() => void signInWithProvider("facebook")}
+                disabled={busyProvider !== null || !providerStatus.facebook.enabled}
+                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busyProvider === "facebook" ? "Connecting..." : "Continue with Facebook"}
+              </button>
+              {!providerStatus.facebook.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.facebook.reason || "Not configured yet."}</p> : null}
+              <button
+                type="button"
+                onClick={() => void signInWithProvider("linkedin_oidc")}
+                disabled={busyProvider !== null || !providerStatus.linkedin_oidc.enabled}
+                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busyProvider === "linkedin_oidc" ? "Connecting..." : "Continue with LinkedIn"}
+              </button>
+              {!providerStatus.linkedin_oidc.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.linkedin_oidc.reason || "Not configured yet."}</p> : null}
+            </div>
+
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-5 text-sky-900">
+              Product roadmap: this page is designed to become the main entry point for three modules - GPT Personality Builder, Career Intelligence, and Gallup Strengths Team/Family Dynamics.
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold">Step 2: Create your workspace</h2>
             <p className="mt-2 text-sm text-neutral-600">Quick setup now. You can add detailed files after creation.</p>
@@ -328,60 +382,6 @@ export function CareerIntelligenceLandingClient() {
             </form>
 
             {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
-          </div>
-
-          <div className="space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold">Step 1: Sign in</h2>
-            <p className="text-sm text-neutral-600">Sign in first, then return to Step 2 to create the workspace.</p>
-
-            {session?.user ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                Signed in as <span className="font-semibold">{session.user.email}</span>
-              </div>
-            ) : null}
-
-            <div className="space-y-2">
-              {session?.user ? (
-                <button
-                  type="button"
-                  onClick={() => void handleSwitchAccount()}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-                >
-                  Switch account
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void signInWithProvider("google")}
-                disabled={busyProvider !== null || !providerStatus.google.enabled}
-                className="w-full rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyProvider === "google" ? "Connecting..." : "Continue with Google"}
-              </button>
-              {!providerStatus.google.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.google.reason || "Not configured yet."}</p> : null}
-              <button
-                type="button"
-                onClick={() => void signInWithProvider("facebook")}
-                disabled={busyProvider !== null || !providerStatus.facebook.enabled}
-                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyProvider === "facebook" ? "Connecting..." : "Continue with Facebook"}
-              </button>
-              {!providerStatus.facebook.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.facebook.reason || "Not configured yet."}</p> : null}
-              <button
-                type="button"
-                onClick={() => void signInWithProvider("linkedin_oidc")}
-                disabled={busyProvider !== null || !providerStatus.linkedin_oidc.enabled}
-                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyProvider === "linkedin_oidc" ? "Connecting..." : "Continue with LinkedIn"}
-              </button>
-              {!providerStatus.linkedin_oidc.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.linkedin_oidc.reason || "Not configured yet."}</p> : null}
-            </div>
-
-            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-5 text-sky-900">
-              Product roadmap: this page is designed to become the main entry point for three modules - GPT Personality Builder, Career Intelligence, and Gallup Strengths Team/Family Dynamics.
-            </div>
           </div>
         </section>
       </div>

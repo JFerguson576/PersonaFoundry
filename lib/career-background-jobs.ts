@@ -7,6 +7,7 @@ import {
   type CareerAssetPayload,
   type CareerAssetType,
 } from "@/lib/career"
+import { formatCareerTargetCountries, sanitizeCareerTargetCountries } from "@/lib/career-country-targeting"
 import { runLiveJobSearch } from "@/lib/career-live-jobs"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { logApiUsage, logUsageEvent } from "@/lib/telemetry"
@@ -1494,6 +1495,8 @@ async function runGenerateRecruiterMatchSearch(
   const companyName = normalizeString(payload.company_name)
   const specialty = normalizeString(payload.specialty)
   const notes = normalizeString(payload.notes)
+  const targetCountryCodes = sanitizeCareerTargetCountries(payload.target_countries)
+  const targetCountryNames = formatCareerTargetCountries(targetCountryCodes)
 
   if (!jobTitle) throw new Error("job_title or role_family is required")
 
@@ -1546,6 +1549,7 @@ Rules:
 - Use the candidate positioning and target market
 - If company_name is supplied, include recruiter routes relevant to that company or adjacent market
 - Distinguish retained search from volume recruiters when useful
+- If target countries are provided, prioritize recruiter channels in those countries first
 
 Candidate:
 ${stringify(candidate)}
@@ -1560,6 +1564,7 @@ Recruiter search brief:
 ${stringify({
   job_title: jobTitle,
   location,
+  target_countries: targetCountryNames,
   company_name: companyName,
   specialty,
   notes,
@@ -1608,7 +1613,13 @@ ${stringify({
     module: "career_advisor",
     eventType: "recruiter_match_search_generated",
     candidateId,
-    metadata: { job_title: jobTitle, location: location || null, company_name: companyName || null, specialty: specialty || null },
+    metadata: {
+      job_title: jobTitle,
+      location: location || null,
+      target_countries: targetCountryCodes,
+      company_name: companyName || null,
+      specialty: specialty || null,
+    },
   })
   await logApiUsage(supabase, {
     userId,
@@ -1619,7 +1630,14 @@ ${stringify({
     inputTokens: response.usage?.input_tokens ?? null,
     outputTokens: response.usage?.output_tokens ?? null,
     totalTokens: response.usage?.total_tokens ?? null,
-    metadata: { candidate_id: candidateId, job_title: jobTitle, location: location || null, company_name: companyName || null, specialty: specialty || null },
+    metadata: {
+      candidate_id: candidateId,
+      job_title: jobTitle,
+      location: location || null,
+      target_countries: targetCountryCodes,
+      company_name: companyName || null,
+      specialty: specialty || null,
+    },
   })
 
   return `Recruiter match search saved for ${jobTitle}${location ? ` in ${location}` : ""}`
@@ -2222,11 +2240,14 @@ async function runGeneratePremiumWeeklyAutopilot(
   const targetRole = normalizeString(payload.target_role)
   const location = normalizeString(payload.location)
   const marketNotes = normalizeString(payload.market_notes)
-  const companyName = normalizeString(payload.company_name)
-  const jobTitle = normalizeString(payload.job_title) || targetRole
-  const jobDescription = normalizeString(payload.job_description)
+  const requestedCompanyName = normalizeString(payload.company_name)
+  const requestedJobTitle = normalizeString(payload.job_title)
+  const requestedJobDescription = normalizeString(payload.job_description)
   const dossierInfluence = normalizeString(payload.dossier_influence) || "medium"
   const roleMatchTightness = Math.max(0, Math.min(100, Number(payload.role_match_tightness ?? 60)))
+  const autoResearchFromMatches = payload.auto_research_from_matches !== false
+  const autoGenerateCoverLetters = payload.auto_generate_cover_letters !== false
+  const triggerSource = normalizeString(payload.trigger_source) || "scheduled_run"
 
   if (!targetRole) {
     throw new Error("Premium autopilot requires target_role")
@@ -2243,27 +2264,71 @@ async function runGeneratePremiumWeeklyAutopilot(
   })
 
   const completedSteps: string[] = ["live search"]
+  const bestOpportunity = liveResult.opportunities?.find((opportunity) => normalizeString(opportunity.title)) || null
+  const selectedCompanyName = requestedCompanyName || normalizeString(bestOpportunity?.company)
+  const selectedJobTitle = requestedJobTitle || normalizeString(bestOpportunity?.title) || targetRole
+  const selectedLocation = normalizeString(bestOpportunity?.location) || location
+  const selectedJobUrl = normalizeString(bestOpportunity?.apply_url)
+  const selectedWhyFit = normalizeString(bestOpportunity?.why_fit)
+  const selectedJobDescription =
+    requestedJobDescription ||
+    [
+      `Role target: ${selectedJobTitle}`,
+      selectedCompanyName ? `Company: ${selectedCompanyName}` : "",
+      selectedLocation ? `Location: ${selectedLocation}` : "",
+      selectedWhyFit ? `Fit rationale from live search: ${selectedWhyFit}` : "",
+      marketNotes ? `Market notes: ${marketNotes}` : "",
+      "Autopilot-generated role brief. Review and refine before applying.",
+    ]
+      .filter(Boolean)
+      .join("\n")
 
-  if (companyName) {
+  let companyDossierAssetId: string | null = null
+  let coverLetterAssetId: string | null = null
+
+  if (autoResearchFromMatches && selectedCompanyName) {
     await runGenerateCompanyDossier(supabase, userId, candidateId, {
-      company_name: companyName,
-      job_title: jobTitle,
-      location,
-      job_description: jobDescription,
+      company_name: selectedCompanyName,
+      job_title: selectedJobTitle,
+      location: selectedLocation,
+      job_description: selectedJobDescription,
     })
+    companyDossierAssetId = await getLatestAssetIdForType(supabase, userId, candidateId, "company_dossier", selectedCompanyName)
     completedSteps.push("company dossier")
   }
 
-  if (jobDescription) {
+  if (autoGenerateCoverLetters && selectedJobDescription) {
     await runGenerateCoverLetter(supabase, userId, candidateId, {
-      company_name: companyName,
-      job_title: jobTitle,
-      job_description: jobDescription,
-      use_company_dossier: Boolean(companyName),
+      company_name: selectedCompanyName,
+      job_title: selectedJobTitle,
+      job_description: selectedJobDescription,
+      use_company_dossier: Boolean(selectedCompanyName && autoResearchFromMatches),
       dossier_influence: dossierInfluence,
       strength_voice_influence: "medium",
     })
+    coverLetterAssetId = await getLatestAssetIdForType(supabase, userId, candidateId, "cover_letter", selectedJobTitle)
     completedSteps.push("cover letter draft")
+  }
+
+  const { error: queueInsertError } = await supabase.from("career_premium_autopilot_review_queue").insert([
+    {
+      candidate_id: candidateId,
+      user_id: userId,
+      trigger_source: triggerSource,
+      target_role: targetRole,
+      company_name: selectedCompanyName || null,
+      job_title: selectedJobTitle || null,
+      location: selectedLocation || null,
+      job_url: selectedJobUrl || null,
+      live_search_asset_id: liveResult.asset.id,
+      company_dossier_asset_id: companyDossierAssetId,
+      cover_letter_asset_id: coverLetterAssetId,
+      status: "pending",
+      review_notes: "Autopilot run complete. Review this bundle before applying.",
+    },
+  ])
+  if (queueInsertError && !queueInsertError.message.toLowerCase().includes("career_premium_autopilot_review_queue")) {
+    throw new Error(queueInsertError.message)
   }
 
   await logUsageEvent(supabase, {
@@ -2275,8 +2340,12 @@ async function runGeneratePremiumWeeklyAutopilot(
       target_role: targetRole,
       location: location || null,
       role_match_tightness: roleMatchTightness,
+      auto_research_from_matches: autoResearchFromMatches,
+      auto_generate_cover_letters: autoGenerateCoverLetters,
       completed_steps: completedSteps,
       live_search_asset_id: liveResult.asset.id,
+      queue_company_name: selectedCompanyName || null,
+      queue_job_title: selectedJobTitle || null,
     },
   })
 

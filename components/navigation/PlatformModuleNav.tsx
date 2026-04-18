@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
   { key: "community", label: "Community", href: "/community" },
   { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
   { key: "about", label: "About", href: "/about" },
-  { key: "help", label: "Help", href: "/help" },
+  { key: "help", label: "Help Center", href: "/help" },
   { key: "contact", label: "Contact", href: "/contact" },
 ]
 
@@ -341,7 +341,10 @@ export function PlatformModuleNav() {
             </div>
             {showSuperuserQuickActions ? (
               <div className="mt-2 grid gap-1.5">
-                <Link href="/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
+                <Link href="/control-center" className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]">
+                  Control center
+                </Link>
+                <Link href="/control-center/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
                   Admin dashboard
                 </Link>
                 <Link href="/operations" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
@@ -349,7 +352,7 @@ export function PlatformModuleNav() {
                 </Link>
                 <Link
                   href="/control-center/marketing-engine"
-                  className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
+                  className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
                 >
                   Marketing engine
                 </Link>

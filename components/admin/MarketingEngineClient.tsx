@@ -800,7 +800,37 @@ export function MarketingEngineClient() {
           <section className="mt-4 rounded-2xl border border-[#d8e4f2] bg-white px-4 py-3 text-sm text-neutral-700">{message}</section>
         ) : null}
 
-        <section className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Marketing menu</div>
+            <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Core sections
+              </summary>
+              <div className="px-2 pb-2">
+                <button type="button" onClick={() => togglePanel("playbooks")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Playbooks</button>
+                <button type="button" onClick={() => togglePanel("recommendations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recommendations</button>
+                <button type="button" onClick={() => togglePanel("alerts")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Alerts</button>
+                <button type="button" onClick={() => togglePanel("integrations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Integrations</button>
+                <button type="button" onClick={() => togglePanel("campaigns")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Campaigns</button>
+                <button type="button" onClick={() => togglePanel("policy")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Policy</button>
+                <button type="button" onClick={() => togglePanel("ledger")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Cash & budget</button>
+              </div>
+            </details>
+            <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                Actions
+              </summary>
+              <div className="px-2 pb-2 space-y-1.5">
+                <button type="button" onClick={() => setAllPanelsCollapsed(true)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Collapse all</button>
+                <button type="button" onClick={() => setAllPanelsCollapsed(false)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Expand all</button>
+                <button type="button" onClick={() => void loadAll()} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isBusy ? "Refreshing..." : "Refresh"}</button>
+              </div>
+            </details>
+          </aside>
+
+          <div>
+        <section className="mt-0 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Cash on hand" value={formatMoney(ledgerTotals.cash_on_hand)} />
           <MetricCard label="Collected cash (7d)" value={formatMoney(ledgerTotals.cash_collected_7d)} />
           <MetricCard label="Safe weekly budget" value={formatMoney(latestSnapshot?.safe_budget_weekly ?? 0)} />
@@ -1776,6 +1806,8 @@ export function MarketingEngineClient() {
             </div>
           ) : null}
         </section>
+          </div>
+        </div>
       </div>
       {showBlueprintModal ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6">
@@ -1809,7 +1841,13 @@ export function MarketingEngineClient() {
 
 function MetricCard({ label, value, tone = "normal" }: { label: string; value: string; tone?: "normal" | "danger" }) {
   return (
-    <div className={`rounded-2xl border px-4 py-3 shadow-sm ${tone === "danger" ? "border-rose-200 bg-rose-50" : "border-[#d8e4f2] bg-white"}`}>
+    <div
+      className={`rounded-2xl border px-4 py-3 shadow-sm ${
+        tone === "danger"
+          ? "border-rose-200 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)]"
+          : "border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)]"
+      }`}
+    >
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</div>
       <div className={`mt-1 text-2xl font-semibold ${tone === "danger" ? "text-rose-700" : "text-[#0f172a]"}`}>{value}</div>
     </div>

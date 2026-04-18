@@ -104,6 +104,8 @@ export async function POST(request: Request) {
       job_description: row.job_description,
       dossier_influence: row.dossier_influence || "medium",
       role_match_tightness: Number(row.role_match_tightness ?? 60),
+      auto_research_from_matches: row.auto_research_from_matches !== false,
+      auto_generate_cover_letters: row.auto_generate_cover_letters !== false,
       trigger_source: "scheduled_run",
     }
 

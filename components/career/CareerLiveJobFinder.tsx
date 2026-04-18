@@ -31,6 +31,7 @@ export function CareerLiveJobFinder({ candidateId }: Props) {
           target_role: targetRole,
           location,
           market_notes: marketNotes,
+          target_countries: ["NZ"],
         }),
       })
 
@@ -108,6 +109,21 @@ export function CareerLiveJobFinder({ candidateId }: Props) {
             className="w-full rounded-xl border border-neutral-300 px-3 py-2"
             placeholder="e.g. Auckland or Remote"
           />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+        <div className="mb-2 text-sm font-medium">Search market</div>
+        <p className="mb-3 text-xs text-neutral-600">
+          Live search is currently tuned for New Zealand. International targeting will be enabled in a later release.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-xs font-semibold text-[#0a66c2]">
+            ✓ New Zealand
+          </span>
+          <span className="cursor-not-allowed rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-500">
+            International (Coming soon)
+          </span>
         </div>
       </div>
 

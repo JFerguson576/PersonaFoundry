@@ -1,5 +1,6 @@
 import { UnifiedControlCenterClient } from "@/components/admin/UnifiedControlCenterClient"
 
-export default function AdminPage() {
+export default function ControlCenterPage() {
   return <UnifiedControlCenterClient />
 }
+

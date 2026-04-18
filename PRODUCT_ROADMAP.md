@@ -194,6 +194,27 @@ Rollout phases:
 4. Review queue UX and notifications.
 5. Admin observability (run success/failure, time saved, conversion metrics).
 
+### 8. Superuser Bootstrap + Granular Rights Matrix
+
+Add a hardened access-control layer so platform operations can safely scale support and moderation.
+
+Immediate todo captured:
+
+1. Auto-superuser bootstrap:
+- Ensure `bourgogne.matt@gmail.com` and `nicolemanderson79@gmail.com` are always treated as superusers at login.
+
+2. Granular user rights assignment:
+- Add assignable access levels for every user:
+  - `viewer` (read-only)
+  - `editor` (can update content/workflows)
+  - `manager` (can coordinate and run management actions)
+
+3. Enforcement rollout:
+- Apply access levels across key modules so view/edit/management controls are consistently enforced in API routes and UI actions.
+
+Goal:
+Keep operator control simple while reducing accidental over-permissioning as team support expands.
+
 ## Product Quality Themes
 
 Across all roadmap items, keep pushing on:
