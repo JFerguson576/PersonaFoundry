@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
 import { CAREER_SOURCE_TYPE_OPTIONS, CAREER_SOURCE_WIZARD_STEPS, type CareerSourceTypeValue } from "@/lib/career-workflow"
+import { validateCareerUploadFile } from "@/lib/career-upload-client"
 
 type Props = {
   candidateId: string
@@ -20,6 +21,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const [title, setTitle] = useState("")
   const [contentText, setContentText] = useState("")
   const [selectedFileName, setSelectedFileName] = useState("")
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [fileLoading, setFileLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -57,12 +59,32 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   async function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
+    const validationError = validateCareerUploadFile(file)
+    if (validationError) {
+      setPendingFile(null)
+      setSelectedFileName("")
+      setMessage(validationError)
+      if (event.target) event.target.value = ""
+      return
+    }
+    setPendingFile(file)
+    setSelectedFileName(file.name)
+    setMessage("File ready to upload. Click 'Upload selected file' to continue.")
+    if (event.target) event.target.value = ""
+  }
+
+  async function handleUploadSelectedFile() {
+    if (!pendingFile) {
+      setMessage("Choose a file first.")
+      return
+    }
+
     setFileLoading(true)
     setMessage("")
 
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", pendingFile)
       formData.append("candidate_id", candidateId)
       formData.append("source_type", sourceType)
       if (title.trim()) formData.append("title", title.trim())
@@ -74,11 +96,12 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       const json = await response.json()
       if (!response.ok) throw new Error(json.error || "Failed to upload file")
 
-      setSelectedFileName(json.file_name || file.name)
+      setSelectedFileName(json.file_name || pendingFile.name)
+      setPendingFile(null)
       setTitle("")
       setContentText("")
       markDone(sourceType)
-      setMessage(`Uploaded and saved ${json.file_name || file.name} into the workspace.`)
+      setMessage(`Uploaded and saved ${json.file_name || pendingFile.name} into the workspace.`)
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) moveToNextMissing()
@@ -86,7 +109,6 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("upload the file")))
     } finally {
       setFileLoading(false)
-      if (event.target) event.target.value = ""
     }
   }
 
@@ -194,9 +216,20 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <label className="block text-sm font-medium">Import file</label>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">{fileLoading ? "Importing..." : "Choose file"}</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">{fileLoading ? "Importing..." : "Choose file"}</button>
+            <button
+              type="button"
+              onClick={() => void handleUploadSelectedFile()}
+              disabled={fileLoading || !pendingFile}
+              className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {fileLoading ? "Uploading..." : "Upload selected file"}
+            </button>
+          </div>
         </div>
         <input ref={fileInputRef} type="file" accept=".txt,.md,.rtf,.docx,.pdf" onChange={handleFileUpload} className="hidden" />
+        <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
         {selectedFileName ? <p className="text-xs text-neutral-600">Last uploaded: <span className="font-medium">{selectedFileName}</span></p> : null}
       </div>
 
