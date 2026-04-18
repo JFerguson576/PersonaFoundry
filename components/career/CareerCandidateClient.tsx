@@ -186,6 +186,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [isFindSavedWorkExpanded, setIsFindSavedWorkExpanded] = useState(false)
   const [showSourceSecondaryPanels, setShowSourceSecondaryPanels] = useState(false)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
+  const [isMyFilesDrawerOpen, setIsMyFilesDrawerOpen] = useState(false)
   const [focusedApplicationId, setFocusedApplicationId] = useState(() => {
     if (typeof window === "undefined") return ""
     return window.localStorage.getItem(`career-workspace-target-${candidateId}`) || ""
@@ -283,9 +284,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       setIsSavedWorkExpanded(true)
     }
     setOpenSections(openSectionsFor(sectionKey))
-    if (sectionKey !== "workflow") {
-      setIsMenuRolledUp(true)
-    }
+    setIsMenuRolledUp(true)
 
     if (typeof window !== "undefined") {
       window.setTimeout(() => {
@@ -1862,15 +1861,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   function toggleSection(sectionKey: string) {
     const isCollapsingCurrentSection = activeStep === sectionKey && openSections[sectionKey]
     if (isCollapsingCurrentSection) {
-      setOpenSections({
-        workflow: false,
-        source: false,
-        positioning: false,
-        documents: false,
-        company: false,
-        interview: false,
-        jobs: false,
-      })
+      setActiveMode("plan")
+      setActiveStep("workflow")
+      setOpenSections(openSectionsFor("workflow"))
       return
     }
 
@@ -1885,6 +1878,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     setActiveMode(nextMode)
     setActiveStep(sectionKey)
     setOpenSections(openSectionsFor(sectionKey))
+    setIsMenuRolledUp(true)
   }
 
   function getSectionKeyForSavedLink(href: string) {
@@ -2136,11 +2130,12 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   }
 
   function openWizardFlow() {
-    setIsMenuRolledUp(false)
+    setIsMenuRolledUp(true)
     setShowStepGuidance(true)
     setIsGuidedMode(true)
     setIsContextRailOpen(false)
     setShowAdvancedTools(false)
+    setIsMyFilesDrawerOpen(false)
     openAndScroll(wizardAction.sectionKey, wizardAction.href)
   }
 
@@ -2158,6 +2153,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       interview: false,
       jobs: false,
     })
+    setIsMyFilesDrawerOpen(false)
     openAndScroll("workflow", "#workflow-guide")
     showToast({ tone: "info", message: "Workspace view reset to the guided start." })
   }
@@ -2171,7 +2167,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 ${isContextRailOpen ? "lg:pr-[360px]" : ""}`}>
+      <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
           <div className="mb-2 rounded-2xl border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-medium text-sky-900">
@@ -2367,6 +2363,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </button>
                 <button
                   type="button"
+                  onClick={() => setIsMyFilesDrawerOpen((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isMyFilesDrawerOpen ? "Hide files" : "My files"}
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setIsFocusMode(false)
                     setIsMenuRolledUp(false)
@@ -2428,6 +2431,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
                   Reset view
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMyFilesDrawerOpen((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isMyFilesDrawerOpen ? "Hide files" : "My files"}
                 </button>
                 <button
                   type="button"
@@ -5976,8 +5986,71 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ))}
             </HistoryArchiveSection>
           </div>
-        </div>
       </div>
+      </div>
+      {isMyFilesDrawerOpen && !isWizardFocusActive ? (
+        <aside className="fixed right-4 top-24 z-40 hidden w-[340px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">My files</div>
+              <div className="mt-1 text-sm font-semibold text-neutral-900">Quick access to saved outputs</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMyFilesDrawerOpen(false)}
+              className="rounded-full border border-neutral-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {savedLibraryLinks.map((link) => (
+              <button
+                key={`my-files-link-${link.href}`}
+                type="button"
+                onClick={() => {
+                  setIsMyFilesDrawerOpen(false)
+                  openAndScroll(getSectionKeyForSavedLink(link.href), link.href)
+                }}
+                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left hover:bg-white"
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{link.label}</div>
+                <div className="mt-1 text-sm font-semibold text-neutral-900">{link.description}</div>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 border-t border-neutral-200 pt-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Recent files</div>
+            {recentSavedAssets.length === 0 ? (
+              <p className="mt-2 text-xs text-neutral-600">No saved files yet.</p>
+            ) : (
+              <div className="mt-2 space-y-2">
+                {recentSavedAssets.map((asset) => {
+                  const target = getSectionTargetForAssetType(asset.asset_type)
+                  return (
+                    <button
+                      key={`my-files-recent-${asset.id}`}
+                      type="button"
+                      onClick={() => {
+                        setIsMyFilesDrawerOpen(false)
+                        openAndScroll(target.sectionKey, target.href)
+                      }}
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left hover:bg-neutral-50"
+                    >
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                        {formatAssetType(asset.asset_type)}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900 truncate">
+                        {asset.title || "Untitled file"}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+      ) : null}
       {showAdvancedTools && !isWizardFocusActive ? (
         <aside
           className={`fixed top-24 z-40 hidden w-[320px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block ${
