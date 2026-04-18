@@ -1337,6 +1337,8 @@ export function TeamSyncWorkspaceClient() {
   const [savedRunsExpanded, setSavedRunsExpanded] = useState(true)
   const [undoDeletedRuns, setUndoDeletedRuns] = useState<RunResult[]>([])
   const [message, setMessage] = useState("")
+  const [savePulse, setSavePulse] = useState<{ id: number; label: string } | null>(null)
+  const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [sendingToSlack, setSendingToSlack] = useState(false)
@@ -1455,6 +1457,45 @@ export function TeamSyncWorkspaceClient() {
       window.localStorage.setItem(LOCAL_GROUP_NAME_KEY, groupName)
     }
   }, [groupName, selectedGroupId])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    let lastY = window.scrollY
+    const threshold = 12
+
+    const handleScroll = () => {
+      const currentY = window.scrollY
+      const delta = currentY - lastY
+
+      if (currentY < 80) {
+        setShowFloatingWizardCta(true)
+      } else if (delta > threshold) {
+        setShowFloatingWizardCta(false)
+      } else if (delta < -threshold) {
+        setShowFloatingWizardCta(true)
+      }
+
+      lastY = currentY
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  useEffect(() => {
+    if (!message || typeof window === "undefined") return
+    if (/(could not|failed|error|unable|unauthorized|not configured)/i.test(message)) return
+    if (!/(saved|created|added|uploaded|imported|updated|synced|shared|exported|loaded|queued|started|completed)/i.test(message)) return
+
+    const label = /(saved|created|added|uploaded|imported|exported|shared)/i.test(message) ? "Saved just now" : "Updated just now"
+    const pulseId = Date.now()
+    setSavePulse({ id: pulseId, label })
+    const timeout = window.setTimeout(() => {
+      setSavePulse((current) => (current?.id === pulseId ? null : current))
+    }, 2400)
+    return () => window.clearTimeout(timeout)
+  }, [message])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1824,6 +1865,21 @@ export function TeamSyncWorkspaceClient() {
         : !runReady
           ? { title: "Run your first simulation", detail: "Generate risks, actions, and support priorities.", stepKey: "run", href: "#teamsync-run", cta: "Go to Run" }
           : { title: "Review and share insights", detail: "Your latest run is ready for action and sharing.", stepKey: "insights", href: "#teamsync-insights", cta: "Open Insights" }
+  const readinessCount = readinessItems.filter((item) => item.ready).length
+  const stepStatusByKey: Record<string, boolean> = {
+    overview: readinessCount > 0 || Boolean(latestRun),
+    intake: membersReady,
+    scenario: scenarioReady,
+    run: runReady,
+    insights: runReady,
+    history: runHistory.length > 0,
+  }
+  const smartCheckTone =
+    readinessCount === readinessItems.length
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : readinessCount === 0
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-sky-200 bg-sky-50 text-sky-900"
 
   function switchGroup(nextGroupId: string) {
     if (!nextGroupId || nextGroupId === selectedGroupId) return
@@ -1866,6 +1922,13 @@ export function TeamSyncWorkspaceClient() {
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "start" })
     }
+  }
+
+  function resetWorkspaceView() {
+    setIsFocusMode(true)
+    setIsMenuRolledUp(true)
+    openStep("overview", "#teamsync-overview")
+    setMessage("Workspace view reset to guided start.")
   }
 
   function setInsightsPanelsOpen(open: boolean) {
@@ -2976,6 +3039,18 @@ export function TeamSyncWorkspaceClient() {
                 Working in <span className="font-semibold text-neutral-900">{activeStepNavItem.label}</span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
+                {savePulse ? (
+                  <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                    {savePulse.label}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={resetWorkspaceView}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  Reset view
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -2991,7 +3066,7 @@ export function TeamSyncWorkspaceClient() {
                   onClick={() => setIsFocusMode(false)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  Exit focus
+                  Turn guided mode off
                 </button>
               </div>
             </div>
@@ -3002,12 +3077,31 @@ export function TeamSyncWorkspaceClient() {
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Step-by-step menu</div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current: {activeStepNavItem.label}</div>
+                {savePulse ? (
+                  <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                    {savePulse.label}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={resetWorkspaceView}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  Reset view
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsMenuRolledUp((current) => !current)}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
                   {isMenuRolledUp ? "Expand menu" : "Roll up menu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFocusMode((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isFocusMode ? "Guided mode on" : "Guided mode off"}
                 </button>
               </div>
             </div>
@@ -3016,15 +3110,21 @@ export function TeamSyncWorkspaceClient() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {stepNav.map((item) => {
                     const active = item.key === activeStep
+                    const complete = stepStatusByKey[item.key] ?? false
                     return (
                       <button
                         key={item.key}
                         type="button"
                         onClick={() => openStep(item.key, item.href)}
                         className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                          active ? "border border-sky-200 bg-sky-50 text-sky-800" : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+                          active
+                            ? "border border-sky-200 bg-sky-50 text-sky-800"
+                            : complete
+                              ? "border border-emerald-300 bg-emerald-50 text-emerald-700"
+                              : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
                         }`}
                       >
+                        {complete ? "✓ " : ""}
                         {item.label}
                       </button>
                     )
@@ -3037,15 +3137,28 @@ export function TeamSyncWorkspaceClient() {
                 </div>
               </>
             ) : null}
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsFocusMode((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                {isFocusMode ? "Turn focus mode off" : "Turn focus mode on"}
-              </button>
-            </div>
+            {isMenuRolledUp ? (
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-2">
+                <div className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${smartCheckTone}`}>
+                  {readinessCount}/{readinessItems.length} ready
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+                  className="rounded-full bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                >
+                  {nextAction.cta}
+                </button>
+              </div>
+            ) : (
+              <div className={`mt-2 rounded-lg border px-2.5 py-2 ${smartCheckTone}`}>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.08em]">Smart check</div>
+                <p className="mt-0.5 text-[11px] leading-4">
+                  {readinessCount}/{readinessItems.length} core steps ready.
+                  {readinessCount < readinessItems.length ? ` Next: ${nextAction.title.toLowerCase()}.` : " You are ready to review and share."}
+                </p>
+              </div>
+            )}
           </nav>
         )}
 
@@ -4610,6 +4723,19 @@ export function TeamSyncWorkspaceClient() {
             </ExpandableCard>
           </section>
         </div>
+      </div>
+      <div
+        className={`pointer-events-none fixed bottom-4 left-4 z-40 transition-all duration-200 ${
+          showFloatingWizardCta ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+          className="pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff]"
+        >
+          Resume TeamSync setup
+        </button>
       </div>
     </main>
   )
