@@ -788,6 +788,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   ]
   const firstFiveCompleteCount = firstFiveChecklist.filter((item) => item.done).length
   const firstFiveRemainingCount = Math.max(firstFiveChecklist.length - firstFiveCompleteCount, 0)
+  const isWizardFocusActive = isGuidedMode && showStepGuidance
   const isFirstTimeMinimalMode = showOnboardingGuide && firstFiveCompleteCount <= 3
   const firstFiveNextItem = firstFiveChecklist.find((item) => !item.done) ?? null
   const isFirstFiveComplete = firstFiveCompleteCount === firstFiveChecklist.length
@@ -2138,6 +2139,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     setIsMenuRolledUp(false)
     setShowStepGuidance(true)
     setIsGuidedMode(true)
+    setIsContextRailOpen(false)
+    setShowAdvancedTools(false)
     openAndScroll(wizardAction.sectionKey, wizardAction.href)
   }
 
@@ -2212,6 +2215,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
         </div>
 
+        {!isWizardFocusActive ? (
         <section className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -2296,8 +2300,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             </div>
           ) : null}
         </section>
+        ) : null}
 
-        {showSetupCelebration ? (
+        {showSetupCelebration && !isWizardFocusActive ? (
           <section className="mb-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -2639,6 +2644,12 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </section>
         )}
 
+        {isWizardFocusActive ? (
+          <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            Wizard focus mode is active. Secondary panels are hidden so you can finish this step without distractions.
+          </div>
+        ) : null}
+
         {showOnboardingGuide && !isGuidedMode && !showStepGuidance ? (
           <section className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 shadow-sm">
             <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-800">New user quick start</div>
@@ -2893,7 +2904,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           ) : null}
         </section>
 
-        <section id="saved-library" className={`mb-7 rounded-[2rem] border border-[#d9e6f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f3f8fc_100%)] p-7 shadow-sm ${activeStep === "documents" ? "" : "hidden"}`}>
+        <section id="saved-library" className={`mb-7 rounded-[2rem] border border-[#d9e6f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f3f8fc_100%)] p-7 shadow-sm ${activeStep === "documents" && !isWizardFocusActive ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Saved library</div>
@@ -5967,7 +5978,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
         </div>
       </div>
-      {showAdvancedTools ? (
+      {showAdvancedTools && !isWizardFocusActive ? (
         <aside
           className={`fixed top-24 z-40 hidden w-[320px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block ${
             isContextRailOpen ? "right-[344px]" : "right-4"
@@ -6046,7 +6057,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           ) : null}
         </aside>
       ) : null}
-      {isContextRailOpen ? (
+      {isContextRailOpen && !isWizardFocusActive ? (
         <aside className="fixed right-4 top-24 z-40 hidden w-[320px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -6098,7 +6109,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       ) : null}
       <div
         className={`pointer-events-none fixed bottom-4 left-4 z-40 transition-all duration-200 ${
-          showFloatingWizardCta ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+          showFloatingWizardCta && !isWizardFocusActive ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
         }`}
       >
         <button
