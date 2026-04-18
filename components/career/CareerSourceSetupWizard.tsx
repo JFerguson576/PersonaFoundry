@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
 import { CAREER_SOURCE_TYPE_OPTIONS, CAREER_SOURCE_WIZARD_STEPS, type CareerSourceTypeValue } from "@/lib/career-workflow"
 import { validateCareerUploadFile } from "@/lib/career-upload-client"
 const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
+const DRAFT_KEY_PREFIX = "career-source-draft"
 
 type Props = {
   candidateId: string
@@ -46,6 +47,10 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
 
   const selectedOption = CAREER_SOURCE_TYPE_OPTIONS.find((option) => option.value === sourceType) ?? CAREER_SOURCE_TYPE_OPTIONS[0]
   const remainingWizardSteps = Math.max(CAREER_SOURCE_WIZARD_STEPS.length - completedTypes.size, 0)
+  const wizardPercent = Math.round((completedTypes.size / Math.max(CAREER_SOURCE_WIZARD_STEPS.length, 1)) * 100)
+  const stepCountLabel = `${Math.min(stepIndex + 1, CAREER_SOURCE_WIZARD_STEPS.length)}/${CAREER_SOURCE_WIZARD_STEPS.length}`
+
+  const activeDraftKey = `${DRAFT_KEY_PREFIX}:${candidateId}:${sourceType}`
 
   function moveToNextMissing() {
     const nextType = CAREER_SOURCE_WIZARD_STEPS[nextIncompleteIndex] ?? CAREER_SOURCE_WIZARD_STEPS[0]
@@ -56,6 +61,60 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   function markDone(type: CareerSourceTypeValue) {
     setLocalCompletions((current) => new Set(current).add(type))
   }
+
+  function clearActiveDraft() {
+    if (typeof window === "undefined") return
+    window.localStorage.removeItem(activeDraftKey)
+  }
+
+  function skipCurrentStep() {
+    const next = Math.min(CAREER_SOURCE_WIZARD_STEPS.length - 1, stepIndex + 1)
+    setStepIndex(next)
+    setSourceType(CAREER_SOURCE_WIZARD_STEPS[next])
+    setMessage(`Skipped ${selectedOption.label} for now. You can return any time.`)
+  }
+
+  function markCurrentStepComplete() {
+    markDone(sourceType)
+    clearActiveDraft()
+    setTitle("")
+    setContentText("")
+    setPendingFile(null)
+    setSelectedFileName("")
+    setMessage(`${selectedOption.label} marked complete.`)
+    if (wizardMode) {
+      window.setTimeout(() => moveToNextMissing(), 60)
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const saved = window.localStorage.getItem(activeDraftKey)
+      if (!saved) {
+        setTitle("")
+        setContentText("")
+        return
+      }
+      const parsed = JSON.parse(saved) as { title?: string; contentText?: string } | null
+      setTitle(typeof parsed?.title === "string" ? parsed.title : "")
+      setContentText(typeof parsed?.contentText === "string" ? parsed.contentText : "")
+    } catch {
+      setTitle("")
+      setContentText("")
+    }
+  }, [activeDraftKey])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const hasDraft = title.trim().length > 0 || contentText.trim().length > 0
+    if (!hasDraft) {
+      window.localStorage.removeItem(activeDraftKey)
+      return
+    }
+    const payload = JSON.stringify({ title, contentText, updatedAt: new Date().toISOString() })
+    window.localStorage.setItem(activeDraftKey, payload)
+  }, [activeDraftKey, title, contentText])
 
   async function handleFileUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -104,6 +163,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setPendingFile(null)
       setTitle("")
       setContentText("")
+      clearActiveDraft()
       markDone(sourceType)
       setMessage(`Uploaded and saved ${json.file_name || pendingFile.name} into the workspace.`)
       notifyCareerWorkspaceRefresh()
@@ -138,6 +198,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setTitle("")
       setContentText("")
       setSelectedFileName("")
+      clearActiveDraft()
       markDone(sourceType)
       setMessage("Source material saved.")
       notifyCareerWorkspaceRefresh()
@@ -179,6 +240,15 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-600">
         Setup progress {completedTypes.size}/{CAREER_SOURCE_WIZARD_STEPS.length}
       </div>
+      <div className="rounded-2xl border border-sky-200 bg-white px-3 py-2">
+        <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+          <span>Step {stepCountLabel}</span>
+          <span>{wizardPercent}% complete</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky-100">
+          <div className="h-full rounded-full bg-[#0a66c2] transition-all duration-300" style={{ width: `${wizardPercent}%` }} />
+        </div>
+      </div>
       {remainingWizardSteps > 0 ? (
         <div className="rounded-xl border border-[#c7dcff] bg-[#eef6ff] px-3 py-2 text-xs text-[#0a4a82]">
           Wizard active: {remainingWizardSteps} source {remainingWizardSteps === 1 ? "step" : "steps"} still recommended.
@@ -199,7 +269,8 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => { const prev = Math.max(0, stepIndex - 1); setStepIndex(prev); setSourceType(CAREER_SOURCE_WIZARD_STEPS[prev]) }} disabled={stepIndex === 0} className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50">Back</button>
-              <button type="button" onClick={() => { const next = Math.min(CAREER_SOURCE_WIZARD_STEPS.length - 1, stepIndex + 1); setStepIndex(next); setSourceType(CAREER_SOURCE_WIZARD_STEPS[next]) }} disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1} className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50">Skip</button>
+              <button type="button" onClick={skipCurrentStep} disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1} className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50">Skip for now</button>
+              <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Mark complete</button>
             </div>
           </div>
         </div>
@@ -220,6 +291,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       <div>
         <label className="mb-1 block text-sm font-medium">Title</label>
         <input value={title} onChange={(event) => setTitle(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" placeholder={selectedOption.suggestedTitle} />
+        <p className="mt-1 text-[11px] text-neutral-500">Draft autosaves for this step.</p>
       </div>
 
       <div>
