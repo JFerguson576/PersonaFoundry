@@ -787,6 +787,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
   ]
   const firstFiveCompleteCount = firstFiveChecklist.filter((item) => item.done).length
+  const firstFiveRemainingCount = Math.max(firstFiveChecklist.length - firstFiveCompleteCount, 0)
   const isFirstTimeMinimalMode = showOnboardingGuide && firstFiveCompleteCount <= 3
   const firstFiveNextItem = firstFiveChecklist.find((item) => !item.done) ?? null
   const isFirstFiveComplete = firstFiveCompleteCount === firstFiveChecklist.length
@@ -2224,9 +2225,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <button
                   type="button"
                   onClick={openWizardFlow}
-                  className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_0_0_2px_rgba(10,102,194,0.2)] hover:bg-[#0958a8]"
+                  className={`rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_0_0_2px_rgba(10,102,194,0.2)] hover:bg-[#0958a8] ${
+                    showOnboardingGuide ? "wizard-spotlight" : ""
+                  }`}
                 >
-                  Open wizard
+                  Wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 {showFirstFiveCompact ? (
                   <button
@@ -2408,9 +2411,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <button
                   type="button"
                   onClick={openWizardFlow}
-                  className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-[0_0_0_1px_rgba(10,102,194,0.2)] hover:bg-[#dcecff]"
+                  className={`rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-[0_0_0_1px_rgba(10,102,194,0.2)] hover:bg-[#dcecff] ${
+                    showOnboardingGuide ? "wizard-spotlight-soft" : ""
+                  }`}
                 >
-                  Open wizard
+                  Wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 <button
                   type="button"
@@ -6099,9 +6104,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         <button
           type="button"
           onClick={openWizardFlow}
-          className="pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff]"
+          className={`pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff] ${
+            showOnboardingGuide ? "wizard-spotlight-soft" : ""
+          }`}
         >
-          Resume Career setup
+          Resume setup{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
         </button>
       </div>
       {toast ? (
