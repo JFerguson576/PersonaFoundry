@@ -1294,6 +1294,7 @@ export function TeamSyncWorkspaceClient() {
   const membersRef = useRef<TeamMember[]>([])
   const runHistoryRef = useRef<RunResult[]>([])
   const insightsPanelsRef = useRef<HTMLDivElement | null>(null)
+  const memberUploadInputRef = useRef<HTMLInputElement | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [activeStep, setActiveStep] = useState("overview")
   const [isFocusMode, setIsFocusMode] = useState(true)
@@ -1306,8 +1307,10 @@ export function TeamSyncWorkspaceClient() {
   const [memberName, setMemberName] = useState("")
   const [memberRole, setMemberRole] = useState("")
   const [memberStrengths, setMemberStrengths] = useState("")
-  const [intakeMode, setIntakeMode] = useState<"manual" | "upload" | "quick">("manual")
+  const [intakeMode, setIntakeMode] = useState<"manual" | "upload" | "quick">("upload")
   const [memberFileLoading, setMemberFileLoading] = useState(false)
+  const [lastUploadedFileName, setLastUploadedFileName] = useState("")
+  const [lastUploadSummary, setLastUploadSummary] = useState("")
   const [members, setMembers] = useState<TeamMember[]>([])
   const [selectedScenarioId, setSelectedScenarioId] = useState(scenarioLibrary[0].id)
   const [customScenarioText, setCustomScenarioText] = useState("")
@@ -1337,7 +1340,7 @@ export function TeamSyncWorkspaceClient() {
   const [historyWithNotesOnly, setHistoryWithNotesOnly] = useState(false)
   const [historyNeedsReviewOnly, setHistoryNeedsReviewOnly] = useState(false)
   const [savedRunsExpanded, setSavedRunsExpanded] = useState(false)
-  const [membersListExpanded, setMembersListExpanded] = useState(false)
+  const [membersListExpanded, setMembersListExpanded] = useState(true)
   const [scenarioAdvancedOpen, setScenarioAdvancedOpen] = useState(false)
   const [showAdvancedInsights, setShowAdvancedInsights] = useState(false)
   const [undoDeletedRuns, setUndoDeletedRuns] = useState<RunResult[]>([])
@@ -1869,6 +1872,17 @@ export function TeamSyncWorkspaceClient() {
   const scenarioReady = scenarioMode === "library" ? Boolean(selectedScenario?.id) : customScenarioText.trim().length > 0
   const runReady = Boolean(latestRun)
   const canRunSimulation = membersReady && scenarioReady && !simulating
+  const runBlockers = [
+    !membersReady ? "Load at least 2 members" : null,
+    !scenarioReady ? "Choose or write a scenario" : null,
+  ].filter((item): item is string => Boolean(item))
+  const scenarioModeLabel = scenarioMode === "library" ? "Saved scenario card" : "Custom scenario"
+  const scenarioSummaryLabel =
+    scenarioMode === "library"
+      ? selectedScenario
+        ? `${selectedScenario.category} | ${selectedScenario.title}`
+        : "No scenario selected"
+      : customScenarioText.trim() || "Custom scenario not written yet"
   const readinessItems: Array<{ label: string; ready: boolean; detailReady: string; detailNotReady: string }> = [
     {
       label: "Members loaded",
@@ -2070,6 +2084,8 @@ export function TeamSyncWorkspaceClient() {
 
   async function handleStrengthFileUpload(file: File) {
     setMemberFileLoading(true)
+    setLastUploadedFileName(file.name)
+    setLastUploadSummary("Reading file...")
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -2082,6 +2098,7 @@ export function TeamSyncWorkspaceClient() {
       const payload = await response.json()
       if (!response.ok) {
         setMessage(payload.error || "Could not read uploaded strengths file.")
+        setLastUploadSummary("Upload failed. Please try another file.")
         return
       }
       const extractedText = typeof payload.content_text === "string" ? payload.content_text : ""
@@ -2089,12 +2106,15 @@ export function TeamSyncWorkspaceClient() {
       if (detected.length > 0) {
         setMemberStrengths(detected.join(", "))
         setMessage(`Loaded ${detected.length} Gallup strengths from file.`)
+        setLastUploadSummary(`${detected.length} strengths detected. Review and click Add member.`)
       } else {
         setMemberStrengths(extractedText.slice(0, 800))
         setMessage("File loaded. Please confirm strengths before adding member.")
+        setLastUploadSummary("No direct Gallup themes detected. Review extracted text before adding member.")
       }
     } catch {
       setMessage("File upload failed. Please try again.")
+      setLastUploadSummary("Upload failed. Please try again.")
     } finally {
       setMemberFileLoading(false)
     }
@@ -2124,6 +2144,7 @@ export function TeamSyncWorkspaceClient() {
     setMemberName("")
     setMemberRole("")
     setMemberStrengths("")
+    setLastUploadSummary("")
     setMessage(`Member added to ${groupName || "your group"}.`)
   }
 
@@ -3383,6 +3404,68 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
 
+            <div className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Loaded members</div>
+                <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                  {members.length} loaded
+                </span>
+              </div>
+              {members.length === 0 ? (
+                <p className="mt-1 text-xs text-[#64748b]">No members loaded yet. Start with Upload Gallup file, then click Add member.</p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {members.slice(0, 8).map((member) => (
+                    <span key={`loaded-pill-${member.id}`} className="rounded-full border border-[#c7d2fe] bg-white px-2 py-1 text-[11px] font-medium text-[#334155]">
+                      {member.name}
+                    </span>
+                  ))}
+                  {members.length > 8 ? (
+                    <span className="rounded-full border border-neutral-300 bg-white px-2 py-1 text-[11px] text-neutral-600">
+                      +{members.length - 8} more
+                    </span>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-2 rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1e3a8a]">Upload helper</div>
+                  <p className="mt-0.5 text-xs text-[#1e3a8a]">1) Upload Gallup file  2) Confirm strengths  3) Add member</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIntakeMode("upload")
+                    memberUploadInputRef.current?.click()
+                  }}
+                  className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
+                >
+                  {memberFileLoading ? "Reading file..." : "Upload Gallup file"}
+                </button>
+              </div>
+              <input
+                ref={memberUploadInputRef}
+                type="file"
+                accept=".txt,.pdf,.doc,.docx"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  void handleStrengthFileUpload(file)
+                  event.currentTarget.value = ""
+                }}
+                className="hidden"
+              />
+              {lastUploadedFileName ? (
+                <div className="mt-2 rounded-xl border border-[#bfdbfe] bg-white px-3 py-2 text-xs text-[#334155]">
+                  <span className="font-semibold">Last file:</span> {lastUploadedFileName}
+                  {lastUploadSummary ? <span className="block mt-0.5 text-[#475569]">{lastUploadSummary}</span> : null}
+                </div>
+              ) : null}
+            </div>
+
             <details className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
               <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">
                 Group settings and backups
@@ -3503,40 +3586,30 @@ export function TeamSyncWorkspaceClient() {
                   onClick={() => setIntakeMode("manual")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "manual" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Paste text
+                  Paste strengths text
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("upload")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "upload" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Upload file
+                  Upload mode
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("quick")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "quick" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Pick themes
+                  Pick from themes
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-[#64748b]">
-                Tip: use <span className="font-semibold">Upload file</span> first if they already have a Gallup report.
+                Use Upload Gallup file above for reports. Use these options only if you want to paste or edit manually.
               </p>
 
               {intakeMode === "upload" ? (
-                <div className="mt-2">
-                  <input
-                    type="file"
-                    accept=".txt,.pdf,.doc,.docx"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0]
-                      if (!file) return
-                      void handleStrengthFileUpload(file)
-                      event.currentTarget.value = ""
-                    }}
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs"
-                  />
+                <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#475569]">
+                  Upload mode is active. Use the <span className="font-semibold">Upload Gallup file</span> button above to choose or replace a file.
                 </div>
               ) : null}
 
@@ -3632,8 +3705,18 @@ export function TeamSyncWorkspaceClient() {
 
           <section id="teamsync-scenario" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
             <h2 className="text-lg font-semibold">Step 3: Scenario Setup</h2>
-              <p className="mt-1 text-xs text-[#475569]">Choose a saved scenario or write your own.</p>
-            {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Pick a scenario before you run.</p> : null}
+            <p className="mt-1 text-xs text-[#475569]">Choose one scenario path, then move to Run simulation.</p>
+            {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Pick or write one scenario before you run.</p> : null}
+            <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Current scenario</div>
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${scenarioReady ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
+                  {scenarioReady ? "Ready" : "Not ready"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{scenarioSummaryLabel}</p>
+              <p className="mt-1 text-xs text-[#475569]">Mode: {scenarioModeLabel}</p>
+            </div>
             <details className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
               <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">More info</summary>
               <div className="mt-2 space-y-1 text-xs text-[#334155]">
@@ -3654,7 +3737,7 @@ export function TeamSyncWorkspaceClient() {
                   scenarioMode === "library" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"
                 }`}
               >
-                Use saved scenario card
+                Use saved scenario
               </button>
               <button
                 type="button"
@@ -3745,7 +3828,13 @@ export function TeamSyncWorkspaceClient() {
               <div>
                 <h2 className="text-lg font-semibold">Step 4: Run Simulation</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Generate behavior, risk, and action outputs for this scenario.</p>
-                {!canRunSimulation ? <p className="mt-1 text-xs font-medium text-[#b45309]">Complete members and scenario first.</p> : null}
+                {!canRunSimulation ? (
+                  <p className="mt-1 text-xs font-medium text-[#b45309]">
+                    {simulating ? "Simulation in progress..." : runBlockers.length > 0 ? `Before running: ${runBlockers.join(" | ")}` : "Complete setup before running."}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs font-medium text-emerald-700">Ready to run.</p>
+                )}
               </div>
               <button
                 type="button"
@@ -3754,11 +3843,11 @@ export function TeamSyncWorkspaceClient() {
                 className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
                   !canRunSimulation ? "cursor-not-allowed bg-[#94a3b8]" : "bg-[#1d4ed8] hover:bg-[#1e40af]"
                 }`}
-              >
+                >
                 {simulating ? "Running simulation..." : "Run simulation"}
               </button>
             </div>
-            <p className="mt-1 text-xs text-[#475569]">You will get behavior, risk, and next-action guidance.</p>
+            <p className="mt-1 text-xs text-[#475569]">Output includes behavior patterns, risk signals, and next-step actions.</p>
 
             <div className="mt-2 grid gap-2 md:grid-cols-4">
               <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">

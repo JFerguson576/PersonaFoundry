@@ -557,6 +557,15 @@ export function OperationsJobsClient() {
     setCollapsedPanels((current) => ({ ...current, [panel]: !current[panel] }))
   }
 
+  function focusPanel(panel: keyof typeof collapsedPanels) {
+    setCollapsedPanels((current) =>
+      Object.keys(current).reduce<typeof current>((next, key) => {
+        next[key as keyof typeof current] = key !== panel
+        return next
+      }, { ...current })
+    )
+  }
+
   function setAllPanelsCollapsed(nextValue: boolean) {
     setCollapsedPanels({
       digest: nextValue,
@@ -648,12 +657,12 @@ export function OperationsJobsClient() {
                   Workflow
                 </summary>
                 <div className="px-2 pb-2">
-                  <button type="button" onClick={() => togglePanel("digest")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Daily digest</button>
-                  <button type="button" onClick={() => togglePanel("recovery")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recovery activity</button>
-                  <button type="button" onClick={() => togglePanel("filters")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Status filters</button>
-                  <button type="button" onClick={() => togglePanel("healthInbox")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Candidate health</button>
-                  <button type="button" onClick={() => togglePanel("background")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Background jobs</button>
-                  <button type="button" onClick={() => togglePanel("live")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Live search runs</button>
+                  <button type="button" onClick={() => focusPanel("digest")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Daily digest</button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recovery activity</button>
+                  <button type="button" onClick={() => focusPanel("filters")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Status filters</button>
+                  <button type="button" onClick={() => focusPanel("healthInbox")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Candidate health</button>
+                  <button type="button" onClick={() => focusPanel("background")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Background jobs</button>
+                  <button type="button" onClick={() => focusPanel("live")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Live search runs</button>
                 </div>
               </details>
               <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { getAuthHeaders } from "@/lib/career-client"
 import { supabase } from "@/lib/supabase"
@@ -146,6 +146,108 @@ type CommunityModerationPost = {
   comments: number
 }
 
+type TesterFeedbackNote = {
+  id: string
+  user_id: string
+  user_email: string | null
+  note_type: "bug" | "improvement" | "question"
+  severity: "low" | "medium" | "high"
+  status: "open" | "in_review" | "resolved"
+  message: string
+  module: string
+  route_path: string
+  full_url: string | null
+  section_anchor: string | null
+  page_title: string | null
+  viewport_width: number | null
+  viewport_height: number | null
+  browser_tz: string | null
+  admin_note: string | null
+  reviewed_by_email: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+type TesterOutreachCampaign = {
+  id: string
+  sent_by_email: string | null
+  audience_status: "all" | "open" | "in_review" | "resolved"
+  audience_module: string | null
+  recipient_count: number
+  subject: string
+  message: string
+  created_at: string
+}
+
+type AdminEconomicsUserRow = {
+  user_id: string
+  user_email: string | null
+  user_name: string
+  plan_code: string
+  billing_status: string
+  monthly_subscription_usd: number
+  monthly_api_budget_usd: number | null
+  monthly_api_cost_usd: number
+  monthly_api_requests: number
+  monthly_tokens: number
+  monthly_margin_usd: number
+  budget_status: "within" | "watch" | "over_budget" | "unbounded"
+  profitability: "positive" | "negative"
+  notes: string | null
+  subscription_updated_at: string | null
+  last_activity_at: string | null
+}
+
+type AdminEconomicsResponse = {
+  month_label: string
+  month_start: string
+  summary: {
+    users: number
+    total_revenue_usd: number
+    total_api_cost_usd: number
+    total_margin_usd: number
+    unprofitable_users: number
+    over_budget_users: number
+  }
+  users: AdminEconomicsUserRow[]
+}
+
+type AgentQualityResponse = {
+  window_days: number
+  summary: {
+    feedback_count: number
+    sessions_with_feedback: number
+    helpful_percent: number
+    needs_attention_percent: number
+    unique_modules: number
+  }
+  by_module: {
+    module: string
+    feedback_count: number
+    helpful: number
+    needs_attention: number
+    helpful_percent: number
+  }[]
+  hotspots: {
+    module: string
+    route_path: string
+    needs_attention: number
+    feedback_count: number
+    needs_attention_percent: number
+  }[]
+  top_prompts: {
+    prompt: string
+    count: number
+  }[]
+  recent_notes: {
+    module: string
+    route_path: string
+    note: string
+    created_at: string
+  }[]
+}
+
 export function AdminDashboardClient() {
   const siteOrigin =
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -186,6 +288,27 @@ export function AdminDashboardClient() {
   const [communityPosts, setCommunityPosts] = useState<CommunityModerationPost[]>([])
   const [loadingCommunityPosts, setLoadingCommunityPosts] = useState(false)
   const [moderatingCommunityPostId, setModeratingCommunityPostId] = useState("")
+  const [testerFeedbackNotes, setTesterFeedbackNotes] = useState<TesterFeedbackNote[]>([])
+  const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
+  const [reviewingTesterFeedbackId, setReviewingTesterFeedbackId] = useState("")
+  const [testerFeedbackStatusFilter, setTesterFeedbackStatusFilter] = useState<"all" | "open" | "in_review" | "resolved">("all")
+  const [testerFeedbackSeverityFilter, setTesterFeedbackSeverityFilter] = useState<"all" | "low" | "medium" | "high">("all")
+  const [testerFeedbackModuleFilter, setTesterFeedbackModuleFilter] = useState("all")
+  const [testerOutreachCampaigns, setTesterOutreachCampaigns] = useState<TesterOutreachCampaign[]>([])
+  const [loadingTesterOutreachCampaigns, setLoadingTesterOutreachCampaigns] = useState(false)
+  const [outreachStatusAudience, setOutreachStatusAudience] = useState<"all" | "open" | "in_review" | "resolved">("open")
+  const [outreachModuleAudience, setOutreachModuleAudience] = useState("all")
+  const [outreachSubjectDraft, setOutreachSubjectDraft] = useState("Thanks for testing Personara")
+  const [outreachMessageDraft, setOutreachMessageDraft] = useState("")
+  const [sendingOutreach, setSendingOutreach] = useState(false)
+  const [economics, setEconomics] = useState<AdminEconomicsResponse | null>(null)
+  const [loadingEconomics, setLoadingEconomics] = useState(false)
+  const [agentQuality, setAgentQuality] = useState<AgentQualityResponse | null>(null)
+  const [loadingAgentQuality, setLoadingAgentQuality] = useState(false)
+  const [editingSubscriptionUserId, setEditingSubscriptionUserId] = useState("")
+  const [subscriptionDraftRevenue, setSubscriptionDraftRevenue] = useState("")
+  const [subscriptionDraftBudget, setSubscriptionDraftBudget] = useState("")
+  const [savingSubscription, setSavingSubscription] = useState(false)
   const [activeSection, setActiveSection] = useState("dashboard-overview")
   const [activeAnchor, setActiveAnchor] = useState("#dashboard-overview")
   const [showWorkflowMap, setShowWorkflowMap] = useState(false)
@@ -194,15 +317,18 @@ export function AdminDashboardClient() {
     "dashboard-overview": false,
     "dashboard-help": false,
     "openai-usage": false,
+    "unit-economics": false,
     "operating-signals": false,
     "acquisition-snapshot": false,
     "feature-activity": false,
     "api-usage-by-feature": false,
+    "agent-quality": false,
     "recent-activity": false,
     "recent-api-calls": false,
     "access-control": false,
     "admin-notebook": false,
     "community-moderation": false,
+    "tester-feedback": false,
     "candidate-workspace-manager": false,
   })
   const [toast, setToast] = useState<{ tone: "success" | "error" | "info"; message: string } | null>(null)
@@ -226,6 +352,7 @@ export function AdminDashboardClient() {
             ...current,
             "dashboard-help": true,
             "openai-usage": true,
+            "unit-economics": true,
             "operating-signals": true,
             "acquisition-snapshot": true,
             "feature-activity": true,
@@ -235,6 +362,7 @@ export function AdminDashboardClient() {
             "access-control": true,
             "admin-notebook": true,
             "community-moderation": true,
+            "tester-feedback": true,
             "candidate-workspace-manager": true,
           }))
         }
@@ -246,6 +374,9 @@ export function AdminDashboardClient() {
         candidateSearch?: string
         ownerSearch?: string
         showAdvancedTools?: boolean
+        testerFeedbackStatusFilter?: "all" | "open" | "in_review" | "resolved"
+        testerFeedbackSeverityFilter?: "all" | "low" | "medium" | "high"
+        testerFeedbackModuleFilter?: string
       }
       if (parsed.collapsedSections) {
         setCollapsedSections((current) => ({ ...current, ...parsed.collapsedSections }))
@@ -254,6 +385,25 @@ export function AdminDashboardClient() {
       if (typeof parsed.candidateSearch === "string") setCandidateSearch(parsed.candidateSearch)
       if (typeof parsed.ownerSearch === "string") setOwnerSearch(parsed.ownerSearch)
       if (typeof parsed.showAdvancedTools === "boolean") setShowAdvancedTools(parsed.showAdvancedTools)
+      if (
+        parsed.testerFeedbackStatusFilter === "all" ||
+        parsed.testerFeedbackStatusFilter === "open" ||
+        parsed.testerFeedbackStatusFilter === "in_review" ||
+        parsed.testerFeedbackStatusFilter === "resolved"
+      ) {
+        setTesterFeedbackStatusFilter(parsed.testerFeedbackStatusFilter)
+      }
+      if (
+        parsed.testerFeedbackSeverityFilter === "all" ||
+        parsed.testerFeedbackSeverityFilter === "low" ||
+        parsed.testerFeedbackSeverityFilter === "medium" ||
+        parsed.testerFeedbackSeverityFilter === "high"
+      ) {
+        setTesterFeedbackSeverityFilter(parsed.testerFeedbackSeverityFilter)
+      }
+      if (typeof parsed.testerFeedbackModuleFilter === "string") {
+        setTesterFeedbackModuleFilter(parsed.testerFeedbackModuleFilter)
+      }
     } catch {}
   }, [])
 
@@ -265,9 +415,21 @@ export function AdminDashboardClient() {
       candidateSearch,
       ownerSearch,
       showAdvancedTools,
+      testerFeedbackStatusFilter,
+      testerFeedbackSeverityFilter,
+      testerFeedbackModuleFilter,
     }
     window.localStorage.setItem(ADMIN_LAYOUT_PREFS_KEY, JSON.stringify(payload))
-  }, [candidateFilter, candidateSearch, collapsedSections, ownerSearch, showAdvancedTools])
+  }, [
+    candidateFilter,
+    candidateSearch,
+    collapsedSections,
+    ownerSearch,
+    showAdvancedTools,
+    testerFeedbackStatusFilter,
+    testerFeedbackSeverityFilter,
+    testerFeedbackModuleFilter,
+  ])
 
   const loadRoleAssignments = useCallback(async () => {
     try {
@@ -336,6 +498,82 @@ export function AdminDashboardClient() {
     }
   }, [showToast])
 
+  const loadTesterFeedbackNotes = useCallback(async () => {
+    setLoadingTesterFeedback(true)
+    try {
+      const response = await fetch("/api/admin/tester-notes", {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load tester notes")
+      }
+      setTesterFeedbackNotes((json.notes ?? []) as TesterFeedbackNote[])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load tester notes"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setLoadingTesterFeedback(false)
+    }
+  }, [showToast])
+
+  const loadTesterOutreachCampaigns = useCallback(async () => {
+    setLoadingTesterOutreachCampaigns(true)
+    try {
+      const response = await fetch("/api/admin/tester-notes/outreach", {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load tester outreach")
+      }
+      setTesterOutreachCampaigns((json.campaigns ?? []) as TesterOutreachCampaign[])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load tester outreach"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setLoadingTesterOutreachCampaigns(false)
+    }
+  }, [showToast])
+
+  const loadEconomics = useCallback(async () => {
+    setLoadingEconomics(true)
+    try {
+      const response = await fetch("/api/admin/economics", {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load unit economics")
+      }
+      setEconomics(json as AdminEconomicsResponse)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load unit economics"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setLoadingEconomics(false)
+    }
+  }, [showToast])
+
+  const loadAgentQuality = useCallback(async () => {
+    setLoadingAgentQuality(true)
+    try {
+      const response = await fetch("/api/admin/agent-quality", {
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load agent quality")
+      }
+      setAgentQuality(json as AgentQualityResponse)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load agent quality"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setLoadingAgentQuality(false)
+    }
+  }, [showToast])
+
   useEffect(() => {
     async function load() {
       const {
@@ -369,7 +607,11 @@ export function AdminDashboardClient() {
       )
       await loadNotebookEntries()
       await loadCommunityPosts()
+      await loadTesterFeedbackNotes()
+      await loadEconomics()
+      await loadAgentQuality()
       if (nextOverview.permissions.is_superuser) {
+        await loadTesterOutreachCampaigns()
         await loadRoleAssignments()
         await loadAccessLevelAssignments()
       }
@@ -390,7 +632,7 @@ export function AdminDashboardClient() {
     })
 
     return () => subscription.unsubscribe()
-  }, [loadAccessLevelAssignments, loadCommunityPosts, loadNotebookEntries, loadRoleAssignments, showToast])
+  }, [loadAccessLevelAssignments, loadAgentQuality, loadCommunityPosts, loadEconomics, loadNotebookEntries, loadRoleAssignments, loadTesterFeedbackNotes, loadTesterOutreachCampaigns, showToast])
 
   async function handleCommunityModeration(
     postId: string,
@@ -420,6 +662,127 @@ export function AdminDashboardClient() {
       showToast({ tone: "error", message: errorMessage })
     } finally {
       setModeratingCommunityPostId("")
+    }
+  }
+
+  async function handleTesterFeedbackReview(
+    noteId: string,
+    updates: { status?: "open" | "in_review" | "resolved"; severity?: "low" | "medium" | "high"; admin_note?: string }
+  ) {
+    setReviewingTesterFeedbackId(noteId)
+    try {
+      const response = await fetch("/api/admin/tester-notes", {
+        method: "PATCH",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: noteId,
+          ...updates,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to update tester note")
+      }
+      const updated = json.note as TesterFeedbackNote
+      setTesterFeedbackNotes((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      showToast({ tone: "success", message: "Tester note updated." })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update tester note"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setReviewingTesterFeedbackId("")
+    }
+  }
+
+  async function handleSendTesterOutreach() {
+    if (!overview?.permissions.is_superuser) {
+      showToast({ tone: "error", message: "Only superusers can send tester outreach emails." })
+      return
+    }
+
+    if (!outreachSubjectDraft.trim() || !outreachMessageDraft.trim()) {
+      showToast({ tone: "error", message: "Add both an outreach subject and message." })
+      return
+    }
+
+    setSendingOutreach(true)
+    try {
+      const response = await fetch("/api/admin/tester-notes/outreach", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audience_status: outreachStatusAudience,
+          audience_module: outreachModuleAudience === "all" ? "" : outreachModuleAudience,
+          subject: outreachSubjectDraft.trim(),
+          message: outreachMessageDraft.trim(),
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to send tester outreach")
+      }
+      await loadTesterOutreachCampaigns()
+      showToast({
+        tone: "success",
+        message: `Outreach sent to ${json.recipients_sent ?? 0} testers (${json.recipients_attempted ?? 0} attempted).`,
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send tester outreach"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setSendingOutreach(false)
+    }
+  }
+
+  async function handleSaveSubscription(userId: string) {
+    if (!overview?.permissions.is_superuser) {
+      showToast({ tone: "error", message: "Only superusers can edit subscription values." })
+      return
+    }
+
+    const revenue = Number(subscriptionDraftRevenue)
+    if (!Number.isFinite(revenue) || revenue < 0) {
+      showToast({ tone: "error", message: "Enter a valid monthly subscription amount." })
+      return
+    }
+    const budget = subscriptionDraftBudget.trim().length === 0 ? null : Number(subscriptionDraftBudget)
+    if (budget !== null && (!Number.isFinite(budget) || budget < 0)) {
+      showToast({ tone: "error", message: "Enter a valid API budget or leave it blank." })
+      return
+    }
+
+    setSavingSubscription(true)
+    try {
+      const response = await fetch("/api/admin/economics", {
+        method: "PATCH",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          monthly_subscription_usd: revenue,
+          monthly_api_budget_usd: budget,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to save subscription settings")
+      }
+      setEditingSubscriptionUserId("")
+      await loadEconomics()
+      showToast({ tone: "success", message: "Subscription guardrail updated." })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save subscription settings"
+      showToast({ tone: "error", message: errorMessage })
+    } finally {
+      setSavingSubscription(false)
     }
   }
 
@@ -823,6 +1186,12 @@ export function AdminDashboardClient() {
   const openAndScroll = useCallback((sectionKey: string, href: string) => {
     setActiveSection(sectionKey)
     setActiveAnchor(href)
+    setCollapsedSections((current) =>
+      Object.keys(current).reduce<Record<string, boolean>>((next, key) => {
+        next[key] = key !== sectionKey
+        return next
+      }, {})
+    )
 
     if (typeof window !== "undefined") {
       window.setTimeout(() => {
@@ -859,6 +1228,25 @@ export function AdminDashboardClient() {
       showToast({ tone: "info", message: `Showing candidate workspaces for ${owner.displayName}.` })
     },
     [openAndScroll, showToast]
+  )
+
+  const testerFeedbackModuleOptions = useMemo(
+    () =>
+      Array.from(new Set(testerFeedbackNotes.map((note) => note.module).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [testerFeedbackNotes]
+  )
+
+  const filteredTesterFeedbackNotes = useMemo(
+    () =>
+      testerFeedbackNotes.filter((note) => {
+        if (testerFeedbackStatusFilter !== "all" && note.status !== testerFeedbackStatusFilter) return false
+        if (testerFeedbackSeverityFilter !== "all" && note.severity !== testerFeedbackSeverityFilter) return false
+        if (testerFeedbackModuleFilter !== "all" && note.module !== testerFeedbackModuleFilter) return false
+        return true
+      }),
+    [testerFeedbackModuleFilter, testerFeedbackNotes, testerFeedbackSeverityFilter, testerFeedbackStatusFilter]
   )
 
   if (!session?.user) {
@@ -1219,19 +1607,32 @@ export function AdminDashboardClient() {
         }
       : null,
   ].filter((item): item is { label: string; value: string; detail: string; toneClass: string; href: string } => Boolean(item))
+  const leadingAgentModule = agentQuality?.by_module?.[0] ?? null
+  const agentHotspot = agentQuality?.hotspots?.[0] ?? null
+  const agentPromptSamples = (agentQuality?.top_prompts ?? []).slice(0, 4)
+  const agentRecentNotes = (agentQuality?.recent_notes ?? []).slice(0, 3)
+  const agentQualityToneClass =
+    (agentQuality?.summary.needs_attention_percent ?? 0) >= 40
+      ? "border-rose-200 bg-rose-50 text-rose-900"
+      : (agentQuality?.summary.needs_attention_percent ?? 0) >= 20
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-emerald-200 bg-emerald-50 text-emerald-900"
 
   const quickLinks = [
     { sectionKey: "dashboard-overview", href: "#dashboard-overview", label: "1. Overview" },
-    { sectionKey: "dashboard-help", href: "#dashboard-help", label: "2. Help" },
-    { sectionKey: "openai-usage", href: "#openai-usage", label: "3. OpenAI usage" },
+    { sectionKey: "openai-usage", href: "#openai-usage", label: "2. OpenAI usage" },
+    { sectionKey: "unit-economics", href: "#unit-economics", label: "3. Unit economics" },
     { sectionKey: "operating-signals", href: "#operating-signals", label: "4. Operating signals" },
     { sectionKey: "acquisition-snapshot", href: "#acquisition-snapshot", label: "5. Acquisition" },
     { sectionKey: "feature-activity", href: "#feature-activity", label: "6. Feature activity" },
     { sectionKey: "api-usage-by-feature", href: "#api-usage-by-feature", label: "7. API insights" },
-    { sectionKey: "community-moderation", href: "#community-moderation", label: "8. Community moderation" },
-    { sectionKey: "access-control", href: "#access-control", label: "9. Access control" },
-    { sectionKey: "admin-notebook", href: "#admin-notebook", label: "10. Notebook" },
-    { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "11. Workspace manager" },
+    { sectionKey: "agent-quality", href: "#agent-quality", label: "8. Agent quality" },
+    { sectionKey: "community-moderation", href: "#community-moderation", label: "9. Community moderation" },
+    { sectionKey: "tester-feedback", href: "#tester-feedback", label: "10. Tester feedback" },
+    { sectionKey: "access-control", href: "#access-control", label: "11. Access control" },
+    { sectionKey: "admin-notebook", href: "#admin-notebook", label: "12. Notebook" },
+    { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "13. Workspace manager" },
+    { sectionKey: "dashboard-help", href: "#dashboard-help", label: "14. Help & to-do" },
   ]
   const sectionSubmenuLinks: Record<string, Array<{ label: string; sectionKey: string; href: string }>> = {
     "dashboard-overview": [
@@ -1244,6 +1645,10 @@ export function AdminDashboardClient() {
     "openai-usage": [
       { label: "Daily and monthly", sectionKey: "openai-usage", href: "#openai-usage" },
       { label: "Budget guardrail", sectionKey: "openai-usage", href: "#openai-usage" },
+    ],
+    "unit-economics": [
+      { label: "Revenue vs API cost", sectionKey: "unit-economics", href: "#unit-economics" },
+      { label: "User margin watchlist", sectionKey: "unit-economics", href: "#unit-economics" },
     ],
     "operating-signals": [
       { label: "Operating ratios", sectionKey: "operating-signals", href: "#operating-signals" },
@@ -1262,9 +1667,17 @@ export function AdminDashboardClient() {
       { label: "Module performance", sectionKey: "api-usage-by-feature", href: "#api-usage-by-feature" },
       { label: "Recent API calls", sectionKey: "api-usage-by-feature", href: "#recent-api-calls" },
     ],
+    "agent-quality": [
+      { label: "Helpfulness trend", sectionKey: "agent-quality", href: "#agent-quality" },
+      { label: "Low-quality hotspots", sectionKey: "agent-quality", href: "#agent-quality" },
+    ],
     "community-moderation": [
       { label: "Moderation queue", sectionKey: "community-moderation", href: "#community-moderation" },
       { label: "Featured highlights", sectionKey: "community-moderation", href: "#community-moderation" },
+    ],
+    "tester-feedback": [
+      { label: "Open bugs and notes", sectionKey: "tester-feedback", href: "#tester-feedback" },
+      { label: "Location context", sectionKey: "tester-feedback", href: "#tester-feedback" },
     ],
     "candidate-workspace-manager": [
       { label: "Workspace manager", sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager" },
@@ -1293,20 +1706,24 @@ export function AdminDashboardClient() {
     {
       title: "Core",
       links: quickLinks.filter((link) =>
-        ["dashboard-overview", "dashboard-help", "openai-usage", "operating-signals"].includes(link.sectionKey)
+        ["dashboard-overview", "openai-usage", "unit-economics", "operating-signals"].includes(link.sectionKey)
       ),
     },
     {
       title: "Activity",
       links: quickLinks.filter((link) =>
-        ["acquisition-snapshot", "feature-activity", "api-usage-by-feature", "recent-activity", "recent-api-calls"].includes(link.sectionKey)
+        ["acquisition-snapshot", "feature-activity", "api-usage-by-feature", "agent-quality"].includes(link.sectionKey)
       ),
     },
     {
       title: "Control",
       links: quickLinks.filter((link) =>
-        ["community-moderation", "access-control", "admin-notebook", "candidate-workspace-manager"].includes(link.sectionKey)
+        ["community-moderation", "tester-feedback", "access-control", "admin-notebook", "candidate-workspace-manager"].includes(link.sectionKey)
       ),
+    },
+    {
+      title: "Help",
+      links: quickLinks.filter((link) => ["dashboard-help"].includes(link.sectionKey)),
     },
   ]
 
@@ -1433,7 +1850,7 @@ export function AdminDashboardClient() {
 
           <div className="min-w-0">
 
-          <section id="dashboard-overview" className="scroll-mt-24 mb-5 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-6 shadow-sm">
+          <section id="dashboard-overview" className="scroll-mt-24 mb-4 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Overview</div>
             <button
@@ -1448,11 +1865,11 @@ export function AdminDashboardClient() {
             <p className="text-sm text-neutral-600">Platform pulse and executive watchlist are collapsed.</p>
           ) : (
             <>
-          <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#536471]">Platform pulse</div>
-              <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-[#0f172a]">A clearer operating view of growth, activity, and cost</h2>
-              <p className="mt-3 text-sm leading-6 text-[#475569]">
+              <h2 className="mt-2 text-[1.8rem] font-semibold tracking-tight text-[#0f172a]">A clearer operating view of growth, activity, and cost</h2>
+              <p className="mt-2 text-sm leading-6 text-[#475569]">
                 Use this view to spot adoption trends, understand where usage is concentrating, and keep the platform tidy by removing stale test workspaces when needed.
               </p>
             </div>
@@ -1461,43 +1878,43 @@ export function AdminDashboardClient() {
               <PulseCard label="Cost per request" value={`$${safeDivision(overview.totals.estimated_cost_usd, overview.totals.total_api_requests).toFixed(4)}`} hint="Estimated AI cost per API request" />
             </div>
           </div>
-          <div className="mt-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-3xl border border-white/80 bg-white/80 p-5">
+          <div className="mt-4 grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-3xl border border-white/80 bg-white/80 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Executive summary</div>
-              <div className="mt-3 text-2xl font-semibold tracking-tight text-[#0f172a]">{executiveHeadline}</div>
-              <p className="mt-3 text-sm leading-6 text-[#475569]">{executiveSubheadline}</p>
+              <div className="mt-2 text-[1.9rem] font-semibold tracking-tight text-[#0f172a] leading-tight">{executiveHeadline}</div>
+              <p className="mt-2 text-sm leading-6 text-[#475569]">{executiveSubheadline}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
               {executiveSnapshotItems.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className={`rounded-2xl border px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:ring-offset-2 ${item.toneClass}`}
+                  className={`rounded-2xl border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:ring-offset-2 ${item.toneClass}`}
                 >
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] opacity-70">{item.label}</div>
-                  <div className="mt-2 text-lg font-semibold">{item.value}</div>
-                  <div className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] opacity-70">Open section</div>
+                  <div className="mt-1 text-lg font-semibold">{item.value}</div>
+                  <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] opacity-70">Open section</div>
                 </a>
               ))}
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-3">
             {executiveWatchlist.length === 0 ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 No immediate watchlist issues are standing out in the current sample.
               </div>
             ) : (
-              <div className="grid gap-3 xl:grid-cols-4">
+              <div className="grid gap-2 xl:grid-cols-4">
                 {executiveWatchlist.map((item) => (
                   <a
                     key={item.label}
                     href={item.href}
-                    className={`rounded-2xl border px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:ring-offset-2 ${item.toneClass}`}
+                    className={`rounded-2xl border px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0a66c2] focus:ring-offset-2 ${item.toneClass}`}
                   >
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] opacity-70">{item.label}</div>
-                    <div className="mt-2 text-base font-semibold">{item.value}</div>
-                    <div className="mt-2 text-sm leading-6 opacity-90">{item.detail}</div>
-                    <div className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] opacity-70">Jump to section</div>
+                    <div className="mt-1 text-base font-semibold">{item.value}</div>
+                    <div className="mt-1 text-sm leading-5 opacity-90">{item.detail}</div>
+                    <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] opacity-70">Jump to section</div>
                   </a>
                 ))}
               </div>
@@ -1539,9 +1956,9 @@ export function AdminDashboardClient() {
           />
         </div>
 
-          <section id="dashboard-help" className="scroll-mt-24 mt-5 rounded-3xl border border-[#d8e4f2] bg-white p-5 shadow-sm">
+          <section id="dashboard-help" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Dashboard help</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Help and to-do</div>
             <button
               type="button"
               onClick={() => toggleSection("dashboard-help")}
@@ -1551,7 +1968,7 @@ export function AdminDashboardClient() {
             </button>
           </div>
           {collapsedSections["dashboard-help"] ? (
-            <p className="text-sm text-neutral-600">Dashboard explanation is collapsed.</p>
+            <p className="text-sm text-neutral-600">Help and next-action checklist is collapsed.</p>
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1574,6 +1991,11 @@ export function AdminDashboardClient() {
                   label="Access + workspace manager"
                   value="Operations"
                   hint="Manage admin roles, ownership visibility, and archive/restore candidate workspaces safely."
+                />
+                <MiniSignalCard
+                  label="To do now"
+                  value="Run weekly admin sweep"
+                  hint="Review alerts, access changes, and stale candidate cleanup each week."
                 />
               </div>
               <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
@@ -1634,7 +2056,7 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-          <section id="openai-usage" className="scroll-mt-24 mt-5 rounded-3xl border border-sky-200 bg-[linear-gradient(180deg,#f8fbff_0%,#edf6ff_100%)] p-5 shadow-sm">
+          <section id="openai-usage" className="scroll-mt-24 mt-4 rounded-3xl border border-sky-200 bg-[linear-gradient(180deg,#f8fbff_0%,#edf6ff_100%)] p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">OpenAI usage</div>
             <button
@@ -1691,8 +2113,8 @@ export function AdminDashboardClient() {
             </div>
           ) : null}
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+          <div className="mt-3 grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
+            <section className="rounded-2xl border border-neutral-200 bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Spend control</div>
@@ -1809,7 +2231,7 @@ export function AdminDashboardClient() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+            <section className="rounded-2xl border border-neutral-200 bg-white p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Cost interpretation</div>
               <div className="mt-3 space-y-3 text-sm leading-6 text-neutral-700">
                 <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
@@ -1828,6 +2250,137 @@ export function AdminDashboardClient() {
           )}
         </section>
 
+        <section id="unit-economics" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Unit economics</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadEconomics()}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSection("unit-economics")}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {collapsedSections["unit-economics"] ? "Expand" : "Collapse"}
+              </button>
+            </div>
+          </div>
+          {collapsedSections["unit-economics"] ? (
+            <p className="text-sm text-neutral-600">Per-user monthly revenue vs API cost guardrails are collapsed.</p>
+          ) : loadingEconomics ? (
+            <p className="text-sm text-neutral-600">Loading unit economics...</p>
+          ) : economics ? (
+            <>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <MiniSignalCard label="Month" value={economics.month_label} hint="Current reporting window" />
+                <MiniSignalCard label="Revenue" value={`$${economics.summary.total_revenue_usd.toFixed(2)}`} hint="Monthly subscription value" />
+                <MiniSignalCard label="API cost" value={`$${economics.summary.total_api_cost_usd.toFixed(4)}`} hint="Estimated monthly model spend" />
+                <MiniSignalCard label="Net margin" value={`$${economics.summary.total_margin_usd.toFixed(4)}`} hint={`${economics.summary.unprofitable_users} unprofitable users`} />
+              </div>
+              <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="text-left text-xs uppercase tracking-[0.12em] text-neutral-500">
+                      <tr>
+                        <th className="px-2 py-2">User</th>
+                        <th className="px-2 py-2">Plan</th>
+                        <th className="px-2 py-2">Revenue</th>
+                        <th className="px-2 py-2">API cost</th>
+                        <th className="px-2 py-2">Margin</th>
+                        <th className="px-2 py-2">Budget status</th>
+                        <th className="px-2 py-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {economics.users.slice(0, 30).map((row) => (
+                        <tr key={`economics-${row.user_id}`} className="border-t border-neutral-200">
+                          <td className="px-2 py-2">
+                            <div className="font-semibold text-neutral-900">{row.user_name}</div>
+                            <div className="text-xs text-neutral-500">{row.user_email || row.user_id}</div>
+                          </td>
+                          <td className="px-2 py-2">{row.plan_code}</td>
+                          <td className="px-2 py-2">${row.monthly_subscription_usd.toFixed(2)}</td>
+                          <td className="px-2 py-2">${row.monthly_api_cost_usd.toFixed(4)}</td>
+                          <td className={`px-2 py-2 font-semibold ${row.monthly_margin_usd >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                            ${row.monthly_margin_usd.toFixed(4)}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                              row.budget_status === "over_budget"
+                                ? "border-rose-300 bg-rose-50 text-rose-700"
+                                : row.budget_status === "watch"
+                                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                                  : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            }`}>
+                              {row.budget_status.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2">
+                            {overview.permissions.is_superuser ? (
+                              editingSubscriptionUserId === row.user_id ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <input
+                                    value={subscriptionDraftRevenue}
+                                    onChange={(event) => setSubscriptionDraftRevenue(event.target.value)}
+                                    className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-xs"
+                                    placeholder="Revenue"
+                                  />
+                                  <input
+                                    value={subscriptionDraftBudget}
+                                    onChange={(event) => setSubscriptionDraftBudget(event.target.value)}
+                                    className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-xs"
+                                    placeholder="Budget"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleSaveSubscription(row.user_id)}
+                                    disabled={savingSubscription}
+                                    className="rounded-md border border-[#0a66c2] bg-[#0a66c2] px-2 py-1 text-xs font-semibold text-white hover:bg-[#004182] disabled:opacity-60"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingSubscriptionUserId("")}
+                                    className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSubscriptionUserId(row.user_id)
+                                    setSubscriptionDraftRevenue(String(row.monthly_subscription_usd))
+                                    setSubscriptionDraftBudget(row.monthly_api_budget_usd === null ? "" : String(row.monthly_api_budget_usd))
+                                  }}
+                                  className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                                >
+                                  Edit
+                                </button>
+                              )
+                            ) : (
+                              <span className="text-xs text-neutral-500">View only</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-neutral-600">Unit economics data not available yet.</p>
+          )}
+        </section>
+
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {executiveAdminSignals.map((signal) => (
             <ExecutiveAdminSignalCard
@@ -1840,7 +2393,7 @@ export function AdminDashboardClient() {
           ))}
         </div>
 
-          <section id="operating-signals" className="scroll-mt-24 mt-5 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-5 shadow-sm">
+          <section id="operating-signals" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Operating signals</div>
             <button
@@ -1854,8 +2407,8 @@ export function AdminDashboardClient() {
           {collapsedSections["operating-signals"] ? (
             <p className="text-sm text-neutral-600">Efficiency, data quality, and superuser signal cards are collapsed.</p>
           ) : (
-            <div className="grid gap-6 xl:grid-cols-3">
-          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-6 shadow-sm">
+            <div className="grid gap-3 xl:grid-cols-3">
+          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">Operating ratios</h2>
@@ -1873,7 +2426,7 @@ export function AdminDashboardClient() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-6 shadow-sm">
+          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm">
             <h2 className="text-xl font-semibold">Candidate data quality</h2>
             <p className="mt-2 text-sm text-neutral-600">Shows how complete the current candidate directory is for core fields.</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
@@ -1883,7 +2436,7 @@ export function AdminDashboardClient() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-6 shadow-sm">
+          <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm">
             <h2 className="text-xl font-semibold">Superuser console</h2>
             <p className="mt-2 text-sm text-neutral-600">Keep the system tidy by tracking stale records and acting on selected candidate workspaces.</p>
             <div className="mt-4 space-y-3">
@@ -1916,8 +2469,8 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-3">
-          <section id="acquisition-snapshot" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="mt-4 grid gap-3 xl:grid-cols-3">
+          <section id="acquisition-snapshot" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Acquisition</div>
               <button
@@ -1959,7 +2512,7 @@ export function AdminDashboardClient() {
             )}
           </section>
 
-          <section id="feature-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section id="feature-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Feature activity</div>
               <button
@@ -1989,7 +2542,7 @@ export function AdminDashboardClient() {
             )}
           </section>
 
-          <section id="api-usage-by-feature" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section id="api-usage-by-feature" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">API insights</div>
               <button
@@ -2021,11 +2574,138 @@ export function AdminDashboardClient() {
           </section>
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <section id="recent-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <section id="agent-quality" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-3 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Agent quality</div>
+              <div className="mt-1 text-[11px] text-neutral-600">Experience Assistant quality in one compact view</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadAgentQuality()}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSection("agent-quality")}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {collapsedSections["agent-quality"] ? "Expand" : "Collapse"}
+              </button>
+            </div>
+          </div>
+          {collapsedSections["agent-quality"] ? (
+            <p className="text-sm text-neutral-600">Agent quality signals are collapsed.</p>
+          ) : loadingAgentQuality ? (
+            <p className="text-sm text-neutral-600">Loading agent quality signals...</p>
+          ) : !agentQuality ? (
+            <p className="text-sm text-neutral-600">Agent quality data is not available yet.</p>
+          ) : (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <CompactStatChip label="Helpful" value={`${agentQuality.summary.helpful_percent}%`} toneClass="border-emerald-200 bg-emerald-50 text-emerald-900" />
+                <CompactStatChip label="Needs attention" value={`${agentQuality.summary.needs_attention_percent}%`} toneClass="border-amber-200 bg-amber-50 text-amber-900" />
+                <CompactStatChip label="Rated sessions" value={String(agentQuality.summary.sessions_with_feedback)} toneClass="border-sky-200 bg-sky-50 text-sky-900" />
+                <CompactStatChip
+                  label="Feedback entries"
+                  value={`${agentQuality.summary.feedback_count} (${agentQuality.window_days}d)`}
+                  toneClass="border-neutral-200 bg-neutral-50 text-neutral-800"
+                />
+              </div>
+
+              <div className="mt-3 grid gap-3 xl:grid-cols-3">
+                <div className={`rounded-2xl border p-4 ${agentQualityToneClass}`}>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em]">Leading module</div>
+                  <div className="mt-2 text-base font-semibold">{leadingAgentModule ? formatModuleName(leadingAgentModule.module) : "No module data"}</div>
+                  <p className="mt-1 text-xs">
+                    {leadingAgentModule
+                      ? `${leadingAgentModule.feedback_count} ratings | ${leadingAgentModule.helpful_percent}% helpful`
+                      : "No feedback has been captured yet."}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em]">Top hotspot</div>
+                  <div className="mt-2 text-base font-semibold">{agentHotspot ? formatModuleName(agentHotspot.module) : "No hotspot yet"}</div>
+                  <p className="mt-1 text-xs">
+                    {agentHotspot
+                      ? `${agentHotspot.needs_attention} of ${agentHotspot.feedback_count} ratings need attention (${agentHotspot.needs_attention_percent}%).`
+                      : "No low-quality clusters have appeared."}
+                  </p>
+                  {agentHotspot ? <p className="mt-1 text-[11px]">{agentHotspot.route_path}</p> : null}
+                </div>
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em]">Common asks</div>
+                  <div className="mt-2 space-y-1 text-xs">
+                    {agentPromptSamples.length === 0 ? (
+                      <p>No prompt pattern data yet.</p>
+                    ) : (
+                      agentPromptSamples.map((item, index) => (
+                        <p key={`agent-prompt-${index}`} className="truncate">
+                          {item.count}x {item.prompt}
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {false ? (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-950">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em]">Recent low-rating notes</div>
+                  <div className="mt-2 space-y-2">
+                    {agentRecentNotes.map((item, index) => (
+                      <div key={`agent-note-${index}`} className="rounded-xl border border-rose-200 bg-white/80 px-3 py-2 text-sm">
+                        <div className="font-semibold">{formatModuleName(item.module)} · {item.route_path}</div>
+                        <div className="mt-1">{item.note}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                <details className="rounded-2xl border border-neutral-200 bg-white p-3" open>
+                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">
+                    Module breakdown
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    {(agentQuality.by_module ?? []).slice(0, 5).map((item) => (
+                      <div key={`agent-module-${item.module}`} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs">
+                        <div className="font-semibold text-neutral-900">{formatModuleName(item.module)}</div>
+                        <div className="mt-1 text-neutral-700">
+                          {item.helpful_percent}% helpful | {item.feedback_count} ratings
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+                <details className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-rose-950" open={agentRecentNotes.length > 0}>
+                  <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.14em]">Recent low-rating notes</summary>
+                  {agentRecentNotes.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {agentRecentNotes.map((item, index) => (
+                        <div key={`agent-note-${index}`} className="rounded-lg border border-rose-200 bg-white/80 px-2.5 py-2 text-xs">
+                          <div className="font-semibold">{formatModuleName(item.module)} | {item.route_path}</div>
+                          <div className="mt-1">{item.note}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs">No notes captured yet.</p>
+                  )}
+                </details>
+              </div>
+            </>
+          )}
+        </section>
+
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          <section id="recent-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold">Feature activity</h2>
+                <h2 className="text-xl font-semibold">Recent activity</h2>
                 <p className="mt-2 text-sm text-neutral-600">Shows where user actions are concentrating right now.</p>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
@@ -2047,10 +2727,10 @@ export function AdminDashboardClient() {
             </div>
           </section>
 
-          <section id="recent-api-calls" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <section id="recent-api-calls" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold">API usage by feature</h2>
+                <h2 className="text-xl font-semibold">Recent API calls</h2>
                 <p className="mt-2 text-sm text-neutral-600">Highlights where model traffic and cost are clustering.</p>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
@@ -2309,7 +2989,7 @@ export function AdminDashboardClient() {
 
         <section
           id="community-moderation"
-          className="mt-5 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-sm"
+                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Community moderation</div>
@@ -2327,24 +3007,15 @@ export function AdminDashboardClient() {
             <>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-[1.6rem] font-semibold tracking-tight text-[#0f172a]">Community moderation queue</h2>
+                  <h2 className="text-[1.25rem] font-semibold tracking-tight text-[#0f172a]">Community moderation queue</h2>
                   <p className="mt-2 text-sm text-neutral-600">
                     Review ideas and success stories, then feature or hide posts to keep Community helpful and on-brand.
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Total posts</div>
-                    <div className="mt-1 text-2xl font-semibold">{communityPosts.length}</div>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Featured</div>
-                    <div className="mt-1 text-2xl font-semibold">{communityPosts.filter((post) => post.is_featured).length}</div>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Hidden</div>
-                    <div className="mt-1 text-2xl font-semibold">{communityPosts.filter((post) => post.status === "hidden").length}</div>
-                  </div>
+                  <CompactStatChip label="Total posts" value={String(communityPosts.length)} toneClass="border-neutral-200 bg-neutral-50 text-neutral-800" />
+                  <CompactStatChip label="Featured" value={String(communityPosts.filter((post) => post.is_featured).length)} toneClass="border-amber-200 bg-amber-50 text-amber-900" />
+                  <CompactStatChip label="Hidden" value={String(communityPosts.filter((post) => post.status === "hidden").length)} toneClass="border-rose-200 bg-rose-50 text-rose-900" />
                 </div>
               </div>
 
@@ -2356,7 +3027,7 @@ export function AdminDashboardClient() {
                 ) : (
                   <div className="grid gap-3">
                     {communityPosts.slice(0, 80).map((post) => (
-                      <div key={post.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4">
+                      <div key={post.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="max-w-3xl">
                             <div className="flex flex-wrap items-center gap-2">
@@ -2372,10 +3043,10 @@ export function AdminDashboardClient() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-2 text-base font-semibold text-neutral-900">{post.title}</div>
-                            <div className="mt-1 text-sm text-neutral-600">{post.summary || post.body}</div>
+                            <div className="mt-1.5 text-sm font-semibold text-neutral-900">{post.title}</div>
+                            <div className="mt-1 text-xs text-neutral-600">{post.summary || post.body}</div>
                             <div className="mt-2 text-xs text-neutral-500">
-                              {post.author_name || "Community member"} · {new Date(post.created_at).toLocaleString()} · Upvotes: {post.upvotes} · Comments: {post.comments}
+                              {post.author_name || "Community member"} | {new Date(post.created_at).toLocaleString()} | Upvotes: {post.upvotes} | Comments: {post.comments}
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -2423,8 +3094,278 @@ export function AdminDashboardClient() {
         </section>
 
         <section
+          id="tester-feedback"
+          className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm"
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Tester feedback</div>
+            <button
+              type="button"
+              onClick={() => toggleSection("tester-feedback")}
+              className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {collapsedSections["tester-feedback"] ? "Expand" : "Collapse"}
+            </button>
+          </div>
+          {collapsedSections["tester-feedback"] ? (
+            <p className="text-sm text-neutral-600">Floating tester notes and bug triage are collapsed.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-[1.25rem] font-semibold tracking-tight text-[#0f172a]">Tester notes inbox</h2>
+                  <p className="mt-2 text-sm text-neutral-600">
+                    Notes submitted from the in-app feedback widget with route and section context for faster fixes.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <CompactStatChip label="Open" value={String(testerFeedbackNotes.filter((item) => item.status === "open").length)} toneClass="border-rose-200 bg-rose-50 text-rose-900" />
+                  <CompactStatChip label="In review" value={String(testerFeedbackNotes.filter((item) => item.status === "in_review").length)} toneClass="border-amber-200 bg-amber-50 text-amber-900" />
+                  <CompactStatChip label="Resolved" value={String(testerFeedbackNotes.filter((item) => item.status === "resolved").length)} toneClass="border-emerald-200 bg-emerald-50 text-emerald-900" />
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
+                <label className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                  Status
+                  <select
+                    value={testerFeedbackStatusFilter}
+                    onChange={(event) =>
+                      setTesterFeedbackStatusFilter(event.target.value as "all" | "open" | "in_review" | "resolved")
+                    }
+                    className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm font-medium normal-case text-neutral-800"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_review">In review</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </label>
+                <label className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                  Severity
+                  <select
+                    value={testerFeedbackSeverityFilter}
+                    onChange={(event) => setTesterFeedbackSeverityFilter(event.target.value as "all" | "low" | "medium" | "high")}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm font-medium normal-case text-neutral-800"
+                  >
+                    <option value="all">All severities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+                <label className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                  Module
+                  <select
+                    value={testerFeedbackModuleFilter}
+                    onChange={(event) => setTesterFeedbackModuleFilter(event.target.value)}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm font-medium normal-case text-neutral-800"
+                  >
+                    <option value="all">All modules</option>
+                    {testerFeedbackModuleOptions.map((option) => (
+                      <option key={`tester-module-filter-${option}`} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="self-end rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700">
+                  {filteredTesterFeedbackNotes.length} shown
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
+                {loadingTesterFeedback ? (
+                  <p className="text-sm text-neutral-600">Loading tester feedback...</p>
+                ) : filteredTesterFeedbackNotes.length === 0 ? (
+                  <p className="text-sm text-neutral-600">No tester feedback notes yet.</p>
+                ) : (
+                  <div className="grid gap-3">
+                    {filteredTesterFeedbackNotes.slice(0, 120).map((note) => (
+                      <div key={note.id} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="max-w-3xl">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                                {note.note_type}
+                              </span>
+                              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                                {note.severity}
+                              </span>
+                              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                                {note.status.replace("_", " ")}
+                              </span>
+                            </div>
+                            <div className="mt-1.5 text-sm font-semibold text-neutral-900">{note.user_email || note.user_id}</div>
+                            <div className="mt-1 text-xs text-neutral-700">{note.message}</div>
+                            <div className="mt-2 text-xs text-neutral-500">
+                              {note.module} | {note.route_path}
+                              {note.section_anchor ? `#${note.section_anchor}` : ""} | {new Date(note.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="flex min-w-[220px] flex-col gap-2">
+                            <select
+                              value={note.status}
+                              onChange={(event) =>
+                                void handleTesterFeedbackReview(note.id, {
+                                  status: event.target.value as "open" | "in_review" | "resolved",
+                                })
+                              }
+                              disabled={reviewingTesterFeedbackId === note.id}
+                              className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                            >
+                              <option value="open">Open</option>
+                              <option value="in_review">In review</option>
+                              <option value="resolved">Resolved</option>
+                            </select>
+                            <select
+                              value={note.severity}
+                              onChange={(event) =>
+                                void handleTesterFeedbackReview(note.id, {
+                                  severity: event.target.value as "low" | "medium" | "high",
+                                })
+                              }
+                              disabled={reviewingTesterFeedbackId === note.id}
+                              className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                            >
+                              <option value="low">Low severity</option>
+                              <option value="medium">Medium severity</option>
+                              <option value="high">High severity</option>
+                            </select>
+                            {note.full_url ? (
+                              <a
+                                href={note.full_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-center text-sm font-medium text-[#0a66c2] hover:bg-[#dcecff]"
+                              >
+                                Open location
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {overview.permissions.is_superuser ? (
+                <div className="mt-4 rounded-2xl border border-[#d8e4f2] bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold text-neutral-900">Send tester outreach email</h3>
+                      <p className="mt-1 text-sm text-neutral-600">
+                        Follow up with testers by audience (status/module) and keep campaign history.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void loadTesterOutreachCampaigns()}
+                      className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      Refresh campaigns
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                      Audience status
+                      <select
+                        value={outreachStatusAudience}
+                        onChange={(event) =>
+                          setOutreachStatusAudience(event.target.value as "all" | "open" | "in_review" | "resolved")
+                        }
+                        className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium normal-case text-neutral-800"
+                      >
+                        <option value="open">Open notes</option>
+                        <option value="in_review">In review notes</option>
+                        <option value="resolved">Resolved notes</option>
+                        <option value="all">All notes</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                      Audience module
+                      <select
+                        value={outreachModuleAudience}
+                        onChange={(event) => setOutreachModuleAudience(event.target.value)}
+                        className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium normal-case text-neutral-800"
+                      >
+                        <option value="all">All modules</option>
+                        {testerFeedbackModuleOptions.map((option) => (
+                          <option key={`tester-outreach-module-${option}`} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="mt-3 grid gap-3">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                      Subject
+                      <input
+                        value={outreachSubjectDraft}
+                        onChange={(event) => setOutreachSubjectDraft(event.target.value)}
+                        className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium normal-case text-neutral-800"
+                        placeholder="Thanks for helping us improve Personara"
+                      />
+                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                      Message
+                      <textarea
+                        value={outreachMessageDraft}
+                        onChange={(event) => setOutreachMessageDraft(event.target.value)}
+                        className="mt-1 min-h-[100px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm normal-case text-neutral-800"
+                        placeholder="Share updates, ask for more testing, or request a retest for a fixed issue."
+                      />
+                    </label>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => void handleSendTesterOutreach()}
+                        disabled={sendingOutreach}
+                        className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#004182] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {sendingOutreach ? "Sending..." : "Send outreach"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                      Recent outreach campaigns
+                    </div>
+                    {loadingTesterOutreachCampaigns ? (
+                      <p className="mt-1 text-sm text-neutral-600">Loading campaigns...</p>
+                    ) : testerOutreachCampaigns.length === 0 ? (
+                      <p className="mt-1 text-sm text-neutral-600">No outreach campaigns yet.</p>
+                    ) : (
+                      <div className="mt-2 grid gap-2">
+                        {testerOutreachCampaigns.slice(0, 8).map((campaign) => (
+                          <div key={campaign.id} className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-neutral-900">{campaign.subject}</div>
+                              <div className="text-xs text-neutral-500">{new Date(campaign.created_at).toLocaleString()}</div>
+                            </div>
+                            <div className="mt-1 text-xs text-neutral-600">
+                              {campaign.recipient_count} recipients | status {campaign.audience_status}
+                              {campaign.audience_module ? ` | module ${campaign.audience_module}` : ""}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+        </section>
+
+        <section
           id="access-control"
-                className="mt-5 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-sm"
+                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Access control</div>
@@ -2692,7 +3633,7 @@ export function AdminDashboardClient() {
 
         <section
           id="admin-notebook"
-                className="mt-5 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-sm"
+                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Admin notebook</div>
@@ -2803,7 +3744,7 @@ export function AdminDashboardClient() {
 
         <section
           id="candidate-workspace-manager"
-                className="mt-5 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-5 shadow-sm"
+                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Workspace manager</div>
@@ -3132,6 +4073,15 @@ function MiniSignalCard({ label, value, hint }: { label: string; value: string; 
       <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{label}</div>
       <div className="mt-1 text-xl font-semibold text-neutral-900">{value}</div>
       <div className="mt-1 text-xs text-neutral-600">{hint}</div>
+    </div>
+  )
+}
+
+function CompactStatChip({ label, value, toneClass }: { label: string; value: string; toneClass: string }) {
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${toneClass}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em]">{label}</div>
+      <div className="mt-0.5 text-base font-semibold">{value}</div>
     </div>
   )
 }

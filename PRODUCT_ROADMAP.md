@@ -13,6 +13,33 @@ The long-term direction is to make Career Copilot feel premium, strategic, and v
 
 ## Near-Term Priorities
 
+### Immediate Next Todo
+
+1. TeamSync Step 2 member loading clarity:
+- make loaded members unmistakably visible
+- make the upload action obvious
+- make the "what to click next" path explicit after upload
+
+2. Tester feedback loop (email + floating notes):
+- allow superuser to send tester outreach emails from the control center
+- add a floating notes widget for testers to log improvement ideas and bug notes in context
+- capture and store location context for every note (module, route URL, section anchor, and timestamp)
+- add an admin triage view to review, filter, and resolve tester notes by module/severity/status
+
+3. Monthly API cost guardrail by user (dashboard + control center):
+- show total monthly API usage and estimated cost per user
+- compare each user monthly API cost against their subscription revenue
+- add margin indicator per user (`revenue - API cost`) and portfolio-level operating margin
+- add alerting for unprofitable users/workspaces (cost exceeds subscription threshold)
+- add policy controls to throttle premium automations when user-level cost exceeds plan limits
+- add finance view summary: total monthly subscription revenue vs total monthly API cost vs net operating margin
+
+4. Cross-app Experience Agent:
+- deploy shared in-product guidance agent across Career Intelligence, Persona Foundry, TeamSync, and Control Center
+- provide contextual next-step recommendations tied to current module, route, and workflow stage
+- detect stuck patterns and offer proactive unblock guidance
+- track impact on completion rate, support load, and premium conversion
+
 ### 1. Application Sprint Automation
 
 Create a one-click sprint for a selected role that can start the missing workflow pieces in sequence:
@@ -214,6 +241,22 @@ Immediate todo captured:
 
 Goal:
 Keep operator control simple while reducing accidental over-permissioning as team support expands.
+
+### 9. TeamSync Member Loading Clarity (Next UX Pass)
+
+Improve Step 2 (`Load Members`) so first-time users can instantly tell:
+
+1. Who is already loaded in the current group.
+2. Exactly where to click to upload Gallup files.
+3. What action to take next after selecting a file.
+
+Key UX fixes to implement:
+
+- Add a clear "Loaded members" list/panel directly above the intake form.
+- Add stronger upload affordance (single primary upload CTA with clearer label).
+- Reduce ambiguity between "Paste text", "Upload file", and "Pick themes" with helper text and step state.
+- Show immediate post-upload state confirmation (file parsed, member ready to add, and next action).
+- Tighten intake layout so the active action path is visually obvious.
 
 ## Product Quality Themes
 

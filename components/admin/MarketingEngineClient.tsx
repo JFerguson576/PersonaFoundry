@@ -731,6 +731,15 @@ export function MarketingEngineClient() {
     setCollapsedPanels((current) => ({ ...current, [panel]: !current[panel] }))
   }
 
+  function focusPanel(panel: keyof typeof panelDefaults) {
+    setCollapsedPanels((current) =>
+      Object.keys(current).reduce<typeof current>((next, key) => {
+        next[key as keyof typeof current] = key !== panel
+        return next
+      }, { ...current })
+    )
+  }
+
   function setAllPanelsCollapsed(nextValue: boolean) {
     setCollapsedPanels({
       playbooks: nextValue,
@@ -808,13 +817,13 @@ export function MarketingEngineClient() {
                 Core sections
               </summary>
               <div className="px-2 pb-2">
-                <button type="button" onClick={() => togglePanel("playbooks")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Playbooks</button>
-                <button type="button" onClick={() => togglePanel("recommendations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recommendations</button>
-                <button type="button" onClick={() => togglePanel("alerts")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Alerts</button>
-                <button type="button" onClick={() => togglePanel("integrations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Integrations</button>
-                <button type="button" onClick={() => togglePanel("campaigns")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Campaigns</button>
-                <button type="button" onClick={() => togglePanel("policy")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Policy</button>
-                <button type="button" onClick={() => togglePanel("ledger")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Cash & budget</button>
+                <button type="button" onClick={() => focusPanel("playbooks")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Playbooks</button>
+                <button type="button" onClick={() => focusPanel("recommendations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recommendations</button>
+                <button type="button" onClick={() => focusPanel("alerts")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Alerts</button>
+                <button type="button" onClick={() => focusPanel("integrations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Integrations</button>
+                <button type="button" onClick={() => focusPanel("campaigns")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Campaigns</button>
+                <button type="button" onClick={() => focusPanel("policy")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Policy</button>
+                <button type="button" onClick={() => focusPanel("ledger")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Cash & budget</button>
               </div>
             </details>
             <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
