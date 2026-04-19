@@ -1702,6 +1702,42 @@ export function AdminDashboardClient() {
     activeSubmenuLinks.find((item) => item.href === activeAnchor)?.label ||
     activeSubmenuLinks[0]?.label ||
     "Overview"
+  const sectionVisibilityAliases: Record<string, string> = useMemo(
+    () => ({
+      "recent-activity": "feature-activity",
+      "recent-api-calls": "api-usage-by-feature",
+      "recent-signups": "acquisition-snapshot",
+    }),
+    []
+  )
+
+  const isSectionVisible = useCallback(
+    (sectionKey: string) =>
+      activeSection === sectionKey ||
+      sectionVisibilityAliases[sectionKey] === activeSection ||
+      showAdvancedTools,
+    [activeSection, sectionVisibilityAliases, showAdvancedTools]
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    function syncFromHash() {
+      const hash = window.location.hash || ""
+      const matched = quickLinks.find((item) => item.href === hash)
+      if (!matched) return
+      setActiveSection(matched.sectionKey)
+      setActiveAnchor(matched.href)
+      setCollapsedSections((current) =>
+        Object.keys(current).reduce<Record<string, boolean>>((next, key) => {
+          next[key] = key !== matched.sectionKey
+          return next
+        }, {})
+      )
+    }
+    syncFromHash()
+    window.addEventListener("hashchange", syncFromHash)
+    return () => window.removeEventListener("hashchange", syncFromHash)
+  }, [quickLinks])
   const workflowMapSections = quickLinks.map((link) => ({
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
@@ -1763,7 +1799,7 @@ export function AdminDashboardClient() {
           </p>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
           <aside data-sticky-nav="true" className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Dashboard menu</div>
             <div className="mt-1 text-[11px] text-neutral-600">
@@ -1784,7 +1820,7 @@ export function AdminDashboardClient() {
                         onClick={() => openAndScroll(link.sectionKey, link.href)}
                         className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold transition ${
                           activeSection === link.sectionKey
-                            ? "border-sky-300 bg-sky-100 text-sky-900"
+                            ? "border-sky-300 bg-sky-50 text-sky-800"
                             : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                         }`}
                       >
@@ -1854,7 +1890,7 @@ export function AdminDashboardClient() {
 
           <div className="min-w-0">
 
-          <section id="dashboard-overview" className="scroll-mt-24 mb-4 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-4 shadow-sm">
+          <section id="dashboard-overview" className={`scroll-mt-24 mb-4 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-4 shadow-sm ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Overview</div>
             <button
@@ -1960,7 +1996,7 @@ export function AdminDashboardClient() {
           />
         </div>
 
-          <section id="dashboard-help" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-white p-4 shadow-sm">
+          <section id="dashboard-help" className={`scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-white p-4 shadow-sm ${isSectionVisible("dashboard-help") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Help and to-do</div>
             <button
@@ -2060,7 +2096,7 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-          <section id="openai-usage" className="scroll-mt-24 mt-4 rounded-3xl border border-sky-200 bg-[linear-gradient(180deg,#f8fbff_0%,#edf6ff_100%)] p-4 shadow-sm">
+          <section id="openai-usage" className={`scroll-mt-24 mt-4 rounded-3xl border border-sky-200 bg-[linear-gradient(180deg,#f8fbff_0%,#edf6ff_100%)] p-4 shadow-sm ${isSectionVisible("openai-usage") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">OpenAI usage</div>
             <button
@@ -2254,7 +2290,7 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-        <section id="unit-economics" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4 shadow-sm">
+        <section id="unit-economics" className={`scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4 shadow-sm ${isSectionVisible("unit-economics") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Unit economics</div>
             <div className="flex items-center gap-2">
@@ -2385,7 +2421,7 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className={`mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
           {executiveAdminSignals.map((signal) => (
             <ExecutiveAdminSignalCard
               key={signal.label}
@@ -2397,7 +2433,7 @@ export function AdminDashboardClient() {
           ))}
         </div>
 
-          <section id="operating-signals" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm">
+          <section id="operating-signals" className={`scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm ${isSectionVisible("operating-signals") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Operating signals</div>
             <button
@@ -2473,8 +2509,16 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-3">
-          <section id="acquisition-snapshot" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
+        <div
+          className={`mt-4 grid gap-3 xl:grid-cols-3 ${
+            isSectionVisible("acquisition-snapshot") ||
+            isSectionVisible("feature-activity") ||
+            isSectionVisible("api-usage-by-feature")
+              ? ""
+              : "hidden"
+          }`}
+        >
+          <section id="acquisition-snapshot" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full ${isSectionVisible("acquisition-snapshot") ? "" : "hidden"}`}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Acquisition</div>
               <button
@@ -2516,7 +2560,7 @@ export function AdminDashboardClient() {
             )}
           </section>
 
-          <section id="feature-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
+          <section id="feature-activity" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full ${isSectionVisible("feature-activity") ? "" : "hidden"}`}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Feature activity</div>
               <button
@@ -2546,7 +2590,7 @@ export function AdminDashboardClient() {
             )}
           </section>
 
-          <section id="api-usage-by-feature" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full">
+          <section id="api-usage-by-feature" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm h-full ${isSectionVisible("api-usage-by-feature") ? "" : "hidden"}`}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">API insights</div>
               <button
@@ -2578,7 +2622,7 @@ export function AdminDashboardClient() {
           </section>
         </div>
 
-        <section id="agent-quality" className="scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-3 shadow-sm">
+        <section id="agent-quality" className={`scroll-mt-24 mt-4 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-3 shadow-sm ${isSectionVisible("agent-quality") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Agent quality</div>
@@ -2705,8 +2749,8 @@ export function AdminDashboardClient() {
           )}
         </section>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          <section id="recent-activity" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className={`mt-4 grid gap-3 xl:grid-cols-2 ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
+          <section id="recent-activity" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm ${isSectionVisible("recent-activity") ? "" : "hidden"}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">Recent activity</h2>
@@ -2731,7 +2775,7 @@ export function AdminDashboardClient() {
             </div>
           </section>
 
-          <section id="recent-api-calls" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section id="recent-api-calls" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm ${isSectionVisible("recent-api-calls") ? "" : "hidden"}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">Recent API calls</h2>
@@ -2758,7 +2802,7 @@ export function AdminDashboardClient() {
           </section>
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-3">
+        <div className={`mt-6 grid gap-6 xl:grid-cols-3 ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
           <ActionAlertCard
             title="Failed API calls"
             value={String(failedApiCalls.length)}
@@ -2782,7 +2826,7 @@ export function AdminDashboardClient() {
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-3">
+        <div className={`mt-6 grid gap-6 xl:grid-cols-3 ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
           <TrendCard
             title="Signup trend"
             subtitle="Last 7 days"
@@ -2815,8 +2859,8 @@ export function AdminDashboardClient() {
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <section id="recent-signups" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm xl:col-span-2">
+        <div className={`mt-6 grid gap-6 xl:grid-cols-2 ${isSectionVisible("dashboard-overview") || isSectionVisible("acquisition-snapshot") || isSectionVisible("recent-activity") || isSectionVisible("recent-api-calls") ? "" : "hidden"}`}>
+          <section id="recent-signups" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm xl:col-span-2 ${isSectionVisible("acquisition-snapshot") ? "" : "hidden"}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">Recent signups</h2>
@@ -2993,7 +3037,7 @@ export function AdminDashboardClient() {
 
         <section
           id="community-moderation"
-                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm"
+          className={`mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm ${isSectionVisible("community-moderation") ? "" : "hidden"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Community moderation</div>
@@ -3099,7 +3143,7 @@ export function AdminDashboardClient() {
 
         <section
           id="tester-feedback"
-          className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm"
+          className={`mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm ${isSectionVisible("tester-feedback") ? "" : "hidden"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Tester feedback</div>
@@ -3369,7 +3413,7 @@ export function AdminDashboardClient() {
 
         <section
           id="access-control"
-                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm"
+          className={`mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm ${isSectionVisible("access-control") ? "" : "hidden"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Access control</div>
@@ -3611,7 +3655,11 @@ export function AdminDashboardClient() {
                               Open workspaces
                             </button>
                             <Link
-                              href={`/career?view=owner-preview&owner=${encodeURIComponent(owner.userId)}`}
+                              href={
+                                owner.latestActiveCandidateId
+                                  ? `/career/${owner.latestActiveCandidateId}?view=owner-preview&owner=${encodeURIComponent(owner.userId)}`
+                                  : `/career?view=owner-preview&owner=${encodeURIComponent(owner.userId)}`
+                              }
                               className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-center text-sm font-medium text-sky-800 hover:bg-sky-100"
                             >
                               View as candidate
@@ -3637,7 +3685,7 @@ export function AdminDashboardClient() {
 
         <section
           id="admin-notebook"
-                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm"
+          className={`mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-sm ${isSectionVisible("admin-notebook") ? "" : "hidden"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Admin notebook</div>
@@ -3748,7 +3796,7 @@ export function AdminDashboardClient() {
 
         <section
           id="candidate-workspace-manager"
-                className="mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm"
+          className={`mt-4 scroll-mt-24 rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f7fafe_100%)] p-4 shadow-sm ${isSectionVisible("candidate-workspace-manager") ? "" : "hidden"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Workspace manager</div>
@@ -3972,7 +4020,7 @@ export function AdminDashboardClient() {
                         ) : null}
                         {!candidate.deleted_at && candidate.user_id ? (
                           <Link
-                            href={`/career?view=owner-preview&owner=${encodeURIComponent(candidate.user_id)}`}
+                            href={`/career/${candidate.id}?view=owner-preview&owner=${encodeURIComponent(candidate.user_id)}`}
                             className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-center text-sm font-medium text-sky-800 hover:bg-sky-100"
                           >
                             View owner as candidate

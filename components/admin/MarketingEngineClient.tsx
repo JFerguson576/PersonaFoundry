@@ -200,6 +200,7 @@ export function MarketingEngineClient() {
   const [isRunningPlaybook, setIsRunningPlaybook] = useState("")
   const [showBlueprintModal, setShowBlueprintModal] = useState(false)
   const [collapsedPanels, setCollapsedPanels] = useState<Record<keyof typeof panelDefaults, boolean>>(panelDefaults)
+  const [activePanel, setActivePanel] = useState<keyof typeof panelDefaults>("playbooks")
 
   const [policy, setPolicy] = useState<Policy | null>(null)
   const [policyDraft, setPolicyDraft] = useState({
@@ -361,6 +362,46 @@ export function MarketingEngineClient() {
     if (typeof window === "undefined") return
     window.localStorage.setItem(MARKETING_LAYOUT_PREFS_KEY, JSON.stringify({ collapsedPanels }))
   }, [MARKETING_LAYOUT_PREFS_KEY, collapsedPanels])
+
+  const panelAnchorMap: Record<keyof typeof panelDefaults, string> = useMemo(
+    () => ({
+      playbooks: "marketing-playbooks",
+      recommendations: "marketing-recommendations",
+      alerts: "alerts-policy-risk",
+      integrations: "marketing-integrations",
+      checklist: "marketing-checklist",
+      blueprint: "marketing-blueprint",
+      campaigns: "marketing-campaigns",
+      policy: "marketing-policy",
+      ledger: "marketing-ledger",
+    }),
+    []
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    function syncFromHash() {
+      const hash = window.location.hash.replace(/^#/, "")
+      if (!hash) return
+      const matched = (Object.entries(panelAnchorMap).find(([, anchor]) => anchor === hash)?.[0] ?? null) as
+        | keyof typeof panelDefaults
+        | null
+      if (!matched) return
+      setActivePanel(matched)
+      setCollapsedPanels((current) =>
+        Object.keys(current).reduce<Record<keyof typeof panelDefaults, boolean>>((next, key) => {
+          const panelKey = key as keyof typeof panelDefaults
+          next[panelKey] = panelKey !== matched
+          return next
+        }, {} as Record<keyof typeof panelDefaults, boolean>)
+      )
+    }
+
+    syncFromHash()
+    window.addEventListener("hashchange", syncFromHash)
+    return () => window.removeEventListener("hashchange", syncFromHash)
+  }, [panelAnchorMap])
 
   const reserveStateLabel = useMemo(() => {
     if (!latestSnapshot) return "Not computed"
@@ -708,6 +749,13 @@ export function MarketingEngineClient() {
       }
 
       if (action === "review_critical_alerts") {
+        setActivePanel("alerts")
+        setCollapsedPanels((current) =>
+          Object.keys(current).reduce<typeof current>((next, key) => {
+            next[key as keyof typeof current] = key !== "alerts"
+            return next
+          }, { ...current })
+        )
         if (typeof window !== "undefined") {
           const target = document.querySelector("#alerts-policy-risk")
           if (target instanceof HTMLElement) {
@@ -732,6 +780,7 @@ export function MarketingEngineClient() {
   }
 
   function focusPanel(panel: keyof typeof panelDefaults) {
+    setActivePanel(panel)
     setCollapsedPanels((current) =>
       Object.keys(current).reduce<typeof current>((next, key) => {
         next[key as keyof typeof current] = key !== panel
@@ -739,21 +788,11 @@ export function MarketingEngineClient() {
       }, { ...current })
     )
     if (typeof window !== "undefined") {
-      const panelAnchorMap: Record<keyof typeof panelDefaults, string> = {
-        playbooks: "marketing-playbooks",
-        recommendations: "marketing-recommendations",
-        alerts: "alerts-policy-risk",
-        integrations: "marketing-integrations",
-        checklist: "marketing-checklist",
-        blueprint: "marketing-blueprint",
-        campaigns: "marketing-campaigns",
-        policy: "marketing-policy",
-        ledger: "marketing-ledger",
-      }
       const targetId = panelAnchorMap[panel]
       window.setTimeout(() => {
         const target = document.getElementById(targetId)
         if (!target) return
+        window.location.hash = `#${targetId}`
         target.scrollIntoView({ behavior: "smooth", block: "start" })
         target.classList.add("ring-2", "ring-sky-300", "ring-offset-2")
         window.setTimeout(() => {
@@ -776,6 +815,11 @@ export function MarketingEngineClient() {
       ledger: nextValue,
     })
   }
+
+  const isPanelVisible = useCallback(
+    (panel: keyof typeof panelDefaults) => panel === activePanel,
+    [activePanel]
+  )
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
@@ -840,13 +884,15 @@ export function MarketingEngineClient() {
                 Core sections
               </summary>
               <div className="px-2 pb-2">
-                <button type="button" onClick={() => focusPanel("playbooks")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Playbooks</button>
-                <button type="button" onClick={() => focusPanel("recommendations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recommendations</button>
-                <button type="button" onClick={() => focusPanel("alerts")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Alerts</button>
-                <button type="button" onClick={() => focusPanel("integrations")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Integrations</button>
-                <button type="button" onClick={() => focusPanel("campaigns")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Campaigns</button>
-                <button type="button" onClick={() => focusPanel("policy")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Policy</button>
-                <button type="button" onClick={() => focusPanel("ledger")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Cash & budget</button>
+                <button type="button" onClick={() => focusPanel("playbooks")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "playbooks" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Playbooks</button>
+                <button type="button" onClick={() => focusPanel("recommendations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recommendations" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recommendations</button>
+                <button type="button" onClick={() => focusPanel("alerts")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "alerts" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Alerts</button>
+                <button type="button" onClick={() => focusPanel("integrations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "integrations" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Integrations</button>
+                <button type="button" onClick={() => focusPanel("checklist")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "checklist" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Setup checklist</button>
+                <button type="button" onClick={() => focusPanel("blueprint")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "blueprint" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Blueprint</button>
+                <button type="button" onClick={() => focusPanel("campaigns")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "campaigns" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Campaigns</button>
+                <button type="button" onClick={() => focusPanel("policy")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "policy" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Policy</button>
+                <button type="button" onClick={() => focusPanel("ledger")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "ledger" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Cash & budget</button>
               </div>
             </details>
             <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
@@ -869,7 +915,7 @@ export function MarketingEngineClient() {
           <MetricCard label="Reserve state" value={reserveStateLabel} tone={latestSnapshot?.reserve_status === "critical" ? "danger" : "normal"} />
         </section>
 
-        <section id="marketing-playbooks" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-playbooks" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("playbooks") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Playbooks</h2>
             <div className="flex items-center gap-2">
@@ -921,7 +967,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-recommendations" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-recommendations" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("recommendations") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Recommendations and approvals</h2>
             <div className="flex items-center gap-2">
@@ -1145,7 +1191,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="alerts-policy-risk" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="alerts-policy-risk" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("alerts") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Alerts and policy risk</h2>
             <div className="flex items-center gap-2">
@@ -1271,7 +1317,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-integrations" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-integrations" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("integrations") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Integrations health</h2>
             <div className="flex items-center gap-2">
@@ -1317,7 +1363,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-checklist" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-checklist" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("checklist") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Setup checklist</h2>
             <div className="flex items-center gap-2">
@@ -1428,7 +1474,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-blueprint" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-blueprint" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("blueprint") ? "" : "hidden"}`}>
           <div className="mb-2 flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Overview blueprint</div>
@@ -1477,7 +1523,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-campaigns" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-campaigns" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("campaigns") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Campaign workspace</h2>
             <div className="flex items-center gap-2">
@@ -1622,7 +1668,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-policy" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-policy" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("policy") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Policy settings</h2>
             <div className="flex items-center gap-2">
@@ -1698,7 +1744,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="marketing-ledger" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-ledger" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("ledger") ? "" : "hidden"}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Cash and budget snapshots</h2>
             <button

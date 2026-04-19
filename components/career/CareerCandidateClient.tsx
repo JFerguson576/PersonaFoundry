@@ -27,7 +27,6 @@ import { CareerSourceSetupWizard } from "@/components/career/CareerSourceSetupWi
 import { CareerSourceDocumentEditor } from "@/components/career/CareerSourceDocumentEditor"
 import { CareerStrategicDocumentGenerator } from "@/components/career/CareerStrategicDocumentGenerator"
 import { CareerTargetCompanyWorkflow } from "@/components/career/CareerTargetCompanyWorkflow"
-import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import {
   CAREER_WORKSPACE_NAVIGATE_EVENT,
@@ -186,7 +185,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [isSavedWorkExpanded, setIsSavedWorkExpanded] = useState(false)
   const [isFindSavedWorkExpanded, setIsFindSavedWorkExpanded] = useState(false)
   const [showSourceSecondaryPanels, setShowSourceSecondaryPanels] = useState(false)
-  const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
   const [isMyFilesDrawerOpen, setIsMyFilesDrawerOpen] = useState(false)
   const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
   const [issueType, setIssueType] = useState("Workflow confusion")
@@ -438,31 +436,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       window.removeEventListener("keydown", handleEscape)
     }
   }, [openGuideHintId])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    let lastY = window.scrollY
-    const threshold = 12
-
-    const handleScroll = () => {
-      const currentY = window.scrollY
-      const delta = currentY - lastY
-
-      if (currentY < 80) {
-        setShowFloatingWizardCta(true)
-      } else if (delta > threshold) {
-        setShowFloatingWizardCta(false)
-      } else if (delta < -threshold) {
-        setShowFloatingWizardCta(true)
-      }
-
-      lastY = currentY
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
 
   useEffect(() => {
     if (!session?.user?.email) return
@@ -2251,9 +2224,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`w-full px-4 py-4 md:px-6 lg:pl-[260px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`w-full px-4 py-4 md:px-6 lg:pl-[248px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
-        <ExperienceAgentWidget enabled={Boolean(session?.access_token)} />
         {previewOwnerUserId ? (
           <div className="mb-2 rounded-2xl border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-medium text-sky-900">
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
@@ -2314,7 +2286,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight" : ""
                   }`}
                 >
-                  Wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  Agent guide{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 {showFirstFiveCompact ? (
                   <button
@@ -2559,7 +2531,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight-soft" : ""
                   }`}
                 >
-                  Source wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  Agent guide{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 <button
                   type="button"
@@ -2809,7 +2781,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
         {isWizardFocusActive ? (
           <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-            Wizard focus mode is active. Secondary panels are hidden so you can finish this step without distractions.
+            Agent guide mode is active. Secondary panels are hidden so you can finish this step without distractions.
           </div>
         ) : null}
 
@@ -3828,7 +3800,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     </span>
                     {sourceWizardFocusMode ? (
                       <span className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2]">
-                        Wizard focus
+                        Agent focus
                       </span>
                     ) : null}
                     {openSections.source ? <span className="break-words text-xs text-neutral-600">{sectionHeaderMeta.source.prompt}</span> : null}
@@ -3894,7 +3866,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {sourceWizardFocusMode ? (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#c7dcff] bg-[#eef6ff] px-3 py-2 text-xs text-[#0a4a82]">
                   <span>
-                    Wizard is guiding the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
+              Agent guide is handling the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
                   </span>
                   <button
                     type="button"
@@ -6014,7 +5986,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 showOnboardingGuide ? "wizard-spotlight-soft" : ""
               }`}
             >
-              Wizard
+              Agent guide
             </button>
             {!isWizardFocusActive ? (
               <button
@@ -6319,21 +6291,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
         </aside>
       ) : null}
-      <div
-        className={`pointer-events-none fixed bottom-4 left-4 z-40 transition-all duration-200 ${
-          showFloatingWizardCta && !isWizardFocusActive ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={openWizardFlow}
-          className={`pointer-events-auto rounded-full border border-[#0a66c2]/40 bg-white/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] shadow-sm backdrop-blur hover:bg-[#eef6ff] ${
-            showOnboardingGuide ? "wizard-spotlight-soft" : ""
-          }`}
-        >
-          Resume wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
-        </button>
-      </div>
       {isReportIssueOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/35 px-4"

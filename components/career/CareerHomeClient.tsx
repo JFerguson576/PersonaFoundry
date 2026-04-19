@@ -212,7 +212,44 @@ export function CareerHomeClient() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="w-full px-6 py-6 lg:pl-[248px] lg:pr-6">
+        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Career control nav</div>
+          <div className="mt-1 text-[11px] text-neutral-600">Navigate the control center quickly</div>
+          <div className="mt-3 space-y-1.5">
+            {quickLinks.map((link) => (
+              <button
+                key={`career-left-nav-${link.href}`}
+                type="button"
+                onClick={() => openAndScroll(link.sectionKey, link.href)}
+                className={`w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                  activeSection === link.sectionKey
+                    ? "border-sky-300 bg-sky-100 text-sky-900"
+                    : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+          {activeSubmenuLinks.length > 0 ? (
+            <div className="mt-3 border-t border-neutral-200 pt-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current section</div>
+              <div className="mt-2 space-y-1.5">
+                {activeSubmenuLinks.map((item) => (
+                  <button
+                    key={`career-left-submenu-${item.sectionKey}-${item.href}-${item.label}`}
+                    type="button"
+                    onClick={() => openAndScroll(item.sectionKey, item.href)}
+                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-left text-[10px] font-semibold text-neutral-700 hover:bg-white"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </aside>
         <section id="career-overview" className="scroll-mt-24 mb-6 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
@@ -335,7 +372,7 @@ export function CareerHomeClient() {
         ) : (
           <section
             data-sticky-nav="true"
-            className={`sticky top-3 z-30 mb-4 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] shadow-sm backdrop-blur ${
+            className={`sticky top-3 z-30 mb-4 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] shadow-sm backdrop-blur lg:hidden ${
               isMenuRolledUp ? "px-3 py-2" : "p-3"
             }`}
           >

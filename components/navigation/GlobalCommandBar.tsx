@@ -33,6 +33,7 @@ export function GlobalCommandBar() {
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [panelInstanceKey, setPanelInstanceKey] = useState(0)
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState(false)
   const [candidateResults, setCandidateResults] = useState<CandidateQuickPick[]>([])
@@ -53,6 +54,11 @@ export function GlobalCommandBar() {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
+
+  useEffect(() => {
+    setOpen(false)
+    setQuery("")
+  }, [pathname])
 
   useEffect(() => {
     if (!open) return
@@ -97,6 +103,11 @@ export function GlobalCommandBar() {
       .slice(0, 8)
   }, [candidateResults, normalizedQuery])
 
+  function openCommandBar() {
+    setPanelInstanceKey((current) => current + 1)
+    setOpen(true)
+  }
+
   function openHref(href: string) {
     router.push(href)
     setOpen(false)
@@ -113,13 +124,13 @@ export function GlobalCommandBar() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed right-4 top-20 z-[70] rounded-full border border-[#d0d7e2] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#334155] shadow-sm hover:bg-[#f8fafc]"
+        onClick={openCommandBar}
+        className="fixed right-4 top-20 z-[180] rounded-full border border-[#d0d7e2] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#334155] shadow-sm hover:bg-[#f8fafc]"
       >
         Command
       </button>
       {open ? (
-        <div className="fixed inset-0 z-[80] bg-black/25 p-4 sm:p-8" onClick={() => setOpen(false)}>
+        <div key={`command-panel-${panelInstanceKey}`} className="fixed inset-0 z-[190] bg-black/25 p-4 sm:p-8" onClick={() => setOpen(false)}>
           <div
             className="mx-auto max-w-3xl rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-2xl"
             onClick={(event) => event.stopPropagation()}

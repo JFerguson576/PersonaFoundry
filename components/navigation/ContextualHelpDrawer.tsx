@@ -68,7 +68,7 @@ export function ContextualHelpDrawer() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[120] overflow-y-auto bg-black/35 px-2 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-20"
+          className="fixed inset-0 z-[230] overflow-y-auto bg-black/35 px-2 pb-4 pt-[max(5.5rem,env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-24"
           onClick={() => setOpen(false)}
         >
           <div className="flex min-h-full items-start justify-end">

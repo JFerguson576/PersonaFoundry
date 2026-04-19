@@ -92,7 +92,13 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (sessionCheck.error) {
     if (isMissingTable(sessionCheck.error)) {
-      return NextResponse.json({ error: "Missing experience agent tables. Run supabase/experience_agent.sql." }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Missing experience agent tables. Run supabase/experience_agent.sql.",
+          table_missing: true,
+        },
+        { status: 400 }
+      )
     }
     return NextResponse.json({ error: sessionCheck.error.message }, { status: 400 })
   }
@@ -160,6 +166,15 @@ export async function POST(request: Request) {
   ])
 
   if (assistantInsertError) {
+    if (isMissingTable(assistantInsertError)) {
+      return NextResponse.json(
+        {
+          error: "Missing experience agent tables. Run supabase/experience_agent.sql.",
+          table_missing: true,
+        },
+        { status: 400 }
+      )
+    }
     return NextResponse.json({ error: assistantInsertError.message }, { status: 400 })
   }
 

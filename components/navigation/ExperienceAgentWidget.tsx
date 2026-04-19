@@ -152,6 +152,13 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
   const [feedbackByMessageId, setFeedbackByMessageId] = useState<Record<string, "up" | "down">>({})
   const moduleName = useMemo(() => mapModuleFromPath(pathname), [pathname])
   const quickPrompts = useMemo(() => modulePromptChips(moduleName), [moduleName])
+  const missingTableMessage = "Agent storage is not enabled yet. Guidance still works."
+
+  function showMissingTableInfo(message = missingTableMessage) {
+    setStatusTone("info")
+    setStatusMessage(message)
+    setFeedbackTableMissing(true)
+  }
 
   async function ensureSession() {
     if (sessionId) return sessionId
@@ -168,9 +175,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       )
       const getJson = await getResponse.json()
       if (getJson?.table_missing) {
-        setStatusTone("info")
-        setStatusMessage("Agent feedback storage is not enabled yet. Guidance still works.")
-        setFeedbackTableMissing(true)
+        showMissingTableInfo()
       }
       if (getResponse.ok && getJson?.session?.id) {
         setSessionId(getJson.session.id)
@@ -191,6 +196,9 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
         }),
       })
       const postJson = await postResponse.json()
+      if (postJson?.table_missing) {
+        showMissingTableInfo()
+      }
       if (!postResponse.ok || !postJson?.session?.id) {
         throw new Error(postJson?.error || "Could not start an agent session")
       }
@@ -198,8 +206,12 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       return postJson.session.id as string
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start agent"
-      setStatusTone("error")
-      setStatusMessage(message)
+      if (message.toLowerCase().includes("missing table")) {
+        showMissingTableInfo()
+      } else {
+        setStatusTone("error")
+        setStatusMessage(message)
+      }
       return ""
     } finally {
       setLoadingSession(false)
@@ -248,6 +260,10 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       })
       const json = await response.json()
       if (!response.ok) {
+        if (json?.table_missing) {
+          showMissingTableInfo()
+          return
+        }
         throw new Error(json?.error || "Agent could not respond")
       }
       const suggested = inferActionFromAssistantReply(moduleName, typeof json.message === "string" ? json.message : "")
@@ -261,8 +277,13 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       }
       setMessages((current) => [...current, assistantMessage])
     } catch (error) {
-      setStatusTone("error")
-      setStatusMessage(error instanceof Error ? error.message : "Agent could not respond")
+      const message = error instanceof Error ? error.message : "Agent could not respond"
+      if (message.toLowerCase().includes("missing table")) {
+        showMissingTableInfo()
+      } else {
+        setStatusTone("error")
+        setStatusMessage(message)
+      }
     } finally {
       setBusy(false)
     }
@@ -289,17 +310,20 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       })
       const json = await response.json()
       if (json?.table_missing) {
-        setFeedbackTableMissing(true)
-        setStatusTone("info")
-        setStatusMessage("Agent feedback storage is not enabled yet. Guidance still works.")
+        showMissingTableInfo()
         return
       }
       if (!response.ok) {
         throw new Error(json?.error || "Could not save feedback")
       }
     } catch (error) {
-      setStatusTone("error")
-      setStatusMessage(error instanceof Error ? error.message : "Could not save feedback")
+      const message = error instanceof Error ? error.message : "Could not save feedback"
+      if (message.toLowerCase().includes("missing table")) {
+        showMissingTableInfo()
+      } else {
+        setStatusTone("error")
+        setStatusMessage(message)
+      }
     }
   }
 
@@ -314,7 +338,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
             await ensureSession()
           }
         }}
-        className={`fixed right-4 top-[max(4.75rem,env(safe-area-inset-top))] z-[130] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+        className={`fixed right-4 top-[max(5.5rem,env(safe-area-inset-top))] z-[220] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
           open ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
@@ -322,7 +346,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       </button>
 
       {open ? (
-        <div className="fixed right-4 top-[max(7.5rem,env(safe-area-inset-top))] z-[132] max-h-[calc(100dvh-8.25rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
+        <div className="fixed right-4 top-[max(8.25rem,env(safe-area-inset-top))] z-[222] max-h-[calc(100dvh-8.75rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Experience Agent</div>
