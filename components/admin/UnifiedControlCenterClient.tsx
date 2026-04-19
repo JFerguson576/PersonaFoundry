@@ -200,38 +200,39 @@ export function UnifiedControlCenterClient() {
 
             <section className="mt-5 grid gap-4 lg:grid-cols-3">
               <DashboardPanel
-                title="Admin Dashboard"
-                subtitle="Users, permissions, API usage, notebook, and candidate workspace controls."
+                title="Operations Hub"
+                subtitle="Unified left-nav workspace for operations, admin controls, marketing engine, and candidate management."
                 tone="blue"
-                stats={[
-                  { label: "Total users", value: formatNumber(admin?.totals.total_users ?? 0) },
-                  { label: "Active users", value: formatNumber(admin?.totals.active_users ?? 0) },
-                ]}
-                ctaHref="/control-center/admin"
-                ctaLabel="Open Admin Dashboard"
-              />
-              <DashboardPanel
-                title="Operations Dashboard"
-                subtitle="Background job health, failed runs, retries, and candidate risk inbox."
-                tone="teal"
                 stats={[
                   { label: "Running jobs", value: formatNumber(runningJobs) },
                   { label: "Queued jobs", value: formatNumber(queuedJobs) },
                   { label: "Failed 24h", value: formatNumber(jobs?.summary.failed_24h ?? 0) },
                 ]}
                 ctaHref="/operations"
-                ctaLabel="Open Operations"
+                ctaLabel="Open Operations Hub"
               />
               <DashboardPanel
-                title="Marketing Engine"
-                subtitle="Cash policy, safe budget, campaign control, recommendations, and alerts."
+                title="Candidate Management"
+                subtitle="Control center view for workspace readiness, live role flow, and candidate progress signals."
+                tone="teal"
+                stats={[
+                  { label: "Total workspaces", value: formatNumber(admin?.totals.total_candidates ?? 0) },
+                  { label: "Profiles generated", value: formatNumber(admin?.totals.total_saved_profiles ?? 0) },
+                ]}
+                ctaHref="/career?view=control"
+                ctaLabel="Open Candidate Control"
+              />
+              <DashboardPanel
+                title="Control summary"
+                subtitle="Quick pulse card for alerts and spend. Full controls are now handled in Operations Hub."
                 tone="violet"
                 stats={[
                   { label: "Open alerts", value: formatNumber(alertsSummary.open) },
-                  { label: "Critical", value: formatNumber(alertsSummary.critical) },
+                  { label: "Critical alerts", value: formatNumber(alertsSummary.critical) },
+                  { label: "Estimated cost", value: formatMoney(admin?.totals.estimated_cost_usd ?? 0) },
                 ]}
-                ctaHref="/control-center/marketing-engine"
-                ctaLabel="Open Marketing Engine"
+                ctaHref="/operations"
+                ctaLabel="Go to Operations Hub"
               />
             </section>
           </>

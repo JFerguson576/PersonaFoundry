@@ -15,9 +15,9 @@ const navItems: NavItem[] = [
   { key: "tools", label: "Tools", href: "/platform#modules" },
   { key: "resources", label: "Resources", href: "/resources" },
   { key: "pricing", label: "Pricing", href: "/pricing" },
-  { key: "community", label: "Community", href: "/community" },
-  { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
   { key: "about", label: "About", href: "/about" },
+  { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
+  { key: "community", label: "Community", href: "/community" },
   { key: "help", label: "Help Center", href: "/help" },
   { key: "contact", label: "Contact", href: "/contact" },
 ]
@@ -59,7 +59,7 @@ export function PlatformModuleNav() {
   const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
   const showSectionReturnMenu = isSignedIn && (isModulePage || isInternalWorkspace)
 
-  const superuserDockVisible = isSignedIn && roleBadge === "Superuser"
+  const superuserDockVisible = isSignedIn && roleBadge === "Superuser" && pathname.startsWith("/operations")
 
   useEffect(() => {
     if (typeof document === "undefined") return
@@ -280,8 +280,8 @@ export function PlatformModuleNav() {
                       { label: "Career Intelligence", href: "/career-intelligence" },
                       { label: "Persona Foundry", href: "/persona-foundry" },
                       { label: "TeamSync", href: "/teamsync" },
-                      { label: "Operations", href: "/operations" },
-                      { label: "Control center", href: "/control-center" },
+                      { label: "Operations Hub", href: "/operations" },
+                      { label: "Operations Summary", href: "/control-center" },
                     ].map((item) => (
                       <Link
                         key={`goto-${item.href}`}
@@ -477,13 +477,13 @@ export function PlatformModuleNav() {
                   Command + control
                 </button>
                 <Link href="/control-center" className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]">
-                  Control center
+                  Operations summary
                 </Link>
                 <Link href="/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
                   Admin dashboard
                 </Link>
                 <Link href="/operations" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
-                  Operations monitor
+                  Operations hub
                 </Link>
                 <Link
                   href="/control-center/marketing-engine"
@@ -492,7 +492,7 @@ export function PlatformModuleNav() {
                   Marketing engine
                 </Link>
                 <Link href="/career?view=control" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
-                  Career control view
+                  Candidate control view
                 </Link>
               </div>
             ) : null}

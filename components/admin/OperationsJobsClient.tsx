@@ -606,19 +606,19 @@ export function OperationsJobsClient() {
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Operations menu</div>
               <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
                 <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
-                  Workflow
+                  Run health
                 </summary>
                 <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Daily digest</button>
-                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recovery activity</button>
-                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Candidate health</button>
+                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Ops summary</button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recovery queue</button>
+                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Candidate risk inbox</button>
                   <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Background jobs</button>
-                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Live search runs</button>
+                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Live job runs</button>
                 </div>
               </details>
               <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
                 <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
-                  Actions
+                  Quick actions
                 </summary>
                 <div className="px-2 pb-2 space-y-1.5">
                   <button type="button" onClick={() => {
@@ -627,9 +627,37 @@ export function OperationsJobsClient() {
                     void loadHealthInboxState()
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
-                  <Link href="/admin" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Back to control center</Link>
+                  <Link href="/platform#modules" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Main menu</Link>
                 </div>
               </details>
+              {overview.permissions.is_superuser ? (
+                <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                    Platform management
+                  </summary>
+                  <div className="px-2 pb-2 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("personara:open-command"))}
+                      className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                    >
+                      Open command bar
+                    </button>
+                    <Link href="/admin" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                      Admin dashboard
+                    </Link>
+                    <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                      Marketing engine
+                    </Link>
+                    <Link href="/career?view=control" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                      Candidate control
+                    </Link>
+                    <Link href="/control-center" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
+                      Operations hub
+                    </Link>
+                  </div>
+                </details>
+              ) : null}
             </aside>
 
             <div>

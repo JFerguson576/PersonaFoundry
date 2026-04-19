@@ -216,7 +216,7 @@ export function CareerHomeClient() {
       <div className="w-full px-4 py-4 lg:pl-[220px] lg:pr-4">
         <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-3 pt-20 shadow-sm backdrop-blur lg:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Candidate control nav</div>
-          <div className="mt-1 text-[11px] text-neutral-600">Navigate the control center quickly</div>
+          <div className="mt-1 text-[11px] text-neutral-600">Navigate candidate operations quickly</div>
           <div className="mt-3 space-y-1.5">
             {quickLinks.map((link) => (
               <button
@@ -243,10 +243,10 @@ export function CareerHomeClient() {
                   className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
                     isCandidatePreviewMode || isOwnerPreviewMode
                       ? "border-sky-300 bg-sky-50 text-sky-800"
-                      : "border-indigo-300 bg-indigo-50 text-indigo-800"
+                    : "border-indigo-300 bg-indigo-50 text-indigo-800"
                   }`}
                 >
-                  {isOwnerPreviewMode ? "Candidate preview mode (selected owner)" : isCandidatePreviewMode ? "Candidate preview mode" : "Control center mode"}
+                    {isOwnerPreviewMode ? "Candidate preview mode (selected owner)" : isCandidatePreviewMode ? "Candidate preview mode" : "Operations hub mode"}
                 </span>
                 {isNewUserSimulation ? (
                   <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800">
@@ -293,7 +293,7 @@ export function CareerHomeClient() {
                     : "border-sky-300 bg-sky-50 text-sky-900"
                 }`}
               >
-                Candidate control view
+                Candidate control
               </Link>
               <Link
                 href="/career?view=preview"
@@ -640,64 +640,65 @@ export function CareerHomeClient() {
                     No Career Intelligence workspaces yet. Create the first candidate workspace to get started.
                   </div>
                 ) : (
-                  <div className="mt-5 space-y-4">
+                  <div className="mt-4 space-y-2.5">
                     {candidates.map((candidate) => {
                       const stage = getCandidateStage(candidate)
                       return (
                         <div
                           key={candidate.id}
-                          className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-neutral-300 hover:bg-white"
+                          className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition hover:border-neutral-300 hover:bg-white"
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-lg font-semibold text-neutral-900">{candidate.full_name || "Untitled candidate"}</div>
-                                <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${stage.badgeClass}`}>
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="truncate text-base font-semibold text-neutral-900">{candidate.full_name || "Untitled candidate"}</div>
+                                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stage.badgeClass}`}>
                                   {stage.label}
                                 </span>
                                 {candidate.overdue_follow_up_count > 0 ? (
-                                  <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-rose-700">
+                                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700">
                                     {candidate.overdue_follow_up_count} overdue
                                   </span>
                                 ) : null}
                                 {candidate.due_today_count > 0 ? (
-                                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-amber-800">
+                                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
                                     {candidate.due_today_count} due today
                                   </span>
                                 ) : null}
                                 {candidate.active_run_count > 0 ? (
-                                  <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">
+                                  <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">
                                     {candidate.active_run_count} running
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="mt-2 text-sm text-neutral-600">
+                              <div className="mt-1 text-sm text-neutral-600">
                                 {[candidate.city || "No city", formatPrimaryGoal(candidate.primary_goal)].join(" | ")}
                               </div>
-                              <div className="mt-2">
-                                <ReadinessBar score={candidate.readiness_score} />
+                              <div className="mt-1.5 max-w-xl">
+                                <ReadinessBar score={candidate.readiness_score} compact />
                               </div>
+                              <div className="mt-1 text-[11px] text-neutral-500">{stage.description}</div>
                             </div>
-                            <div className="text-right text-xs text-neutral-400">
+                            <div className="text-right text-[11px] text-neutral-500">
                               <div>Created {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : "Unknown"}</div>
-                              <div className="mt-1">Updated {candidate.latest_activity_at ? new Date(candidate.latest_activity_at).toLocaleDateString() : "Unknown"}</div>
+                              <div>Updated {candidate.latest_activity_at ? new Date(candidate.latest_activity_at).toLocaleDateString() : "Unknown"}</div>
+                              <div className="mt-1.5">
+                                <Link
+                                  href={`/career/${candidate.id}`}
+                                  className="inline-flex rounded-lg border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[11px] font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
+                                >
+                                  Open
+                                </Link>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="mt-3 grid gap-2 sm:grid-cols-5">
-                            <WorkspaceStat label="Readiness" value={`${candidate.readiness_score}%`} />
-                            <WorkspaceStat label="Inputs" value={String(candidate.document_count)} />
-                            <WorkspaceStat label="Profiles" value={String(candidate.profile_count)} />
-                            <WorkspaceStat label="Saved outputs" value={String(candidate.asset_count)} />
-                            <WorkspaceStat label="Active roles" value={String(candidate.active_application_count)} />
-                          </div>
-                          <div className="mt-2 flex justify-end">
-                            <Link
-                              href={`/career/${candidate.id}`}
-                              className="inline-flex rounded-lg border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1.5 text-xs font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
-                            >
-                              Open workspace
-                            </Link>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <WorkspaceStat label="Ready" value={`${candidate.readiness_score}%`} compact />
+                            <WorkspaceStat label="Inputs" value={String(candidate.document_count)} compact />
+                            <WorkspaceStat label="Profiles" value={String(candidate.profile_count)} compact />
+                            <WorkspaceStat label="Outputs" value={String(candidate.asset_count)} compact />
+                            <WorkspaceStat label="Roles" value={String(candidate.active_application_count)} compact />
                           </div>
                         </div>
                       )
@@ -767,7 +768,15 @@ function FeaturePanel({ title, description }: { title: string; description: stri
   )
 }
 
-function WorkspaceStat({ label, value }: { label: string; value: string }) {
+function WorkspaceStat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700">
+        <span className="uppercase tracking-[0.08em] text-neutral-500">{label}</span>
+        <span className="ml-1 text-neutral-900">{value}</span>
+      </div>
+    )
+  }
   return (
     <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
@@ -803,18 +812,18 @@ function UrgencyCard({
   )
 }
 
-function ReadinessBar({ score }: { score: number }) {
+function ReadinessBar({ score, compact = false }: { score: number; compact?: boolean }) {
   const normalized = Math.max(0, Math.min(100, score))
   const toneClass =
     normalized >= 70 ? "bg-emerald-500" : normalized >= 40 ? "bg-amber-500" : "bg-neutral-400"
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">
+      <div className={`flex items-center justify-between gap-3 font-semibold uppercase tracking-[0.14em] text-neutral-500 ${compact ? "text-[10px]" : "text-xs"}`}>
         <span>Market readiness</span>
         <span>{normalized}%</span>
       </div>
-      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-neutral-200">
+      <div className={`overflow-hidden rounded-full bg-neutral-200 ${compact ? "mt-1 h-2" : "mt-2 h-2.5"}`}>
         <div className={`h-full rounded-full ${toneClass}`} style={{ width: `${normalized}%` }} />
       </div>
     </div>

@@ -8,8 +8,6 @@ const modulePaths = [
   "/persona-foundry",
   "/teamsync",
   "/community",
-  "/operations",
-  "/control-center/marketing-engine",
 ] as const
 
 const moduleItems = modulePaths.map((path) => ({

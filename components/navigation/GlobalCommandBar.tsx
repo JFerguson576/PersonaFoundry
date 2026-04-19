@@ -20,11 +20,11 @@ type StaticAction = {
 
 const STATIC_ACTIONS: StaticAction[] = [
   { id: "platform", label: "Open Platform", href: "/platform", tags: "home main platform" },
-  { id: "marketing", label: "Open Marketing Engine", href: "/control-center/marketing-engine", tags: "marketing engine control center growth" },
-  { id: "career", label: "Open Career Control Center", href: "/career?view=control", tags: "career control center dashboard" },
+  { id: "marketing", label: "Open Marketing Engine", href: "/control-center/marketing-engine", tags: "marketing engine operations hub growth" },
+  { id: "career", label: "Open Candidate Control", href: "/career?view=control", tags: "career candidate control dashboard" },
   { id: "career-preview", label: "Open Candidate View Preview", href: "/career?view=preview", tags: "career preview candidate view" },
   { id: "admin", label: "Open Admin Dashboard", href: "/admin", tags: "admin dashboard superuser management" },
-  { id: "operations", label: "Open Operations Monitor", href: "/operations", tags: "operations jobs monitor retries failures queues" },
+  { id: "operations", label: "Open Operations Hub", href: "/operations", tags: "operations jobs monitor retries failures queues" },
   { id: "persona", label: "Open Persona Foundry", href: "/persona-foundry", tags: "persona foundry ai personality" },
   { id: "teamsync", label: "Open TeamSync", href: "/teamsync", tags: "teamsync team family dynamics" },
 ]
@@ -37,6 +37,8 @@ export function GlobalCommandBar() {
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState(false)
   const [candidateResults, setCandidateResults] = useState<CandidateQuickPick[]>([])
+  const [hideFloatingButton, setHideFloatingButton] = useState(false)
+  const shouldShowOnRoute = pathname.startsWith("/operations")
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -53,6 +55,25 @@ export function GlobalCommandBar() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (typeof document === "undefined") return
+    const syncHiddenState = () => {
+      setHideFloatingButton(document.body.dataset.hideCommandButton === "1")
+    }
+    syncHiddenState()
+    const observer = new MutationObserver(syncHiddenState)
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-hide-command-button"] })
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    function onOpenCommand() {
+      openCommandBar()
+    }
+    window.addEventListener("personara:open-command", onOpenCommand as EventListener)
+    return () => window.removeEventListener("personara:open-command", onOpenCommand as EventListener)
   }, [])
 
   useEffect(() => {
@@ -122,13 +143,15 @@ export function GlobalCommandBar() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openCommandBar}
-        className="fixed right-4 top-20 z-[180] rounded-full border border-[#d0d7e2] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#334155] shadow-sm hover:bg-[#f8fafc]"
-      >
-        Command
-      </button>
+      {!hideFloatingButton && shouldShowOnRoute ? (
+        <button
+          type="button"
+          onClick={openCommandBar}
+          className="fixed right-4 top-20 z-[180] rounded-full border border-[#d0d7e2] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#334155] shadow-sm hover:bg-[#f8fafc]"
+        >
+          Command
+        </button>
+      ) : null}
       {open ? (
         <div key={`command-panel-${panelInstanceKey}`} className="fixed inset-0 z-[190] bg-black/25 p-4 sm:p-8" onClick={() => setOpen(false)}>
           <div
