@@ -132,7 +132,6 @@ export function OperationsJobsClient() {
   const [collapsedPanels, setCollapsedPanels] = useState({
     digest: false,
     recovery: false,
-    filters: false,
     healthInbox: false,
     background: false,
     live: false,
@@ -163,7 +162,6 @@ export function OperationsJobsClient() {
           setCollapsedPanels({
             digest: false,
             recovery: true,
-            filters: false,
             healthInbox: true,
             background: true,
             live: true,
@@ -576,16 +574,6 @@ export function OperationsJobsClient() {
     }
   }
 
-  function setAllPanelsCollapsed(nextValue: boolean) {
-    setCollapsedPanels({
-      digest: nextValue,
-      recovery: nextValue,
-      filters: nextValue,
-      healthInbox: nextValue,
-      background: nextValue,
-      live: nextValue,
-    })
-  }
   const isPanelVisible = useCallback(
     (panel: keyof typeof collapsedPanels) => activePanel === panel,
     [activePanel]
@@ -623,7 +611,6 @@ export function OperationsJobsClient() {
                 <div className="px-2 pb-2">
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Daily digest</button>
                   <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recovery activity</button>
-                  <button type="button" onClick={() => focusPanel("filters")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "filters" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Status filters</button>
                   <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Candidate health</button>
                   <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Background jobs</button>
                   <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Live search runs</button>
@@ -766,37 +753,6 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section id="operations-filters" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("filters") ? "" : "hidden"}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Filter by status</div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => togglePanel("filters")}
-                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                  >
-                    {collapsedPanels.filters ? "Expand" : "Collapse"}
-                  </button>
-                  {!collapsedPanels.filters ? (
-                    <>
-                  {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setStatusFilter(status)}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${
-                        statusFilter === status ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
             <section id="operations-healthInbox" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("healthInbox") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Candidate health inbox</h2>
@@ -893,13 +849,27 @@ export function OperationsJobsClient() {
             <section id="operations-background" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("background") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Background jobs</h2>
-                <button
-                  type="button"
-                  onClick={() => togglePanel("background")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {collapsedPanels.background ? "Expand" : "Collapse"}
-                </button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
+                    <button
+                      key={`background-filter-${status}`}
+                      type="button"
+                      onClick={() => setStatusFilter(status)}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        statusFilter === status ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => togglePanel("background")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {collapsedPanels.background ? "Expand" : "Collapse"}
+                  </button>
+                </div>
               </div>
               {!collapsedPanels.background ? (
                 <div className="mt-3 space-y-2">
@@ -944,13 +914,27 @@ export function OperationsJobsClient() {
             <section id="operations-live" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("live") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Live search runs</h2>
-                <button
-                  type="button"
-                  onClick={() => togglePanel("live")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {collapsedPanels.live ? "Expand" : "Collapse"}
-                </button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
+                    <button
+                      key={`live-filter-${status}`}
+                      type="button"
+                      onClick={() => setStatusFilter(status)}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        statusFilter === status ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => togglePanel("live")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {collapsedPanels.live ? "Expand" : "Collapse"}
+                  </button>
+                </div>
               </div>
               {!collapsedPanels.live ? (
                 <div className="mt-3 space-y-2">
@@ -999,21 +983,6 @@ export function OperationsJobsClient() {
         ) : null}
       </div>
     </main>
-  )
-}
-
-function MetricCard({ label, value, tone = "normal" }: { label: string; value: string; tone?: "normal" | "danger" }) {
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 shadow-sm ${
-        tone === "danger"
-          ? "border-rose-200 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)]"
-          : "border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)]"
-      }`}
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${tone === "danger" ? "text-rose-700" : "text-[#0f172a]"}`}>{value}</div>
-    </div>
   )
 }
 

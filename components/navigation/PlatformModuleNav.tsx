@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
 import { getAuthProviderLabel, type AuthProviderLabel } from "@/lib/auth-provider"
-import { ContextualHelpDrawer } from "@/components/navigation/ContextualHelpDrawer"
 import { TesterNotesWidget } from "@/components/navigation/TesterNotesWidget"
 import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 
@@ -55,6 +54,7 @@ export function PlatformModuleNav() {
       pathname.startsWith("/control-center"),
     [pathname]
   )
+  const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
 
   useEffect(() => {
     function onScroll() {
@@ -205,7 +205,6 @@ export function PlatformModuleNav() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ContextualHelpDrawer />
           {isSignedIn ? <ExperienceAgentWidget enabled /> : null}
           {isSignedIn ? <TesterNotesWidget enabled /> : null}
           {isSignedIn && isModulePage ? (
@@ -221,7 +220,7 @@ export function PlatformModuleNav() {
               Refer
             </button>
           ) : null}
-          {!isInternalWorkspace
+          {showGlobalMarketingNav
             ? navItems.map((item) => {
                 const active = isActive(pathname, item.href)
                 return (
@@ -239,7 +238,7 @@ export function PlatformModuleNav() {
                 )
               })
             : null}
-          {roleBadge && !isInternalWorkspace ? (
+          {roleBadge && showGlobalMarketingNav ? (
             <Link
               href="/operations"
               className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${

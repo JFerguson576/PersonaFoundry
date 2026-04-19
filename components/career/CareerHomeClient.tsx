@@ -213,8 +213,8 @@ export function CareerHomeClient() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
-      <div className="w-full px-6 py-6 lg:pl-[248px] lg:pr-6">
-        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block">
+      <div className="w-full px-4 py-4 lg:pl-[220px] lg:pr-4">
+        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-3 pt-20 shadow-sm backdrop-blur lg:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Candidate control nav</div>
           <div className="mt-1 text-[11px] text-neutral-600">Navigate the control center quickly</div>
           <div className="mt-3 space-y-1.5">
@@ -223,7 +223,7 @@ export function CareerHomeClient() {
                 key={`career-left-nav-${link.href}`}
                 type="button"
                 onClick={() => openAndScroll(link.sectionKey, link.href)}
-                className={`w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                className={`w-full rounded-lg border px-2 py-1.5 text-left text-[11px] font-semibold transition ${
                   activeSection === link.sectionKey
                     ? "border-sky-300 bg-sky-100 text-sky-900"
                     : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
@@ -234,7 +234,7 @@ export function CareerHomeClient() {
             ))}
           </div>
         </aside>
-        <section id="career-overview" className="scroll-mt-24 mb-6 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-5 shadow-sm">
+        <section id="career-overview" className="scroll-mt-24 mb-4 overflow-hidden rounded-[1.5rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
@@ -269,8 +269,8 @@ export function CareerHomeClient() {
                   </button>
                 ) : null}
               </div>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[#0f172a]">Candidate Control</h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-[#475569]">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f172a]">Candidate Control</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#475569]">
                 This is the separate Career Intelligence module inside Persona Foundry. It is designed to help users move from raw career material to sharper positioning, stronger applications, better interview performance, and live opportunity matching.
               </p>
               {isNewUserSimulation ? (
@@ -284,7 +284,7 @@ export function CareerHomeClient() {
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               <Link
                 href="/career?view=control"
                 className={`rounded-xl border px-4 py-2 text-sm font-medium ${
@@ -305,14 +305,11 @@ export function CareerHomeClient() {
               >
                 Candidate view preview
               </Link>
-              <Link href="/career?view=preview&test=new-user#create-workspace" className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100">
+              <Link href="/career-test?mode=dummy" className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100">
                 Test as new user
               </Link>
               <Link href="/admin" className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-medium text-[#0f172a] hover:bg-[#f8fafc]">
                 Open admin dashboard
-              </Link>
-              <Link href="/career-test" className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-medium text-[#0f172a] hover:bg-[#f8fafc]">
-                Open raw test page
               </Link>
             </div>
           </div>
@@ -622,7 +619,7 @@ export function CareerHomeClient() {
                 <CareerCandidateForm />
               </div>
 
-              <section id="workspace-library" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm ${sectionVisible("workspace-library") ? "" : "hidden"}`}>
+              <section id="workspace-library" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm ${sectionVisible("workspace-library") ? "" : "hidden"}`}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-semibold">Existing workspaces</h2>
@@ -630,9 +627,9 @@ export function CareerHomeClient() {
                       Open a candidate to continue their workflow. Each card shows how far through the process they are and whether background work is still running.
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-right">
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-right">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Total workspaces</div>
-                    <div className="mt-1 text-2xl font-semibold">{candidates.length}</div>
+                    <div className="mt-1 text-xl font-semibold">{candidates.length}</div>
                   </div>
                 </div>
 
@@ -647,10 +644,9 @@ export function CareerHomeClient() {
                     {candidates.map((candidate) => {
                       const stage = getCandidateStage(candidate)
                       return (
-                        <Link
+                        <div
                           key={candidate.id}
-                          href={`/career/${candidate.id}`}
-                          className="block rounded-[1.5rem] border border-neutral-200 bg-neutral-50 px-5 py-5 transition hover:border-neutral-300 hover:bg-white"
+                          className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition hover:border-neutral-300 hover:bg-white"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
@@ -678,8 +674,7 @@ export function CareerHomeClient() {
                               <div className="mt-2 text-sm text-neutral-600">
                                 {[candidate.city || "No city", formatPrimaryGoal(candidate.primary_goal)].join(" | ")}
                               </div>
-                              <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600">{stage.description}</p>
-                              <div className="mt-4">
+                              <div className="mt-2">
                                 <ReadinessBar score={candidate.readiness_score} />
                               </div>
                             </div>
@@ -689,14 +684,22 @@ export function CareerHomeClient() {
                             </div>
                           </div>
 
-                          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                          <div className="mt-3 grid gap-2 sm:grid-cols-5">
                             <WorkspaceStat label="Readiness" value={`${candidate.readiness_score}%`} />
                             <WorkspaceStat label="Inputs" value={String(candidate.document_count)} />
                             <WorkspaceStat label="Profiles" value={String(candidate.profile_count)} />
                             <WorkspaceStat label="Saved outputs" value={String(candidate.asset_count)} />
                             <WorkspaceStat label="Active roles" value={String(candidate.active_application_count)} />
                           </div>
-                        </Link>
+                          <div className="mt-2 flex justify-end">
+                            <Link
+                              href={`/career/${candidate.id}`}
+                              className="inline-flex rounded-lg border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1.5 text-xs font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
+                            >
+                              Open workspace
+                            </Link>
+                          </div>
+                        </div>
                       )
                     })}
                   </div>
@@ -766,9 +769,9 @@ function FeaturePanel({ title, description }: { title: string; description: stri
 
 function WorkspaceStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-neutral-900">{value}</div>
+      <div className="mt-1 text-lg font-semibold text-neutral-900">{value}</div>
     </div>
   )
 }
