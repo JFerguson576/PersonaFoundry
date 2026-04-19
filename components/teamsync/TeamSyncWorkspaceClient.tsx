@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { Session } from "@supabase/supabase-js"
@@ -10,6 +9,7 @@ import { supabase } from "@/lib/supabase"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { ModuleExplainerPanel } from "@/components/navigation/ModuleExplainerPanel"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
+import { teamsyncExecutivePromptLibrary } from "@/lib/teamsync-executive-prompts"
 
 type TeamMember = {
   id: string
@@ -20,9 +20,18 @@ type TeamMember = {
 
 type ScenarioTemplate = {
   id: string
-  category: "Professional" | "Family" | "Learning"
+  category: "Professional" | "Family" | "Learning" | "Executive" | "Boardroom"
   title: string
   focus: string
+}
+
+type ExecutivePromptTemplate = {
+  id: string
+  tier: "Premium" | "Boardroom"
+  pack: string
+  category: string
+  title: string
+  promptText: string
 }
 
 type RoleReaction = {
@@ -192,6 +201,11 @@ const scenarioLibrary: ScenarioTemplate[] = [
   { id: "s7", category: "Family", title: "Big decision simulator", focus: "Consensus path under stress" },
   { id: "s8", category: "Learning", title: "Learning strategy builder", focus: "How the group learns best together" },
 ]
+
+const executivePromptLibrary: ExecutivePromptTemplate[] = teamsyncExecutivePromptLibrary.map((item) => ({
+  ...item,
+  tier: item.tier,
+}))
 
 const executorSet = new Set([
   "achiever",
@@ -1313,9 +1327,12 @@ export function TeamSyncWorkspaceClient() {
   const [lastUploadSummary, setLastUploadSummary] = useState("")
   const [members, setMembers] = useState<TeamMember[]>([])
   const [selectedScenarioId, setSelectedScenarioId] = useState(scenarioLibrary[0].id)
+  const [selectedExecutivePromptId, setSelectedExecutivePromptId] = useState(executivePromptLibrary[0]?.id || "")
+  const [executivePromptPack, setExecutivePromptPack] = useState("all")
+  const [executivePromptSearch, setExecutivePromptSearch] = useState("")
   const [customScenarioText, setCustomScenarioText] = useState("")
   const [customScenarios, setCustomScenarios] = useState<ScenarioTemplate[]>([])
-  const [scenarioMode, setScenarioMode] = useState<"library" | "custom">("library")
+  const [scenarioMode, setScenarioMode] = useState<"library" | "custom" | "executive">("library")
   const [customScenarioCategory, setCustomScenarioCategory] = useState<ScenarioTemplate["category"]>("Professional")
   const [pressureLevel, setPressureLevel] = useState(3)
   const [desiredOutcome, setDesiredOutcome] = useState("")
@@ -1605,6 +1622,31 @@ export function TeamSyncWorkspaceClient() {
     () => allScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? allScenarios[0] ?? scenarioLibrary[0],
     [allScenarios, selectedScenarioId]
   )
+  const executivePromptPacks = useMemo(
+    () => Array.from(new Set(executivePromptLibrary.map((item) => item.pack))),
+    []
+  )
+  const filteredExecutivePrompts = useMemo(
+    () =>
+      (executivePromptPack === "all"
+        ? executivePromptLibrary
+        : executivePromptLibrary.filter((item) => item.pack === executivePromptPack)).filter((item) => {
+        const search = executivePromptSearch.trim().toLowerCase()
+        if (!search) return true
+        const haystack = `${item.id} ${item.title} ${item.category} ${item.pack} ${item.tier} ${item.promptText}`.toLowerCase()
+        return haystack.includes(search)
+      }),
+    [executivePromptPack, executivePromptSearch]
+  )
+  const selectedExecutivePrompt = useMemo(
+    () =>
+      filteredExecutivePrompts.find((item) => item.id === selectedExecutivePromptId) ??
+      executivePromptLibrary.find((item) => item.id === selectedExecutivePromptId) ??
+      filteredExecutivePrompts[0] ??
+      executivePromptLibrary[0] ??
+      null,
+    [filteredExecutivePrompts, selectedExecutivePromptId]
+  )
 
   const teamScores = useMemo(() => scoreTeam(members), [members])
   const totalSignals = teamScores.executor + teamScores.relationship + teamScores.strategy + teamScores.influence
@@ -1869,20 +1911,30 @@ export function TeamSyncWorkspaceClient() {
   const canAddMember = memberName.trim().length > 1 && memberStrengths.trim().length > 0
   const selectedStrengthCount = parseStrengthTokens(memberStrengths).length
   const membersReady = members.length >= 2
-  const scenarioReady = scenarioMode === "library" ? Boolean(selectedScenario?.id) : customScenarioText.trim().length > 0
+  const scenarioReady =
+    scenarioMode === "library"
+      ? Boolean(selectedScenario?.id)
+      : scenarioMode === "executive"
+        ? Boolean(selectedExecutivePrompt?.id)
+        : customScenarioText.trim().length > 0
   const runReady = Boolean(latestRun)
   const canRunSimulation = membersReady && scenarioReady && !simulating
   const runBlockers = [
     !membersReady ? "Load at least 2 members" : null,
-    !scenarioReady ? "Choose or write a scenario" : null,
+    !scenarioReady ? "Choose a scenario, executive prompt, or write a custom scenario" : null,
   ].filter((item): item is string => Boolean(item))
-  const scenarioModeLabel = scenarioMode === "library" ? "Saved scenario card" : "Custom scenario"
+  const scenarioModeLabel =
+    scenarioMode === "library" ? "Saved scenario card" : scenarioMode === "executive" ? "Executive leadership prompt" : "Custom scenario"
   const scenarioSummaryLabel =
     scenarioMode === "library"
       ? selectedScenario
         ? `${selectedScenario.category} | ${selectedScenario.title}`
         : "No scenario selected"
-      : customScenarioText.trim() || "Custom scenario not written yet"
+      : scenarioMode === "executive"
+        ? selectedExecutivePrompt
+          ? `${selectedExecutivePrompt.tier} | ${selectedExecutivePrompt.title}`
+          : "No executive prompt selected"
+        : customScenarioText.trim() || "Custom scenario not written yet"
   const readinessItems: Array<{ label: string; ready: boolean; detailReady: string; detailNotReady: string }> = [
     {
       label: "Members loaded",
@@ -1893,8 +1945,13 @@ export function TeamSyncWorkspaceClient() {
     {
       label: "Scenario ready",
       ready: scenarioReady,
-      detailReady: scenarioMode === "custom" ? "Custom scenario ready" : "Scenario card selected",
-      detailNotReady: "Choose scenario card or enter custom scenario",
+      detailReady:
+        scenarioMode === "custom"
+          ? "Custom scenario ready"
+          : scenarioMode === "executive"
+            ? "Executive prompt selected"
+            : "Scenario card selected",
+      detailNotReady: "Choose scenario card, executive prompt, or enter custom scenario",
     },
     {
       label: "Run completed",
@@ -1907,7 +1964,7 @@ export function TeamSyncWorkspaceClient() {
     !membersReady
       ? { title: "Load members first", detail: "Add at least two people and their strengths.", stepKey: "intake", href: "#teamsync-intake", cta: "Go to Load Members" }
       : !scenarioReady
-        ? { title: "Set your scenario", detail: "Pick a scenario card or enter custom scenario text.", stepKey: "scenario", href: "#teamsync-scenario", cta: "Go to Scenario" }
+        ? { title: "Set your scenario", detail: "Pick a scenario card, executive prompt, or enter custom scenario text.", stepKey: "scenario", href: "#teamsync-scenario", cta: "Go to Scenario" }
         : !runReady
           ? { title: "Run your first simulation", detail: "Generate risks, actions, and support priorities.", stepKey: "run", href: "#teamsync-run", cta: "Go to Run" }
           : { title: "Review and share insights", detail: "Your latest run is ready for action and sharing.", stepKey: "insights", href: "#teamsync-insights", cta: "Open Insights" }
@@ -2853,6 +2910,13 @@ export function TeamSyncWorkspaceClient() {
     }
   }, [compareRunId, latestRun, runHistory])
 
+  useEffect(() => {
+    if (filteredExecutivePrompts.length === 0) return
+    if (!filteredExecutivePrompts.some((item) => item.id === selectedExecutivePromptId)) {
+      setSelectedExecutivePromptId(filteredExecutivePrompts[0].id)
+    }
+  }, [filteredExecutivePrompts, selectedExecutivePromptId])
+
   async function runConversationSimulation() {
     if (!latestRun) {
       setMessage("Run a scenario first to unlock conversation simulation.")
@@ -2941,8 +3005,23 @@ export function TeamSyncWorkspaceClient() {
       setMessage("Add custom scenario text before running.")
       return
     }
+    if (scenarioMode === "executive" && !selectedExecutivePrompt) {
+      setMessage("Choose an executive prompt before running.")
+      return
+    }
 
     let scenarioForRun = selectedScenario
+    let scenarioContextTextForRun = scenarioMode === "custom" ? customText : ""
+
+    if (scenarioMode === "executive" && selectedExecutivePrompt) {
+      scenarioForRun = {
+        id: selectedExecutivePrompt.id,
+        category: selectedExecutivePrompt.tier === "Boardroom" ? "Boardroom" : "Executive",
+        title: selectedExecutivePrompt.title,
+        focus: selectedExecutivePrompt.category,
+      }
+      scenarioContextTextForRun = selectedExecutivePrompt.promptText
+    }
 
     if (scenarioMode === "custom" && customText) {
       const existing = customScenarios.find((scenario) => scenario.title.toLowerCase() === customText.toLowerCase())
@@ -2964,7 +3043,7 @@ export function TeamSyncWorkspaceClient() {
     }
 
     setSimulating(true)
-    let run = buildScenarioResult(membersForRun, scenarioForRun, scenarioMode === "custom" ? customText : "", pressureLevel, desiredOutcome)
+    let run = buildScenarioResult(membersForRun, scenarioForRun, scenarioContextTextForRun, pressureLevel, desiredOutcome)
 
     try {
       const response = await fetch("/api/teamsync/simulate", {
@@ -2974,6 +3053,8 @@ export function TeamSyncWorkspaceClient() {
           group_name: groupName,
           scenario_title: scenarioForRun.title,
           scenario_category: scenarioForRun.category,
+          scenario_prompt_id: scenarioMode === "executive" ? selectedExecutivePrompt?.id ?? null : null,
+          scenario_prompt_text: scenarioContextTextForRun || null,
           pressure_level: pressureLevel,
           desired_outcome: desiredOutcome,
           members: membersForRun,
@@ -3053,9 +3134,51 @@ export function TeamSyncWorkspaceClient() {
 
   return (
     <main className="min-h-screen bg-[#f5f8fc] text-[#0f172a]">
-      <div className="mx-auto max-w-[1200px] px-4 py-5 md:px-6">
+      <div className="w-full px-4 py-5 lg:pl-[240px] lg:pr-4">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="TeamSync" />
+        <aside className="fixed left-0 top-0 z-20 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-20 shadow-sm backdrop-blur lg:block">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">TeamSync nav</div>
+          <div className="mt-1 text-[11px] text-neutral-600">One module, one clear workflow</div>
+          <div className="mt-3 space-y-1.5">
+            {stepNav.map((item) => {
+              const active = item.key === activeStep
+              const complete = stepStatusByKey[item.key] ?? false
+              return (
+                <button
+                  key={`teamsync-left-nav-${item.key}`}
+                  type="button"
+                  onClick={() => openStep(item.key, item.href)}
+                  className={`w-full rounded-lg border px-2 py-1.5 text-left text-[11px] font-semibold transition ${
+                    active
+                      ? "border-sky-300 bg-sky-100 text-sky-900"
+                      : complete
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-3 border-t border-neutral-200 pt-3">
+            <button
+              type="button"
+              onClick={resetWorkspaceView}
+              className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-left text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100"
+            >
+              Reset view
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsReportIssueOpen(true)}
+              className="w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-left text-[11px] font-semibold text-neutral-700 hover:bg-neutral-100"
+            >
+              Report issue
+            </button>
+          </div>
+        </aside>
         {isWhatsNewOpen ? (
           <section className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -3125,21 +3248,10 @@ export function TeamSyncWorkspaceClient() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Link href="/platform" className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50">
-              Module hub
-            </Link>
-            <Link href="/career-intelligence" className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50">
-              Career Intelligence
-            </Link>
-            <Link href="/persona-foundry" className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50">
-              Persona Foundry
-            </Link>
-          </div>
         </section>
 
         {hideTeamSyncMenuInFocus ? (
-          <nav data-sticky-nav="true" className="sticky top-3 z-20 mt-3 rounded-2xl border border-neutral-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+          <nav data-sticky-nav="true" className="sticky top-3 z-20 mt-3 rounded-2xl border border-neutral-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur lg:hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-[11px] text-neutral-600">
                 Working in <span className="font-semibold text-neutral-900">{activeStepNavItem.label}</span>
@@ -3199,7 +3311,7 @@ export function TeamSyncWorkspaceClient() {
             </div>
           </nav>
         ) : (
-          <nav data-sticky-nav="true" className="sticky top-3 z-20 mt-3 rounded-2xl border border-neutral-200 bg-white/95 p-2.5 shadow-sm backdrop-blur">
+          <nav data-sticky-nav="true" className="sticky top-3 z-20 mt-3 rounded-2xl border border-neutral-200 bg-white/95 p-2.5 shadow-sm backdrop-blur lg:hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Step-by-step menu</div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -3382,7 +3494,7 @@ export function TeamSyncWorkspaceClient() {
             </details>
           </section>
 
-          <section id="teamsync-intake" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+          <section id="teamsync-intake" className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 2: Load Members</h2>
@@ -3404,7 +3516,7 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
 
-            <div className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+            <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Loaded members</div>
                 <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
@@ -3414,7 +3526,7 @@ export function TeamSyncWorkspaceClient() {
               {members.length === 0 ? (
                 <p className="mt-1 text-xs text-[#64748b]">No members loaded yet. Start with Upload Gallup file, then click Add member.</p>
               ) : (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {members.slice(0, 8).map((member) => (
                     <span key={`loaded-pill-${member.id}`} className="rounded-full border border-[#c7d2fe] bg-white px-2 py-1 text-[11px] font-medium text-[#334155]">
                       {member.name}
@@ -3429,11 +3541,11 @@ export function TeamSyncWorkspaceClient() {
               )}
             </div>
 
-            <div className="mt-2 rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-3">
+            <div className="mt-1.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] p-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1e3a8a]">Upload helper</div>
-                  <p className="mt-0.5 text-xs text-[#1e3a8a]">1) Upload Gallup file  2) Confirm strengths  3) Add member</p>
+                  <p className="mt-0.5 text-xs text-[#1e3a8a]">1) Upload file  2) Confirm strengths  3) Add member</p>
                 </div>
                 <button
                   type="button"
@@ -3441,7 +3553,7 @@ export function TeamSyncWorkspaceClient() {
                     setIntakeMode("upload")
                     memberUploadInputRef.current?.click()
                   }}
-                  className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
+                  className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
                 >
                   {memberFileLoading ? "Reading file..." : "Upload Gallup file"}
                 </button>
@@ -3459,24 +3571,24 @@ export function TeamSyncWorkspaceClient() {
                 className="hidden"
               />
               {lastUploadedFileName ? (
-                <div className="mt-2 rounded-xl border border-[#bfdbfe] bg-white px-3 py-2 text-xs text-[#334155]">
+                 <div className="mt-1.5 rounded-lg border border-[#bfdbfe] bg-white px-2.5 py-1.5 text-xs text-[#334155]">
                   <span className="font-semibold">Last file:</span> {lastUploadedFileName}
                   {lastUploadSummary ? <span className="block mt-0.5 text-[#475569]">{lastUploadSummary}</span> : null}
                 </div>
               ) : null}
             </div>
 
-            <details className="mt-2 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
+            <details className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
               <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">
                 Group settings and backups
               </summary>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Current Group</label>
                   <select
                     value={selectedGroupId}
                     onChange={(e) => switchGroup(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm"
                   >
                     {groups.length === 0 ? <option value="">My Team</option> : null}
                     {groups.map((group) => (
@@ -3488,17 +3600,17 @@ export function TeamSyncWorkspaceClient() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Rename Current Group</label>
-                  <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                     <input
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       placeholder="Example: Product Leadership Team"
-                      className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                       className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                     />
                     <button
                       type="button"
                       onClick={() => void persistWorkspace(membersRef.current, runHistoryRef.current, groupName)}
-                      className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium hover:bg-neutral-50"
+                       className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-neutral-50"
                     >
                       Save
                     </button>
@@ -3506,34 +3618,34 @@ export function TeamSyncWorkspaceClient() {
                 </div>
               </div>
 
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Create New Group</label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <input
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
                     placeholder="Example: Ferguson Family"
-                    className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => void createNewGroup()}
-                    className="rounded-xl border border-[#1d4ed8] bg-[#dbeafe] px-3 py-2 text-xs font-semibold text-[#1e3a8a] hover:bg-[#bfdbfe]"
+                    className="rounded-lg border border-[#1d4ed8] bg-[#dbeafe] px-2.5 py-1.5 text-xs font-semibold text-[#1e3a8a] hover:bg-[#bfdbfe]"
                   >
                     Create
                   </button>
                 </div>
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={exportGroupBackup}
-                  className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium hover:bg-neutral-50"
+                   className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-neutral-50"
                 >
                   Export group backup (.json)
                 </button>
-                <label className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium hover:bg-neutral-50">
+                 <label className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium hover:bg-neutral-50">
                   Import group backup
                   <input
                     type="file"
@@ -3550,7 +3662,7 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </details>
 
-            <div className="mt-2 rounded-2xl border border-neutral-200 p-2.5">
+            <div className="mt-1.5 rounded-lg border border-neutral-200 p-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-semibold">Add one member</div>
                 <span className="rounded-full border border-[#d8e4f2] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
@@ -3559,14 +3671,14 @@ export function TeamSyncWorkspaceClient() {
               </div>
               <p className="mt-1 text-xs text-[#64748b]">Required: member name + strengths. Role is optional.</p>
 
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Member Name</label>
                   <input
                     value={memberName}
                     onChange={(e) => setMemberName(e.target.value)}
                     placeholder="Full name"
-                    className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                   className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                   />
                 </div>
                 <div>
@@ -3575,12 +3687,12 @@ export function TeamSyncWorkspaceClient() {
                     value={memberRole}
                     onChange={(e) => setMemberRole(e.target.value)}
                     placeholder="Role or relationship"
-                    className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                   className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="ui-action-row mt-3">
+              <div className="ui-action-row mt-1.5">
                 <button
                   type="button"
                   onClick={() => setIntakeMode("manual")}
@@ -3608,13 +3720,13 @@ export function TeamSyncWorkspaceClient() {
               </p>
 
               {intakeMode === "upload" ? (
-                <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#475569]">
+                <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5 text-xs text-[#475569]">
                   Upload mode is active. Use the <span className="font-semibold">Upload Gallup file</span> button above to choose or replace a file.
                 </div>
               ) : null}
 
               {intakeMode === "quick" ? (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {gallupThemes.slice(0, 20).map((theme) => {
                     const active = parseStrengthTokens(memberStrengths).includes(theme.toLowerCase())
                     return (
@@ -3633,27 +3745,27 @@ export function TeamSyncWorkspaceClient() {
                 </div>
               ) : null}
 
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Strengths</label>
                 <textarea
                   value={memberStrengths}
                   onChange={(e) => setMemberStrengths(e.target.value)}
                   placeholder="Achiever, Relator, Strategic, Learner..."
-                  className="min-h-[90px] w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                   className="min-h-[74px] w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                 />
               </div>
 
-              <div className="mt-2 flex items-center justify-between text-xs text-[#64748b]">
+              <div className="mt-1.5 flex items-center justify-between text-xs text-[#64748b]">
                 <span>{memberFileLoading ? "Reading strengths file..." : "Add member when name and strengths are complete."}</span>
                 <span>{selectedStrengthCount} strengths captured</span>
               </div>
 
-              <div className="mt-3">
+              <div className="mt-1.5">
                 <button
                   type="button"
                   onClick={addMember}
                   disabled={!canAddMember || memberFileLoading}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
+                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
                     canAddMember && !memberFileLoading ? "bg-[#1d4ed8] hover:bg-[#1e40af]" : "cursor-not-allowed bg-[#94a3b8]"
                   }`}
                 >
@@ -3662,7 +3774,7 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </div>
 
-            <div className="mt-3">
+            <div className="mt-1.5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#64748b]">
                   Members loaded: {members.length}
@@ -3675,14 +3787,14 @@ export function TeamSyncWorkspaceClient() {
                   {membersListExpanded ? "Collapse list" : "Expand list"}
                 </button>
               </div>
-            <div className={`grid gap-2 ${membersListExpanded ? "" : "hidden"}`}>
+              <div className={`grid gap-1.5 ${membersListExpanded ? "" : "hidden"}`}>
               {members.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
+                <div className="rounded-lg border border-dashed border-neutral-300 px-2.5 py-2.5 text-sm text-[#64748b]">
                   No members loaded yet. Add at least two members to run simulations.
                 </div>
               ) : (
                 members.map((member) => (
-                  <div key={member.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-neutral-200 bg-[#fbfdff] px-3 py-3">
+                  <div key={member.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-neutral-200 bg-[#fbfdff] px-2.5 py-2">
                     <div>
                       <div className="text-sm font-semibold">{member.name}</div>
                       <div className="text-xs text-[#64748b]">{member.role || "Role not set"}</div>
@@ -3703,25 +3815,32 @@ export function TeamSyncWorkspaceClient() {
             </div>
           </section>
 
-          <section id="teamsync-scenario" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+          <section id="teamsync-scenario" className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
             <h2 className="text-lg font-semibold">Step 3: Scenario Setup</h2>
             <p className="mt-1 text-xs text-[#475569]">Choose one scenario path, then move to Run simulation.</p>
             {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Pick or write one scenario before you run.</p> : null}
-            <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2">
+            <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Current scenario</div>
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${scenarioReady ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
                   {scenarioReady ? "Ready" : "Not ready"}
                 </span>
               </div>
-              <p className="mt-1 text-sm font-semibold text-[#0f172a]">{scenarioSummaryLabel}</p>
-              <p className="mt-1 text-xs text-[#475569]">Mode: {scenarioModeLabel}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-[#0f172a]">{scenarioSummaryLabel}</p>
+                <span className="rounded-full border border-[#cbd5e1] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                  {scenarioModeLabel}
+                </span>
+              </div>
             </div>
-            <details className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <details className="mt-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
               <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">More info</summary>
-              <div className="mt-2 space-y-1 text-xs text-[#334155]">
+              <div className="mt-1.5 space-y-1 text-xs text-[#334155]">
                 <p>
                   <span className="font-semibold">Library:</span> choose a ready-made scenario to run quickly.
+                </p>
+                <p>
+                  <span className="font-semibold">Executive:</span> run premium executive and boardroom prompt packs.
                 </p>
                 <p>
                   <span className="font-semibold">Custom:</span> write your own context and desired outcome.
@@ -3729,7 +3848,7 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </details>
 
-            <div className="ui-action-row mt-2">
+            <div className="ui-action-row mt-1.5">
               <button
                 type="button"
                 onClick={() => setScenarioMode("library")}
@@ -3738,6 +3857,15 @@ export function TeamSyncWorkspaceClient() {
                 }`}
               >
                 Use saved scenario
+              </button>
+              <button
+                type="button"
+                onClick={() => setScenarioMode("executive")}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  scenarioMode === "executive" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"
+                }`}
+              >
+                Executive prompt pack
               </button>
               <button
                 type="button"
@@ -3750,41 +3878,113 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
 
-            <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <div className={scenarioMode === "custom" ? "hidden" : ""}>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Scenario card</label>
+            <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
+              <div className={scenarioMode === "library" ? "" : "hidden"}>
+                <label className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Scenario card</label>
                 <select
                   value={selectedScenarioId}
                   onChange={(e) => setSelectedScenarioId(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                 >
                   {allScenarios.map((scenario) => (
                     <option key={scenario.id} value={scenario.id}>
-                      {scenario.category} — {scenario.title}
+                      {scenario.category} - {scenario.title}
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-[#64748b]">Focus: {selectedScenario.focus}</p>
+                <p className="mt-0.5 text-xs text-[#64748b]">Focus: {selectedScenario.focus}</p>
               </div>
-              <div className={scenarioMode === "library" ? "hidden" : ""}>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Custom category</label>
+              <div className={scenarioMode === "executive" ? "" : "hidden"}>
+                <div className="grid gap-1.5 md:grid-cols-2">
+                  <div>
+                    <label className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Prompt pack</label>
+                    <select
+                      value={executivePromptPack}
+                      onChange={(e) => setExecutivePromptPack(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                    >
+                      <option value="all">All packs</option>
+                      {executivePromptPacks.map((pack) => (
+                        <option key={`exec-pack-${pack}`} value={pack}>
+                          {pack}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Search prompts</label>
+                    <input
+                      value={executivePromptSearch}
+                      onChange={(e) => setExecutivePromptSearch(e.target.value)}
+                      placeholder="Search by prompt ID, title, or keyword"
+                      className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                    />
+                  </div>
+                </div>
+                <label className="mb-0.5 mt-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Executive scenario prompt</label>
+                <select
+                  value={filteredExecutivePrompts.some((prompt) => prompt.id === selectedExecutivePrompt?.id) ? selectedExecutivePrompt?.id : ""}
+                  onChange={(e) => setSelectedExecutivePromptId(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                >
+                  {filteredExecutivePrompts.length === 0 ? (
+                    <option value="" disabled>
+                      No prompts found for this filter
+                    </option>
+                  ) : null}
+                  {filteredExecutivePrompts.map((prompt) => (
+                    <option key={prompt.id} value={prompt.id}>
+                      {prompt.tier} | {prompt.id} | {prompt.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-0.5 text-[11px] text-[#64748b]">{filteredExecutivePrompts.length} prompt(s) in this view.</p>
+                {selectedExecutivePrompt ? (
+                  <div className="mt-1 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                          selectedExecutivePrompt.tier === "Boardroom"
+                            ? "border-violet-300 bg-violet-50 text-violet-700"
+                            : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {selectedExecutivePrompt.tier}
+                      </span>
+                      <span>{selectedExecutivePrompt.pack}</span>
+                      <span>|</span>
+                      <span>{selectedExecutivePrompt.category}</span>
+                    </div>
+                    <p className="mt-0.5 line-clamp-3 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-[#1d4ed8]">View full prompt</summary>
+                      <p className="mt-1 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
+                    </details>
+                  </div>
+                ) : null}
+                <p className="mt-0.5 text-xs text-[#64748b]">Premium pack loaded from your executive prompt library. Boardroom scenarios are marked as add-on tier.</p>
+              </div>
+              <div className={scenarioMode === "custom" ? "" : "hidden"}>
+                <label className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Custom category</label>
                 <select
                   value={customScenarioCategory}
                   onChange={(e) => setCustomScenarioCategory(e.target.value as ScenarioTemplate["category"])}
-                  className="mb-2 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                  className="mb-1.5 w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                 >
                   <option value="Professional">Professional</option>
                   <option value="Family">Family</option>
                   <option value="Learning">Learning</option>
+                  <option value="Executive">Executive</option>
+                  <option value="Boardroom">Boardroom</option>
                 </select>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Custom scenario (optional)</label>
+                <label className="mb-0.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Custom scenario (optional)</label>
                 <input
                   value={customScenarioText}
                   onChange={(e) => setCustomScenarioText(e.target.value)}
                   placeholder="Example: Team needs to recover after a failed launch"
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                 />
-                <p className="mt-1 text-xs text-[#64748b]">If you enter custom text and run, it is saved as a reusable scenario card.</p>
+                <p className="mt-0.5 text-xs text-[#64748b]">If you enter custom text and run, it is saved as a reusable scenario card.</p>
               </div>
             </div>
 
@@ -3816,14 +4016,14 @@ export function TeamSyncWorkspaceClient() {
                     value={desiredOutcome}
                     onChange={(e) => setDesiredOutcome(e.target.value)}
                     placeholder="Example: clear ownership and faster decisions"
-                    className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                   />
                 </div>
               </div>
             ) : null}
           </section>
 
-          <section id="teamsync-run" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+          <section id="teamsync-run" className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 4: Run Simulation</h2>
@@ -3840,7 +4040,7 @@ export function TeamSyncWorkspaceClient() {
                 type="button"
                 onClick={runSimulation}
                 disabled={!canRunSimulation}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
                   !canRunSimulation ? "cursor-not-allowed bg-[#94a3b8]" : "bg-[#1d4ed8] hover:bg-[#1e40af]"
                 }`}
                 >
@@ -3849,27 +4049,27 @@ export function TeamSyncWorkspaceClient() {
             </div>
             <p className="mt-1 text-xs text-[#475569]">Output includes behavior patterns, risk signals, and next-step actions.</p>
 
-            <div className="mt-2 grid gap-2 md:grid-cols-4">
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
+            <div className="mt-1.5 grid gap-1.5 md:grid-cols-4">
+              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Executor</div>
                 <div className="mt-0.5 text-lg font-semibold">{teamScores.executor}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
+              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Relationship</div>
                 <div className="mt-0.5 text-lg font-semibold">{teamScores.relationship}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
+              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Strategy</div>
                 <div className="mt-0.5 text-lg font-semibold">{teamScores.strategy}</div>
               </div>
-              <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2">
+              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Influence</div>
                 <div className="mt-0.5 text-lg font-semibold">{teamScores.influence}</div>
               </div>
             </div>
           </section>
 
-          <section id="teamsync-insights" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+          <section id="teamsync-insights" className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-lg font-semibold">Step 5: Insights</h2>
@@ -3905,15 +4105,15 @@ export function TeamSyncWorkspaceClient() {
             </div>
 
             {latestRun ? (
-              <div ref={insightsPanelsRef} className="mt-3 grid gap-3">
-                <div className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-3">
+              <div ref={insightsPanelsRef} className="mt-2 grid gap-2">
+                <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">
                     Latest run · {latestRun.scenarioCategory} · Pressure {latestRun.pressureLevel}/5
                   </div>
                   <div className="mt-1 text-sm font-semibold text-[#0f172a]">{latestRun.scenarioTitle}</div>
                   <p className="mt-1 text-sm text-[#334155]">{latestRun.groupSummary}</p>
                   <p className="mt-2 text-xs text-[#475569]">{latestRun.semanticLens}</p>
-                  <div className="ui-action-row mt-3">
+                  <div className="ui-action-row mt-2">
                     <button
                       type="button"
                       onClick={() => startFollowUpPulse(24)}
@@ -3946,7 +4146,7 @@ export function TeamSyncWorkspaceClient() {
                 </div>
 
                 {runHealth ? (
-                  <div className="rounded-xl border border-[#d8e4f2] bg-white p-3">
+                  <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Run health score</div>
@@ -3969,9 +4169,9 @@ export function TeamSyncWorkspaceClient() {
                 ) : null}
 
                 {nextBestActions.length > 0 ? (
-                  <div className="rounded-xl border border-[#d8e4f2] bg-white p-3">
+                  <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Next actions</div>
-                    <div className="mt-2 grid gap-2 md:grid-cols-3">
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-3">
                       {nextBestActions.map((action, index) => (
                         <div
                           key={`${action.title}-${index}`}
@@ -4150,7 +4350,7 @@ export function TeamSyncWorkspaceClient() {
                 </ExpandableCard>
 
                 <div className="grid gap-3 lg:grid-cols-2">
-                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div className="rounded-lg border border-neutral-200 bg-white p-2.5">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Likely behaviors</div>
                     <ul className="mt-2 space-y-1 text-sm text-[#0f172a]">
                       {latestRun.likelyBehaviors.map((item) => (
@@ -4158,7 +4358,7 @@ export function TeamSyncWorkspaceClient() {
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div className="rounded-lg border border-neutral-200 bg-white p-2.5">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Role-by-role responses</div>
                     {latestRun.roleReactions.length > 0 ? (
                       <ExpandableCard title="Role-by-role details" subtitle={`${latestRun.roleReactions.length} role responses`}>
@@ -4176,7 +4376,7 @@ export function TeamSyncWorkspaceClient() {
                       <p className="mt-2 text-sm text-[#64748b]">Run a simulation to generate role-specific responses.</p>
                     )}
                   </div>
-                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div className="rounded-lg border border-neutral-200 bg-white p-2.5">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Risk hotspots</div>
                     <ul className="mt-2 space-y-1 text-sm text-[#0f172a]">
                       {latestRun.risks.map((item) => (
@@ -4184,7 +4384,7 @@ export function TeamSyncWorkspaceClient() {
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div className="rounded-lg border border-neutral-200 bg-white p-2.5">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Adjustments</div>
                     <ul className="mt-2 space-y-1 text-sm text-[#0f172a]">
                       {latestRun.adjustments.map((item) => (
@@ -4192,7 +4392,7 @@ export function TeamSyncWorkspaceClient() {
                       ))}
                     </ul>
                   </div>
-                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                  <div className="rounded-lg border border-neutral-200 bg-white p-2.5">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Action plan</div>
                     <ul className="mt-2 space-y-1 text-sm text-[#0f172a]">
                       {latestRun.actions.map((item) => (
@@ -4469,7 +4669,7 @@ export function TeamSyncWorkspaceClient() {
                       </select>
                     </div>
                   </div>
-                  <div className="mt-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#334155]">
+                  <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5 text-xs text-[#334155]">
                     Simulation path: <span className="font-semibold">{selectedConversationFromMember?.name || "You"}</span> to{" "}
                     <span className="font-semibold">{selectedConversationToMember?.name || "selected member"}</span>
                   </div>
@@ -4677,13 +4877,13 @@ export function TeamSyncWorkspaceClient() {
                 ) : null}
               </div>
             ) : (
-              <div className="mt-3 rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
+              <div className="mt-2 rounded-lg border border-dashed border-neutral-300 px-2.5 py-2.5 text-sm text-[#64748b]">
                 No run yet. Complete steps 2-4, then run your first TeamSync scenario.
               </div>
             )}
           </section>
 
-          <section id="teamsync-history" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+          <section id="teamsync-history" className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 6: Saved Runs</h2>
@@ -4721,11 +4921,11 @@ export function TeamSyncWorkspaceClient() {
 
             {savedRunsExpanded ? (
               <>
-                <details className="mt-1.5 rounded-lg border border-neutral-200 bg-[#fbfdff] px-2.5 py-1.5">
+                <details className="mt-1 rounded-lg border border-neutral-200 bg-[#fbfdff] px-2 py-1.5">
                   <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
                     Filters and presets
                   </summary>
-                  <div className="mt-1.5 grid gap-1.5 md:grid-cols-5">
+                  <div className="mt-1 grid gap-1.5 md:grid-cols-5">
                     <div className="md:col-span-2">
                       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Search runs</label>
                       <input
@@ -4746,6 +4946,8 @@ export function TeamSyncWorkspaceClient() {
                         <option value="professional">Professional</option>
                         <option value="family">Family</option>
                         <option value="learning">Learning</option>
+                        <option value="executive">Executive</option>
+                        <option value="boardroom">Boardroom</option>
                       </select>
                     </div>
                     <div>
@@ -4773,7 +4975,7 @@ export function TeamSyncWorkspaceClient() {
                       </select>
                     </div>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <div className="mt-1 flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => setHistoryFavoritesOnly((prev) => !prev)}
@@ -4809,7 +5011,7 @@ export function TeamSyncWorkspaceClient() {
                     </button>
                   </div>
                 </details>
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2 py-1.5">
                   <div className="text-[11px] text-[#334155]">
                     Showing <span className="font-semibold">{filteredRunHistory.length}</span> of{" "}
                     <span className="font-semibold">{runHistory.length}</span> runs
@@ -4838,7 +5040,7 @@ export function TeamSyncWorkspaceClient() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
+                <div className="mt-1 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap gap-1.5 text-[10px] text-[#475569]">
                       <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5">Total {historyQuickStats.total}</span>
@@ -4888,14 +5090,14 @@ export function TeamSyncWorkspaceClient() {
                   </div>
                 </div>
 
-                <div className="mt-2 grid gap-2">
+                <div className="mt-1.5 grid gap-1.5">
                   {filteredRunHistory.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-neutral-300 px-3 py-3 text-sm text-[#64748b]">
+                    <div className="rounded-lg border border-dashed border-neutral-300 px-2.5 py-2.5 text-sm text-[#64748b]">
                       {runHistory.length === 0 ? "Run history is empty." : "No runs match your current filters."}
                     </div>
                   ) : (
                     filteredRunHistory.map((run) => (
-                      <div key={run.runId} className="rounded-xl border border-neutral-200 bg-[#fbfdff] px-3 py-3">
+                      <div key={run.runId} className="rounded-lg border border-neutral-200 bg-[#fbfdff] px-2.5 py-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -4917,7 +5119,7 @@ export function TeamSyncWorkspaceClient() {
                             {run.scenarioCategory} · Pressure {run.pressureLevel}/5
                           </div>
                         </button>
-                        <div className="ui-action-row mt-2">
+                        <div className="ui-action-row mt-1.5">
                           <button
                             type="button"
                             onClick={() => reuseRunScenario(run)}
@@ -4965,7 +5167,7 @@ export function TeamSyncWorkspaceClient() {
                             Delete run
                           </button>
                         </div>
-                        <div className="mt-2">
+                        <div className="mt-1.5">
                           <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Notes</label>
                           <textarea
                             defaultValue={run.notes || ""}
@@ -4997,7 +5199,7 @@ export function TeamSyncWorkspaceClient() {
                   href={resource.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-xl border border-neutral-200 bg-[#fbfdff] px-3 py-3 hover:bg-[#f4f9ff]"
+                  className="rounded-lg border border-neutral-200 bg-[#fbfdff] px-2.5 py-2.5 hover:bg-[#f4f9ff]"
                 >
                   <div className="text-sm font-semibold text-[#0f172a]">{resource.title}</div>
                   <div className="mt-1 break-all text-xs text-[#1d4ed8]">{resource.href}</div>
