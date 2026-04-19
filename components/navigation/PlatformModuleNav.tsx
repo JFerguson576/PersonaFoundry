@@ -13,6 +13,7 @@ type NavItem = { key: string; label: string; href: string }
 
 const navItems: NavItem[] = [
   { key: "tools", label: "Tools", href: "/platform#modules" },
+  { key: "resources", label: "Resources", href: "/resources" },
   { key: "pricing", label: "Pricing", href: "/pricing" },
   { key: "community", label: "Community", href: "/community" },
   { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
@@ -43,6 +44,7 @@ export function PlatformModuleNav() {
   const [referralTone, setReferralTone] = useState<"success" | "error" | "info">("info")
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false)
   const [showSuperuserQuickActions, setShowSuperuserQuickActions] = useState(true)
+  const [showReturnMenu, setShowReturnMenu] = useState(false)
 
   const isModulePage = useMemo(() => {
     return pathname.startsWith("/career") || pathname.startsWith("/teamsync") || pathname.startsWith("/persona-foundry")
@@ -55,6 +57,17 @@ export function PlatformModuleNav() {
     [pathname]
   )
   const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
+  const showSectionReturnMenu = isSignedIn && (isModulePage || isInternalWorkspace)
+
+  const superuserDockVisible = isSignedIn && roleBadge === "Superuser"
+
+  useEffect(() => {
+    if (typeof document === "undefined") return
+    document.body.dataset.hideCommandButton = superuserDockVisible ? "1" : "0"
+    return () => {
+      delete document.body.dataset.hideCommandButton
+    }
+  }, [superuserDockVisible])
 
   useEffect(() => {
     function onScroll() {
@@ -163,6 +176,40 @@ export function PlatformModuleNav() {
     }
   }
 
+  function buildReferralEmailDraft() {
+    const recipient = inviteeEmail.trim()
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "https://www.personara.ai"
+    const subject = encodeURIComponent("Invitation to Personara")
+    const lines = [
+      `Hi ${inviteeName.trim() || "there"},`,
+      "",
+      "I’d like to invite you to try Personara.",
+      "",
+      `You can start here: ${appUrl}/platform`,
+      relationship ? `Relationship: ${relationship.replace("_", " ")}` : "",
+      note.trim() ? `Personal note: ${note.trim()}` : "",
+      "",
+      "Regards,",
+      "Sent via Personara refer-a-friend",
+    ].filter(Boolean)
+    const body = encodeURIComponent(lines.join("\n"))
+    const href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`
+    return { href, hasRecipient: Boolean(recipient) }
+  }
+
+  async function copyReferralLink() {
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "https://www.personara.ai"
+    const link = `${appUrl}/platform`
+    try {
+      await navigator.clipboard.writeText(link)
+      setReferralTone("success")
+      setReferralMessage("Referral link copied.")
+    } catch {
+      setReferralTone("info")
+      setReferralMessage(`Copy this link: ${link}`)
+    }
+  }
+
   async function handleSwitchAccount() {
     setIsSwitchingAccount(true)
     await supabase.auth.signOut()
@@ -205,6 +252,51 @@ export function PlatformModuleNav() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {showSectionReturnMenu ? (
+            <>
+              <div className="flex flex-col items-start gap-1">
+                <Link
+                  href="/platform#modules"
+                  className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                  title="Return to main modules"
+                >
+                  Main menu
+                </Link>
+                <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-neutral-500">Need another area? Use Go to.</p>
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowReturnMenu((current) => !current)}
+                  className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                  title="Jump to another section"
+                >
+                  Go to
+                </button>
+                {showReturnMenu ? (
+                  <div className="absolute right-0 top-10 z-[75] w-56 rounded-xl border border-[#d8e4f2] bg-white p-2 shadow-lg">
+                    {[
+                      { label: "Platform hub", href: "/platform#modules" },
+                      { label: "Career Intelligence", href: "/career-intelligence" },
+                      { label: "Persona Foundry", href: "/persona-foundry" },
+                      { label: "TeamSync", href: "/teamsync" },
+                      { label: "Operations", href: "/operations" },
+                      { label: "Control center", href: "/control-center" },
+                    ].map((item) => (
+                      <Link
+                        key={`goto-${item.href}`}
+                        href={item.href}
+                        onClick={() => setShowReturnMenu(false)}
+                        className="block rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
           {isSignedIn ? <ExperienceAgentWidget enabled /> : null}
           {isSignedIn ? <TesterNotesWidget enabled /> : null}
           {isSignedIn && isModulePage ? (
@@ -320,6 +412,28 @@ export function PlatformModuleNav() {
                 >
                   {isSendingReferral ? "Sending..." : "Send invite"}
                 </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={buildReferralEmailDraft().hasRecipient ? buildReferralEmailDraft().href : undefined}
+                    onClick={(event) => {
+                      if (!buildReferralEmailDraft().hasRecipient) {
+                        event.preventDefault()
+                        setReferralTone("info")
+                        setReferralMessage("Add an email address first, then open draft email.")
+                      }
+                    }}
+                    className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                  >
+                    Open email draft
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void copyReferralLink()}
+                    className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                  >
+                    Copy link
+                  </button>
+                </div>
                 {referralMessage ? (
                   <p
                     className={`text-sm ${
@@ -338,11 +452,11 @@ export function PlatformModuleNav() {
           </div>
         </div>
       ) : null}
-      {isSignedIn && roleBadge === "Superuser" && !isInternalWorkspace ? (
+      {superuserDockVisible ? (
         <div className="fixed right-4 top-20 z-[65] w-[248px] max-w-[calc(100vw-2rem)]">
           <div className="rounded-2xl border border-[#d8e4f2] bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Quick actions</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Command + control</div>
               <button
                 type="button"
                 onClick={() => setShowSuperuserQuickActions((current) => !current)}
@@ -353,6 +467,15 @@ export function PlatformModuleNav() {
             </div>
             {showSuperuserQuickActions ? (
               <div className="mt-2 grid gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("personara:open-command"))
+                  }}
+                  className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-left text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
+                >
+                  Command + control
+                </button>
                 <Link href="/control-center" className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]">
                   Control center
                 </Link>
