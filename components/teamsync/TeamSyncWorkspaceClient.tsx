@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { Session } from "@supabase/supabase-js"
+import Image from "next/image"
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx"
 import { getAuthHeaders } from "@/lib/career-client"
 import { supabase } from "@/lib/supabase"
@@ -45,6 +46,13 @@ type ResourceLink = {
   title: string
   href: string
   reason: string
+}
+
+type ScenarioExample = {
+  id: string
+  title: string
+  href: string
+  note: string
 }
 
 type ActionChecklistItem = {
@@ -206,6 +214,8 @@ const executivePromptLibrary: ExecutivePromptTemplate[] = teamsyncExecutivePromp
   ...item,
   tier: item.tier,
 }))
+
+const TEAMSYNC_EXECUTIVE_ENGINE_IMAGE = "/images/teamsync-executive-intelligence-engine.png"
 
 const executorSet = new Set([
   "achiever",
@@ -427,6 +437,14 @@ function containsAny(text: string, tokens: string[]) {
   return tokens.some((token) => text.includes(token))
 }
 
+function hashText(value: string) {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return hash
+}
+
 function buildMemberSupportPriorities(
   members: TeamMember[],
   scenarioTitle: string,
@@ -436,7 +454,7 @@ function buildMemberSupportPriorities(
 ): MemberSupportPriority[] {
   const scenarioText = scenarioTitle.toLowerCase()
   const riskText = risks.join(" ").toLowerCase()
-  const reactionText = roleReactions.map((item) => `${item.audience} ${item.likelyResponse}`).join(" ").toLowerCase()
+  const reactionRows = roleReactions.map((item) => `${item.audience} ${item.likelyResponse}`.toLowerCase())
   const isLossScenario = containsAny(scenarioText, ["grief", "loss", "died", "death", "bereav", "funeral"])
   const isConflictScenario = containsAny(scenarioText + " " + riskText, ["conflict", "tension", "repair", "misunderstanding"])
 
@@ -456,9 +474,18 @@ function buildMemberSupportPriorities(
       score += 16
       reasons.push("Role may need extra emotional scaffolding in bereavement scenarios.")
     }
-    if (containsAny(reactionText, [member.name.toLowerCase(), roleText])) {
+    const roleTokens = roleText
+      .split(/[^a-z0-9]+/)
+      .map((item) => item.trim())
+      .filter((item) => item.length >= 4)
+    const roleMentioned = roleTokens.some((token) => reactionRows.some((row) => row.includes(token)))
+    const nameMentioned = reactionRows.some((row) => row.includes(member.name.toLowerCase()))
+    if (nameMentioned) {
       score += 10
       reasons.push("Current role reactions suggest this member may carry elevated response load.")
+    } else if (roleMentioned) {
+      score += 6
+      reasons.push("Role-level reaction patterns suggest this member may carry part of the response load.")
     }
     if (strengths.some((token) => ["empathy", "responsibility", "harmony", "relator"].includes(token)) && pressureLevel >= 4) {
       score += 10
@@ -476,23 +503,80 @@ function buildMemberSupportPriorities(
     const clampedScore = Math.max(10, Math.min(100, score))
     const level: "high" | "medium" | "low" = clampedScore >= 75 ? "high" : clampedScore >= 55 ? "medium" : "low"
     const memberSummary = summarizeMemberGallup(member.strengths)
+    const memberSeed = hashText(`${member.id}|${scenarioTitle}|${member.strengths}`)
+    const topStrength = strengths[0] ? titleCase(strengths[0]) : "Top strengths"
 
-    const supportMove =
-      level === "high"
-        ? dominantLane === "execution"
-          ? "Give this member one clear owner decision and remove non-critical tasks for 48 hours."
-          : dominantLane === "relationship"
-            ? "Schedule a direct emotional check-in and pair them with a trusted partner for near-term support."
-            : dominantLane === "influence"
-              ? "Use a short alignment call so they can channel influence into calm direction-setting."
-              : "Give a concise planning sync and reduce ambiguity around immediate next steps."
-        : level === "medium"
-          ? dominantLane === "relationship"
-            ? "Use a brief daily pulse and confirm where they need emotional backup."
-            : "Use a short daily pulse check and clarify one priority boundary."
-          : dominantLane === "strategy"
-            ? "Share context early and invite them into reflection in the weekly follow-up pulse."
-            : "Keep this member informed and include them in the weekly follow-up pulse."
+    const laneMovesByLevel = {
+      high: {
+        execution: [
+          "Give this member one clear owner decision and remove non-critical tasks for 48 hours.",
+          "Set a strict 48-hour priority cap and shield this member from low-value interruptions.",
+        ],
+        relationship: [
+          "Schedule a direct emotional check-in and pair them with a trusted partner for near-term support.",
+          "Use a short support huddle and assign one trusted ally to keep emotional load visible.",
+        ],
+        influence: [
+          "Use a short alignment call so they can channel influence into calm direction-setting.",
+          "Ask them to lead one clear message stream while another person owns delivery detail.",
+        ],
+        strategy: [
+          "Give a concise planning sync and reduce ambiguity around immediate next steps.",
+          "Use a 15-minute planning lane and lock one decision window to prevent re-looping.",
+        ],
+        balanced: [
+          "Set one owner and one support partner so this member has both clarity and backup.",
+          "Use short daily check-ins and keep priorities capped to one core deliverable.",
+        ],
+      },
+      medium: {
+        execution: [
+          "Use a short daily pulse check and clarify one priority boundary.",
+          `Anchor this member on one measurable output tied to ${topStrength} this week.`,
+        ],
+        relationship: [
+          "Use a brief daily pulse and confirm where they need emotional backup.",
+          "Keep trust visible with quick check-ins and explicit permission to ask for help.",
+        ],
+        influence: [
+          "Use a quick alignment check so communication stays clear and non-reactive.",
+          "Assign one communication owner path so influence energy stays constructive.",
+        ],
+        strategy: [
+          "Confirm one planning checkpoint so analysis supports execution pace.",
+          "Give context early and ask for one clear recommendation before broader debate.",
+        ],
+        balanced: [
+          "Use a short daily pulse and keep role boundaries explicit for this scenario.",
+          "Confirm one owner lane and one support lane to avoid hidden overload.",
+        ],
+      },
+      low: {
+        execution: [
+          "Keep this member informed and include them in the weekly follow-up pulse.",
+          "Use this member as a stabilizer for execution rhythm and quick task handoffs.",
+        ],
+        relationship: [
+          "Invite this member into weekly follow-up pulse and peer-support moments.",
+          "Keep this member connected to group check-ins so trust remains strong.",
+        ],
+        influence: [
+          "Use this member to reinforce shared messaging in the weekly follow-up pulse.",
+          "Invite this member to help close meetings with clear recap language.",
+        ],
+        strategy: [
+          "Share context early and invite them into reflection in the weekly follow-up pulse.",
+          "Use this member as a thought partner for next-step planning before major pivots.",
+        ],
+        balanced: [
+          "Keep this member informed and include them in the weekly follow-up pulse.",
+          "Use this member as a continuity anchor across weekly scenario follow-ups.",
+        ],
+      },
+    } as const
+
+    const laneMoves = laneMovesByLevel[level][dominantLane]
+    const supportMove = laneMoves[memberSeed % laneMoves.length]
 
     const reasonsText = reasons.slice(0, 2).join(" ")
     const roleSummary = member.role ? `${member.role}: ` : ""
@@ -702,6 +786,15 @@ function escapeIcsText(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;")
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 function buildRunComparison(currentRun: RunResult, previousRun: RunResult): RunComparison {
   const currentRisks = new Set(currentRun.risks.map((risk) => risk.trim().toLowerCase()).filter(Boolean))
   const previousRisks = new Set(previousRun.risks.map((risk) => risk.trim().toLowerCase()).filter(Boolean))
@@ -812,7 +905,13 @@ function buildTeamsUpdate(run: RunResult, groupName: string) {
   ].join("\n")
 }
 
-function buildTeamSyncReportMarkdown(run: RunResult, groupName: string) {
+function buildTeamSyncReportMarkdown(
+  run: RunResult,
+  groupName: string,
+  members: TeamMember[],
+  resources: ResourceLink[],
+  examples: ScenarioExample[]
+) {
   const supportRows = run.memberSupportPriorities
     .slice(0, 5)
     .map(
@@ -823,6 +922,18 @@ function buildTeamSyncReportMarkdown(run: RunResult, groupName: string) {
 
   const checklistRows = run.actionChecklist
     .map((item, index) => `${index + 1}. [${item.done ? "x" : " "}] ${item.label}${item.owner ? ` (Owner: ${item.owner})` : ""}${item.dueDate ? ` (Due: ${item.dueDate})` : ""}`)
+    .join("\n")
+  const memberRows = members
+    .map((member, index) => `${index + 1}. ${member.name} (${member.role || "Role not set"})\n   - Strengths: ${member.strengths}\n   - Summary: ${summarizeMemberGallup(member.strengths)}`)
+    .join("\n")
+  const roleReactionRows = run.roleReactions
+    .map((item, index) => `${index + 1}. ${item.audience}\n   - Likely response: ${item.likelyResponse}\n   - Support action: ${item.supportAction}`)
+    .join("\n")
+  const resourceRows = resources
+    .map((item, index) => `${index + 1}. ${item.title}\n   - URL: ${item.href}\n   - Why it helps: ${item.reason}`)
+    .join("\n")
+  const exampleRows = examples
+    .map((item, index) => `${index + 1}. ${item.title}\n   - URL: ${item.href}\n   - Similar case note: ${item.note}`)
     .join("\n")
 
   return [
@@ -841,6 +952,12 @@ function buildTeamSyncReportMarkdown(run: RunResult, groupName: string) {
     `## Semantic Lens`,
     `${run.semanticLens || "No semantic lens provided."}`,
     ``,
+    `## Group Members`,
+    memberRows || "No members loaded.",
+    ``,
+    `## Role-by-role Reactions`,
+    roleReactionRows || "No role reactions listed.",
+    ``,
     `## Top Risks`,
     ...(run.risks.length > 0 ? run.risks.map((risk, index) => `${index + 1}. ${risk}`) : ["No major risks listed."]),
     ``,
@@ -852,6 +969,59 @@ function buildTeamSyncReportMarkdown(run: RunResult, groupName: string) {
     ``,
     `## Action Checklist`,
     checklistRows || "No checklist generated.",
+    ``,
+    `## Useful Support Links`,
+    resourceRows || "No links available.",
+    ``,
+    `## Comparable Scenario Examples`,
+    exampleRows || "No examples available.",
+  ].join("\n")
+}
+
+function buildFilteredRunsMarkdown(
+  runs: RunResult[],
+  groupName: string,
+  members: TeamMember[],
+  resources: ResourceLink[],
+  examples: ScenarioExample[]
+) {
+  const memberRows = members
+    .map((member, index) => `${index + 1}. ${member.name} (${member.role || "Role not set"}) - ${summarizeMemberGallup(member.strengths)}`)
+    .join("\n")
+  const resourceRows = resources.map((item, index) => `${index + 1}. ${item.title} - ${item.href}\n   - ${item.reason}`).join("\n")
+  const exampleRows = examples.map((item, index) => `${index + 1}. ${item.title} - ${item.href}\n   - ${item.note}`).join("\n")
+  const runRows = runs
+    .map((run, index) => {
+      const topPriority = run.memberSupportPriorities[0]
+      return [
+        `### ${index + 1}. ${run.scenarioTitle}`,
+        `Category: ${run.scenarioCategory} | Pressure: ${run.pressureLevel}/5 | ${relativeTime(run.timestamp)}`,
+        `Summary: ${run.groupSummary || "No summary provided."}`,
+        `Top risk: ${run.risks[0] || "No major risk listed."}`,
+        `Top action: ${run.actions[0] || "No action listed."}`,
+        topPriority ? `Priority support: ${topPriority.memberName} - ${topPriority.supportMove}` : "Priority support: Not available",
+        "",
+      ].join("\n")
+    })
+    .join("\n")
+
+  return [
+    "# TeamSync Saved Runs Report",
+    "",
+    `Group: ${groupName || "Group"}`,
+    `Exported runs: ${runs.length}`,
+    "",
+    "## Group Members",
+    memberRows || "No members loaded.",
+    "",
+    "## Saved Runs",
+    runRows || "No runs selected.",
+    "",
+    "## Useful Support Links",
+    resourceRows || "No links available.",
+    "",
+    "## Comparable Scenario Examples",
+    exampleRows || "No examples available.",
   ].join("\n")
 }
 
@@ -1259,7 +1429,7 @@ function buildResourceLinks(run: RunResult | null): ResourceLink[] {
     },
   ]
 
-  if (!run) return baseResources.slice(0, 4)
+  if (!run) return baseResources.slice(0, 5)
 
   const text = `${run.scenarioTitle} ${run.scenarioCategory} ${run.semanticLens} ${run.risks.join(" ")}`.toLowerCase()
   const picks: ResourceLink[] = []
@@ -1292,16 +1462,63 @@ function buildResourceLinks(run: RunResult | null): ResourceLink[] {
     include("coursera-emotional-intelligence")
   }
 
-  if (picks.length < 4) {
+  if (picks.length < 5) {
     baseResources.forEach((item) => {
-      if (picks.length >= 4) return
+      if (picks.length >= 5) return
       if (!picks.some((existing) => existing.id === item.id)) {
         picks.push(item)
       }
     })
   }
 
-  return picks.slice(0, 4)
+  return picks.slice(0, 5)
+}
+
+function buildScenarioExamples(run: RunResult | null): ScenarioExample[] {
+  const baseExamples: ScenarioExample[] = [
+    {
+      id: "google-project-aristotle",
+      title: "Google Project Aristotle",
+      href: "https://rework.withgoogle.com/print/guides/5721312655835136/",
+      note: "Evidence-backed team effectiveness study highlighting psychological safety and role clarity.",
+    },
+    {
+      id: "nasa-crew-resource-management",
+      title: "NASA Crew Resource Management",
+      href: "https://ntrs.nasa.gov/citations/19960007224",
+      note: "High-stakes teamwork and communication patterns under pressure.",
+    },
+    {
+      id: "pixar-braintrust",
+      title: "Pixar Braintrust Collaboration Model",
+      href: "https://hbr.org/2008/09/how-pixar-fosters-collective-creativity",
+      note: "Structured candor model for handling creative friction and decision quality.",
+    },
+    {
+      id: "mayo-clinic-teamwork",
+      title: "Mayo Clinic Teamwork in Care",
+      href: "https://www.mayoclinicproceedings.org/article/S0025-6196(11)64855-5/fulltext",
+      note: "Multi-disciplinary role coordination and patient-centered communication.",
+    },
+  ]
+  if (!run) return baseExamples.slice(0, 3)
+  const text = `${run.scenarioTitle} ${run.scenarioCategory} ${run.semanticLens} ${run.risks.join(" ")}`.toLowerCase()
+  const picks: ScenarioExample[] = []
+  const include = (id: string) => {
+    const found = baseExamples.find((item) => item.id === id)
+    if (!found) return
+    if (picks.some((item) => item.id === id)) return
+    picks.push(found)
+  }
+  if (/(pressure|crisis|failure|incident|high-stakes)/.test(text)) include("nasa-crew-resource-management")
+  if (/(team|trust|safety|conflict|communication)/.test(text)) include("google-project-aristotle")
+  if (/(creative|board|executive|strategy|challenge)/.test(text)) include("pixar-braintrust")
+  if (/(health|caregiver|family|support|role)/.test(text)) include("mayo-clinic-teamwork")
+  for (const item of baseExamples) {
+    if (picks.length >= 3) break
+    if (!picks.some((existing) => existing.id === item.id)) picks.push(item)
+  }
+  return picks.slice(0, 3)
 }
 
 export function TeamSyncWorkspaceClient() {
@@ -1339,6 +1556,7 @@ export function TeamSyncWorkspaceClient() {
   const [runHistory, setRunHistory] = useState<RunResult[]>([])
   const [latestRun, setLatestRun] = useState<RunResult | null>(null)
   const [onlineResources, setOnlineResources] = useState<ResourceLink[]>([])
+  const [onlineExamples, setOnlineExamples] = useState<ScenarioExample[]>([])
   const [resourcesLoading, setResourcesLoading] = useState(false)
   const [resourcesError, setResourcesError] = useState("")
   const [conversationFromMemberId, setConversationFromMemberId] = useState("self")
@@ -1652,7 +1870,9 @@ export function TeamSyncWorkspaceClient() {
   const totalSignals = teamScores.executor + teamScores.relationship + teamScores.strategy + teamScores.influence
   const readinessPercent = Math.min(100, Math.round((totalSignals / 30) * 100))
   const recommendedResources = useMemo(() => buildResourceLinks(latestRun), [latestRun])
+  const recommendedExamples = useMemo(() => buildScenarioExamples(latestRun), [latestRun])
   const displayedResources = onlineResources.length > 0 ? onlineResources : recommendedResources
+  const displayedExamples = onlineExamples.length > 0 ? onlineExamples : recommendedExamples
   const checklistCompletedCount = latestRun?.actionChecklist.filter((item) => item.done).length ?? 0
   const checklistTotalCount = latestRun?.actionChecklist.length ?? 0
   const priorityLane = useMemo(() => buildPriorityLane(latestRun), [latestRun])
@@ -1690,7 +1910,9 @@ export function TeamSyncWorkspaceClient() {
       if (historyPressureFilter === "medium" && run.pressureLevel !== 3) return false
       if (historyPressureFilter === "high" && run.pressureLevel < 4) return false
       if (!search) return true
-      const haystack = `${run.scenarioTitle} ${run.scenarioCategory} ${run.semanticLens} ${run.risks.join(" ")}`.toLowerCase()
+      const haystack = `${run.scenarioTitle} ${run.scenarioCategory} ${run.semanticLens} ${run.risks.join(" ")} ${run.actions.join(" ")} ${run.notes || ""} ${run.memberSupportPriorities
+        .map((item) => `${item.memberName} ${item.role} ${item.supportMove}`)
+        .join(" ")}`.toLowerCase()
       return haystack.includes(search)
     })
     return filtered.sort((a, b) => {
@@ -1838,6 +2060,65 @@ export function TeamSyncWorkspaceClient() {
       "text/csv;charset=utf-8"
     )
     setMessage("Saved Runs exported to .csv")
+  }
+
+  async function exportFilteredRunsDocx() {
+    if (filteredRunHistory.length === 0) {
+      setMessage("No runs to export with current filters.")
+      return
+    }
+    try {
+      const content = buildFilteredRunsMarkdown(filteredRunHistory, groupName, membersRef.current, displayedResources, displayedExamples)
+      const title = `${groupName || "Group"} - TeamSync Saved Runs Report`
+      const doc = new Document({
+        sections: [
+          {
+            children: buildDocxParagraphs(title, content),
+          },
+        ],
+      })
+      const blob = await Packer.toBlob(doc)
+      downloadBlob(buildFileName(`${groupName || "group"}-teamsync-saved-runs`, "docx"), blob, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+      setMessage("Saved Runs exported to .docx")
+    } catch {
+      setMessage("Failed to export Saved Runs as .docx")
+    }
+  }
+
+  function openPrintableFilteredRunsReport() {
+    if (filteredRunHistory.length === 0) {
+      setMessage("No runs to export with current filters.")
+      return
+    }
+    if (typeof window === "undefined") return
+    const title = `${groupName || "Group"} - TeamSync Saved Runs`
+    const runCards = filteredRunHistory
+      .map((run) => {
+        const topPriority = run.memberSupportPriorities[0]
+        return `<div class="card"><div><strong>${escapeHtml(run.scenarioTitle)}</strong> (${escapeHtml(run.scenarioCategory)})</div><div class="meta">Pressure ${run.pressureLevel}/5</div><div>${escapeHtml(
+          run.groupSummary || "No summary provided."
+        )}</div><div><strong>Top risk:</strong> ${escapeHtml(run.risks[0] || "No major risk listed.")}</div><div><strong>Top action:</strong> ${escapeHtml(
+          run.actions[0] || "No action listed."
+        )}</div>${topPriority ? `<div><strong>Priority support:</strong> ${escapeHtml(topPriority.memberName)} - ${escapeHtml(topPriority.supportMove)}</div>` : ""}</div>`
+      })
+      .join("")
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${escapeHtml(title)}</title><style>body{font-family:Arial,sans-serif;color:#0f172a;margin:28px;line-height:1.45}h1{font-size:22px;margin:0 0 8px}h2{font-size:15px;margin:20px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}.meta{font-size:12px;color:#475569;margin-bottom:12px}.card{border:1px solid #d8e4f2;border-radius:10px;padding:10px 12px;margin:10px 0}ul{margin:8px 0 0 18px}li{margin:4px 0}a{color:#1d4ed8;text-decoration:none}@media print{body{margin:10mm}}</style></head><body><h1>${escapeHtml(
+      title
+    )}</h1><div class="meta">Generated ${new Date().toLocaleString()}</div><h2>Saved runs</h2>${runCards}<h2>Useful support links</h2><ul>${displayedResources
+      .map((item) => `<li><a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a> - ${escapeHtml(item.reason)}</li>`)
+      .join("")}</ul><h2>Comparable scenario examples</h2><ul>${displayedExamples
+      .map((item) => `<li><a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a> - ${escapeHtml(item.note)}</li>`)
+      .join("")}</ul></body></html>`
+    const printWindow = window.open("", "_blank", "noopener,noreferrer")
+    if (!printWindow) {
+      setMessage("Popup blocked. Allow popups to open print/PDF report.")
+      return
+    }
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
   }
 
   function deleteFilteredRuns() {
@@ -2664,7 +2945,7 @@ export function TeamSyncWorkspaceClient() {
       return
     }
     try {
-      const content = buildTeamSyncReportMarkdown(latestRun, groupName)
+      const content = buildTeamSyncReportMarkdown(latestRun, groupName, membersRef.current, displayedResources, displayedExamples)
       const title = `${groupName || "Group"} - ${latestRun.scenarioTitle} TeamSync Report`
       const doc = new Document({
         sections: [
@@ -2692,6 +2973,42 @@ export function TeamSyncWorkspaceClient() {
     }
     if (typeof window === "undefined") return
     const reportTitle = `${groupName || "Group"} - ${latestRun.scenarioTitle} TeamSync Report`
+    const memberRowsHtml =
+      membersRef.current.length > 0
+        ? membersRef.current
+            .map(
+              (member) =>
+                `<li><strong>${escapeHtml(member.name)}</strong> (${escapeHtml(member.role || "Role not set")})<br/><span>${escapeHtml(summarizeMemberGallup(member.strengths))}</span></li>`
+            )
+            .join("")
+        : "<li>No members loaded.</li>"
+    const roleReactionsHtml =
+      latestRun.roleReactions.length > 0
+        ? latestRun.roleReactions
+            .map(
+              (item) =>
+                `<li><strong>${escapeHtml(item.audience)}</strong>: ${escapeHtml(item.likelyResponse)}<br/><em>Support action:</em> ${escapeHtml(item.supportAction)}</li>`
+            )
+            .join("")
+        : "<li>No role reactions listed.</li>"
+    const resourceLinksHtml =
+      displayedResources.length > 0
+        ? displayedResources
+            .map(
+              (item) =>
+                `<li><a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a><br/><span>${escapeHtml(item.reason)}</span></li>`
+            )
+            .join("")
+        : "<li>No support links available.</li>"
+    const scenarioExamplesHtml =
+      displayedExamples.length > 0
+        ? displayedExamples
+            .map(
+              (item) =>
+                `<li><a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${escapeHtml(item.title)}</a><br/><span>${escapeHtml(item.note)}</span></li>`
+            )
+            .join("")
+        : "<li>No comparable examples available.</li>"
     const html = `
 <!doctype html>
 <html>
@@ -2716,25 +3033,37 @@ export function TeamSyncWorkspaceClient() {
 
     <h2>Scenario</h2>
     <div class="card">
-      <div><strong>${latestRun.scenarioTitle}</strong> (${latestRun.scenarioCategory})</div>
+      <div><strong>${escapeHtml(latestRun.scenarioTitle)}</strong> (${escapeHtml(latestRun.scenarioCategory)})</div>
       <div class="meta">Pressure ${latestRun.pressureLevel}/5</div>
-      <div>${latestRun.groupSummary || "No summary provided."}</div>
+      <div>${escapeHtml(latestRun.groupSummary || "No summary provided.")}</div>
     </div>
 
+    <h2>Members and Strengths Summary</h2>
+    <ul>${memberRowsHtml}</ul>
+
+    <h2>Role-by-role Reactions</h2>
+    <ul>${roleReactionsHtml}</ul>
+
     <h2>Top Risks</h2>
-    <ul>${(latestRun.risks.length > 0 ? latestRun.risks : ["No major risks listed."]).map((risk) => `<li>${risk}</li>`).join("")}</ul>
+    <ul>${(latestRun.risks.length > 0 ? latestRun.risks : ["No major risks listed."]).map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}</ul>
 
     <h2>Recommended Actions</h2>
-    <ul>${(latestRun.actions.length > 0 ? latestRun.actions : ["No actions listed."]).map((action) => `<li>${action}</li>`).join("")}</ul>
+    <ul>${(latestRun.actions.length > 0 ? latestRun.actions : ["No actions listed."]).map((action) => `<li>${escapeHtml(action)}</li>`).join("")}</ul>
 
     <h2>Support Priorities</h2>
     ${(latestRun.memberSupportPriorities.length > 0
       ? latestRun.memberSupportPriorities
           .map(
-            (item) => `<div class="card"><div><strong>${item.memberName}</strong> <span class="pill">${item.level}</span><span class="pill">${item.score}/100</span></div><div class="meta">${item.role || "Role not set"}</div><div>${item.rationale}</div><div><strong>Support move:</strong> ${item.supportMove}</div></div>`
+            (item) => `<div class="card"><div><strong>${escapeHtml(item.memberName)}</strong> <span class="pill">${escapeHtml(item.level)}</span><span class="pill">${item.score}/100</span></div><div class="meta">${escapeHtml(item.role || "Role not set")}</div><div>${escapeHtml(item.rationale)}</div><div><strong>Support move:</strong> ${escapeHtml(item.supportMove)}</div></div>`
           )
           .join("")
       : `<div class="card">No member support priorities generated.</div>`)}
+
+    <h2>Useful Support Links</h2>
+    <ul>${resourceLinksHtml}</ul>
+
+    <h2>Comparable Scenario Examples (People/Organizations)</h2>
+    <ul>${scenarioExamplesHtml}</ul>
   </body>
 </html>`
     const printWindow = window.open("", "_blank", "noopener,noreferrer")
@@ -2828,6 +3157,7 @@ export function TeamSyncWorkspaceClient() {
     async function loadOnlineResources() {
       if (!latestRun || !session?.access_token) {
         setOnlineResources([])
+        setOnlineExamples([])
         setResourcesError("")
         return
       }
@@ -2851,6 +3181,7 @@ export function TeamSyncWorkspaceClient() {
         if (!response.ok) {
           setResourcesError(payload.error || "Could not load live resources.")
           setOnlineResources([])
+          setOnlineExamples([])
           return
         }
         const resources = Array.isArray(payload.resources)
@@ -2871,10 +3202,30 @@ export function TeamSyncWorkspaceClient() {
               .filter(Boolean)
               .slice(0, 5)
           : []
+        const examples = Array.isArray(payload.examples)
+          ? payload.examples
+              .map((item: unknown, index: number) => {
+                const row = item as Record<string, unknown>
+                const title = typeof row.title === "string" ? row.title.trim() : ""
+                const href = typeof row.url === "string" ? row.url.trim() : ""
+                const note = typeof row.note === "string" ? row.note.trim() : ""
+                if (!title || !href) return null
+                return {
+                  id: `example-${index + 1}`,
+                  title,
+                  href,
+                  note: note || "Comparable scenario reference.",
+                } as ScenarioExample
+              })
+              .filter(Boolean)
+              .slice(0, 3)
+          : []
         setOnlineResources(resources as ResourceLink[])
+        setOnlineExamples(examples as ScenarioExample[])
       } catch {
         setResourcesError("Live resource search is unavailable right now.")
         setOnlineResources([])
+        setOnlineExamples([])
       } finally {
         setResourcesLoading(false)
       }
@@ -3955,13 +4306,66 @@ export function TeamSyncWorkspaceClient() {
                       <span>|</span>
                       <span>{selectedExecutivePrompt.category}</span>
                     </div>
-                    <p className="mt-0.5 line-clamp-3 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
-                    <details className="mt-1">
-                      <summary className="cursor-pointer text-[11px] font-semibold text-[#1d4ed8]">View full prompt</summary>
-                      <p className="mt-1 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
-                    </details>
+                    {selectedExecutivePrompt.promptText.length > 220 ? (
+                      <>
+                        <p className="mt-0.5 line-clamp-3 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[11px] font-semibold text-[#1d4ed8]">View full prompt</summary>
+                          <p className="mt-1 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
+                        </details>
+                      </>
+                    ) : (
+                      <p className="mt-0.5 text-xs text-[#334155]">{selectedExecutivePrompt.promptText}</p>
+                    )}
                   </div>
                 ) : null}
+                <details className="mt-1.5 rounded-xl border border-[#c7d8f5] bg-[#eff6ff] px-3 py-2">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-[#1e3a8a]">
+                    TeamSync Executive Intelligence Engine: why this matters
+                  </summary>
+                  <p className="mt-1 text-xs text-[#334155]">
+                    TeamSync Premium converts executive Gallup strengths into a decision-support layer for team structure,
+                    pressure simulation, governance readiness, and high-stakes leadership execution.
+                  </p>
+                  <div className="mt-1.5 grid gap-1 text-[11px] text-[#334155] md:grid-cols-2">
+                    <div className="rounded-lg border border-[#bfdbfe] bg-white/80 px-2 py-1.5">
+                      <span className="font-semibold text-[#1e3a8a]">Input and interaction mapping:</span> reveal blind spots,
+                      friction patterns, and role-fit risks.
+                    </div>
+                    <div className="rounded-lg border border-[#bfdbfe] bg-white/80 px-2 py-1.5">
+                      <span className="font-semibold text-[#1e3a8a]">Simulation core:</span> model team behavior in crisis, restructuring,
+                      investor pressure, and strategic reset.
+                    </div>
+                    <div className="rounded-lg border border-[#bfdbfe] bg-white/80 px-2 py-1.5">
+                      <span className="font-semibold text-[#1e3a8a]">Premium boardroom layer:</span> stress-test leadership readiness for
+                      governance and capital decisions.
+                    </div>
+                    <div className="rounded-lg border border-[#bfdbfe] bg-white/80 px-2 py-1.5">
+                      <span className="font-semibold text-[#1e3a8a]">Business outcomes:</span> optimized executive structure, reduced
+                      operational friction, and stronger board confidence.
+                    </div>
+                  </div>
+                  <details className="mt-2 rounded-lg border border-[#bfdbfe] bg-white/90 px-2 py-2">
+                    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#1e3a8a]">
+                      View architecture graphic
+                    </summary>
+                    <a
+                      href={TEAMSYNC_EXECUTIVE_ENGINE_IMAGE}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex text-xs font-semibold text-[#1d4ed8] underline-offset-2 hover:underline"
+                    >
+                      Open full image
+                    </a>
+                    <Image
+                      src={TEAMSYNC_EXECUTIVE_ENGINE_IMAGE}
+                      alt="TeamSync Executive Intelligence Engine architecture"
+                      width={1365}
+                      height={768}
+                      className="mt-1.5 h-auto w-full rounded-lg border border-[#bfdbfe] bg-white"
+                    />
+                  </details>
+                </details>
                 <p className="mt-0.5 text-xs text-[#64748b]">Premium pack loaded from your executive prompt library. Boardroom scenarios are marked as add-on tier.</p>
               </div>
               <div className={scenarioMode === "custom" ? "" : "hidden"}>
@@ -5026,6 +5430,20 @@ export function TeamSyncWorkspaceClient() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => void exportFilteredRunsDocx()}
+                      className="ui-compact-pill"
+                    >
+                      Export Word
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openPrintableFilteredRunsReport}
+                      className="ui-compact-pill"
+                    >
+                      Export PDF
+                    </button>
+                    <button
+                      type="button"
                       onClick={deleteFilteredRuns}
                       className="ui-compact-pill border-rose-300 text-rose-700 hover:bg-rose-50"
                     >
@@ -5167,15 +5585,30 @@ export function TeamSyncWorkspaceClient() {
                             Delete run
                           </button>
                         </div>
-                        <div className="mt-1.5">
-                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Notes</label>
-                          <textarea
-                            defaultValue={run.notes || ""}
-                            onBlur={(event) => saveRunNotes(run.runId, event.target.value)}
-                            placeholder="Add context, decisions, or follow-up notes for this run..."
-                            className="min-h-[64px] w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs"
-                          />
-                        </div>
+                        <details className="mt-1.5 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
+                          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                            Notes and detail
+                          </summary>
+                          <div className="mt-1.5 grid gap-1.5 text-xs text-[#475569] md:grid-cols-2">
+                            <div>
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Top risk</div>
+                              <p className="mt-0.5">{run.risks[0] || "No major risk listed."}</p>
+                            </div>
+                            <div>
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Top action</div>
+                              <p className="mt-0.5">{run.actions[0] || "No action listed."}</p>
+                            </div>
+                          </div>
+                          <div className="mt-1.5">
+                            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Notes</label>
+                            <textarea
+                              defaultValue={run.notes || ""}
+                              onBlur={(event) => saveRunNotes(run.runId, event.target.value)}
+                              placeholder="Add context, decisions, or follow-up notes for this run..."
+                              className="min-h-[56px] w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs"
+                            />
+                          </div>
+                        </details>
                       </div>
                     ))
                   )}
@@ -5207,6 +5640,25 @@ export function TeamSyncWorkspaceClient() {
                   <div className="mt-2 text-xs font-medium text-[#1d4ed8]">Open resource</div>
                 </a>
               ))}
+            </div>
+            <div className="mt-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Comparable scenario examples</div>
+              <p className="mt-0.5 text-xs text-[#475569]">Examples of organizations or people in similar situations.</p>
+              <div className="mt-1 grid gap-2 md:grid-cols-2">
+                {displayedExamples.map((example) => (
+                  <a
+                    key={example.id}
+                    href={example.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-neutral-200 bg-[#fbfdff] px-3 py-2 hover:bg-[#f4f9ff]"
+                  >
+                    <div className="text-sm font-semibold text-[#0f172a]">{example.title}</div>
+                    <div className="mt-1 break-all text-xs text-[#1d4ed8]">{example.href}</div>
+                    <p className="mt-1 text-xs text-[#475569]">{example.note}</p>
+                  </a>
+                ))}
+              </div>
             </div>
             </ExpandableCard>
           </section>
