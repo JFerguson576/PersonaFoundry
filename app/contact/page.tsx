@@ -57,36 +57,36 @@ export default function ContactPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f8fc] text-[#0f172a]">
+    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
 
-        <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-6 shadow-sm">
+        <section className="rounded-3xl border border-[#c9d8ef] bg-[linear-gradient(180deg,#ffffff_0%,#f3f8ff_100%)] p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Personara</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#0f172a]">Contact</h1>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#142c4f]">Contact</h1>
               <p className="mt-2 text-sm text-[#475569]">
                 Send partnerships, enterprise, support, or general enquiries to the Personara team.
               </p>
             </div>
             <Link
               href="/platform"
-              className="inline-flex items-center rounded-xl border border-[#d8e4f2] bg-white px-3.5 py-2 text-sm font-semibold text-[#334155] hover:bg-[#f8fbff]"
+              className="inline-flex items-center rounded-xl border border-[#c3d4ea] bg-white px-3.5 py-2 text-sm font-semibold text-[#2f4a73] hover:bg-[#f4f8ff]"
             >
               Back to Overview
             </Link>
           </div>
         </section>
 
-        <section className="mt-5 rounded-3xl border border-[#d8e4f2] bg-white p-5 shadow-sm">
+        <section className="mt-5 rounded-3xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
           <form onSubmit={handleContactSubmit} className="grid gap-3 md:grid-cols-2">
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Name</span>
               <input
                 value={contactName}
                 onChange={(event) => setContactName(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#d8e4f2] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none ring-[#0a66c2] focus:ring-2"
+                className="mt-1 w-full rounded-xl border border-[#c3d4ea] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none ring-[#2a63e5] focus:ring-2"
                 placeholder="Your full name"
                 required
               />
@@ -97,7 +97,7 @@ export default function ContactPage() {
                 type="email"
                 value={contactEmail}
                 onChange={(event) => setContactEmail(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#d8e4f2] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none ring-[#0a66c2] focus:ring-2"
+                className="mt-1 w-full rounded-xl border border-[#c3d4ea] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none ring-[#2a63e5] focus:ring-2"
                 placeholder="you@company.com"
                 required
               />
@@ -107,7 +107,7 @@ export default function ContactPage() {
               <input
                 value={contactCompany}
                 onChange={(event) => setContactCompany(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#d8e4f2] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none ring-[#0a66c2] focus:ring-2"
+                className="mt-1 w-full rounded-xl border border-[#c3d4ea] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none ring-[#2a63e5] focus:ring-2"
                 placeholder="Company or organization"
               />
             </label>
@@ -116,7 +116,7 @@ export default function ContactPage() {
               <select
                 value={contactTopic}
                 onChange={(event) => setContactTopic(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#d8e4f2] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none ring-[#0a66c2] focus:ring-2"
+                className="mt-1 w-full rounded-xl border border-[#c3d4ea] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none ring-[#2a63e5] focus:ring-2"
               >
                 <option>General enquiry</option>
                 <option>Sales and pricing</option>
@@ -129,7 +129,7 @@ export default function ContactPage() {
               <textarea
                 value={contactMessage}
                 onChange={(event) => setContactMessage(event.target.value)}
-                className="mt-1 min-h-[160px] w-full rounded-xl border border-[#d8e4f2] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none ring-[#0a66c2] focus:ring-2"
+                className="mt-1 min-h-[160px] w-full rounded-xl border border-[#c3d4ea] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none ring-[#2a63e5] focus:ring-2"
                 placeholder="How can we help?"
                 required
               />
@@ -138,7 +138,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={contactBusy}
-                className="inline-flex items-center rounded-xl bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center rounded-xl bg-[#142c4f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1b355f] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {contactBusy ? "Sending..." : "Send message"}
               </button>

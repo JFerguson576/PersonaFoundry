@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const status = normalizeText(url.searchParams.get("status"))
-  const module = normalizeText(url.searchParams.get("module"))
+  const moduleKey = normalizeText(url.searchParams.get("module"))
 
   let query = admin
     .from("tester_feedback_notes")
@@ -45,8 +45,8 @@ export async function GET(request: Request) {
   if (status === "open" || status === "in_review" || status === "resolved") {
     query = query.eq("status", status)
   }
-  if (module) {
-    query = query.eq("module", module)
+  if (moduleKey) {
+    query = query.eq("module", moduleKey)
   }
 
   const { data, error } = await query
@@ -128,4 +128,3 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ note: data })
 }
-

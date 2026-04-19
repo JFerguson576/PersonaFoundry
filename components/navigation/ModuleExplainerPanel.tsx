@@ -47,7 +47,7 @@ export function ModuleExplainerPanel({ buttonLabel, title, summary, docHref }: M
             <p className="mt-2 text-sm leading-6 text-[#334155]">{summary}</p>
             <Link
               href={docHref}
-              className="mt-3 inline-flex text-xs font-semibold text-[#0f4c81] underline-offset-2 hover:underline"
+              className="personara-explainer-chip mt-3"
             >
               Read full brief (.docx)
             </Link>
@@ -57,4 +57,3 @@ export function ModuleExplainerPanel({ buttonLabel, title, summary, docHref }: M
     </>
   )
 }
-

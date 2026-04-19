@@ -61,9 +61,9 @@ export function ContextualHelpDrawer() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="inline-flex items-center rounded-xl border border-[#0a66c2]/40 bg-[#e8f3ff] px-3 py-1.5 text-xs font-semibold text-[#0a66c2] transition hover:bg-[#dcecff]"
-        title={open ? "Close Step Coach" : "Open Step Coach"}
+        title={open ? "Close guide" : "Open guide"}
       >
-        {open ? "Close Step Coach" : "Step Coach"}
+        {open ? "Close guide" : "Guide me"}
       </button>
 
       {open ? (
@@ -79,7 +79,7 @@ export function ContextualHelpDrawer() {
             <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 flex items-start justify-between gap-3 border-b border-[#e2e8f0] bg-white px-5 py-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">
-                  Step Coach
+                  Guided help
                 </p>
                 <h3 className="mt-1 text-lg font-semibold text-[#0f172a]">{moduleContext.title}</h3>
                 <p className="mt-1 text-sm leading-6 text-[#475569]">{moduleContext.purpose}</p>

@@ -1116,7 +1116,7 @@ export default function Home() {
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false)
   const [beginnerMode, setBeginnerMode] = useState(true)
   const [showQuickStartWizard, setShowQuickStartWizard] = useState(true)
-  const [showGallupExplainer, setShowGallupExplainer] = useState(false)
+  const [showGallupExplainer, setShowGallupExplainer] = useState(true)
   const [showHeaderSetup, setShowHeaderSetup] = useState(false)
   const [compactWorkflowMode, setCompactWorkflowMode] = useState(true)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
@@ -2418,6 +2418,38 @@ export default function Home() {
                   {showGallupExplainer ? "Hide why this works" : "Why this works (Gallup-based)"}
                 </button>
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <a
+                  href="/docs/personara-user-explainer-v2.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open persona explainer
+                </a>
+                <a
+                  href="/docs/personara-ai-gallup-strengths-explainer.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open Gallup explainer
+                </a>
+                <a
+                  href="/docs/personara-ai-platform-proposition.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open platform proposition
+                </a>
+                <a
+                  href="/resources#persona-foundry"
+                  className="personara-explainer-chip"
+                >
+                  Open resource hub
+                </a>
+              </div>
               {showGallupExplainer ? (
                 <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#334155]">
                   <p className="font-semibold text-[#0f172a]">
@@ -2434,7 +2466,7 @@ export default function Home() {
                     href="/docs/personara-ai-gallup-strengths-explainer.docx"
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-flex rounded-full border border-[#cdd9e5] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#334155] hover:bg-[#eef4ff]"
+                    className="personara-explainer-chip mt-2"
                   >
                     Read full explainer
                   </a>

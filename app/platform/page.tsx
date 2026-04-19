@@ -143,21 +143,21 @@ export default function PlatformLandingPage() {
   const isSignedIn = Boolean(session?.user)
 
   return (
-    <main className="min-h-screen bg-[#f4f8fc] text-[#0f172a]">
+    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Personara" />
         {!isSignedIn || message ? (
           <section
             id="overview"
-            className="rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#edf6ff_50%,#f5fbff_100%)] p-7 shadow-sm"
+            className="rounded-[2rem] border border-[#bfd2ed] bg-[linear-gradient(135deg,#ffffff_0%,#edf4ff_50%,#eef5ff_100%)] p-7 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)]"
           >
           <div className="flex justify-end">
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setAccountMenuOpen((current) => !current)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#cdd9e5] bg-white text-[#334155] shadow-sm hover:bg-[#f8fbff]"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#c3d4ea] bg-white text-[#2f4a73] shadow-sm hover:bg-[#f4f8ff]"
                 aria-label="Account"
                 title={session?.user?.email ? "Account" : "Sign in"}
               >
@@ -167,7 +167,7 @@ export default function PlatformLandingPage() {
                 </svg>
               </button>
               {accountMenuOpen ? (
-                <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-[#d9e2ec] bg-white p-3 shadow-lg">
+                <div className="absolute right-0 z-20 mt-2 w-64 rounded-2xl border border-[#c3d4ea] bg-white p-3 shadow-lg">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">Account</p>
                   {session?.user?.email ? (
                     <div className="mt-2 space-y-2">
@@ -191,7 +191,7 @@ export default function PlatformLandingPage() {
                         type="button"
                         onClick={() => void handleSignIn("google")}
                         disabled={busyProvider !== null || !providerStatus.google.enabled}
-                        className="w-full rounded-xl bg-[#0a66c2] px-3 py-2 text-sm font-medium text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full rounded-xl bg-[#2a63e5] px-3 py-2 text-sm font-medium text-white hover:bg-[#1f56d5] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {busyProvider === "google" ? "Connecting..." : "Continue with Google"}
                       </button>
@@ -224,7 +224,7 @@ export default function PlatformLandingPage() {
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5b6b7c]">Personara.ai</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f172a]">Identity. Decisions. Intelligence.</h1>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#142c4f]">Identity. Decisions. Intelligence.</h1>
                 <p className="mt-3 text-sm leading-6 text-[#475569]">
                   Personara is the system that defines how humans and AI operate across Career Intelligence, Persona Foundry, and TeamSync.
                 </p>
@@ -238,13 +238,13 @@ export default function PlatformLandingPage() {
                   <button
                     type="button"
                     onClick={() => setAccountMenuOpen(true)}
-                    className="inline-flex items-center rounded-xl bg-[#0f172a] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#1e293b]"
+                    className="inline-flex items-center rounded-xl bg-[#142c4f] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#1b355f]"
                   >
                     Start Free
                   </button>
                   <Link
                     href="/pricing"
-                    className="inline-flex items-center rounded-xl border border-[#cdd9e5] bg-white px-3.5 py-2 text-sm font-semibold text-[#1e293b] hover:bg-[#f8fbff]"
+                    className="inline-flex items-center rounded-xl border border-[#c3d4ea] bg-white px-3.5 py-2 text-sm font-semibold text-[#1b355f] hover:bg-[#f4f8ff]"
                   >
                     View Pricing
                   </Link>
@@ -259,11 +259,11 @@ export default function PlatformLandingPage() {
 
         <section id="modules" className="mt-5 grid gap-4 md:grid-cols-3">
           {modules.map((module) => (
-            <article key={module.key} className="flex h-full flex-col rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <article key={module.key} className="flex h-full flex-col rounded-3xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Module {module.order}</p>
               </div>
-              <h2 className="mt-2 text-xl font-semibold text-[#0f172a]">{module.title}</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[#142c4f]">{module.title}</h2>
               <p className="mt-1 text-sm font-medium text-[#334155]">{module.subtitle}</p>
               <p className="mt-2 grow text-sm leading-6 text-[#475569]">{module.detail}</p>
               <Link
@@ -271,7 +271,7 @@ export default function PlatformLandingPage() {
                 title={isSignedIn ? `Open ${module.title}` : `Open ${module.title} (you can sign in from the account panel)`}
                 className={`mt-4 inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium ${
                   isSignedIn
-                    ? "bg-[#0f172a] text-white hover:bg-[#1e293b]"
+                    ? "bg-[#142c4f] text-white hover:bg-[#1b355f]"
                     : "border border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
                 }`}
               >
@@ -281,8 +281,8 @@ export default function PlatformLandingPage() {
           ))}
         </section>
 
-        <section className="mt-5 rounded-[2rem] border border-[#d9e2ec] bg-white p-4 shadow-sm">
-          <div className="overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[#f8fbff]">
+        <section className="mt-5 rounded-[2rem] border border-[#bfd2ed] bg-white p-4 shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-[#bfd2ed] bg-[#f3f8ff]">
             <Image
               src="/images/personara-platform-anatomy.png"
               alt="The Anatomy of Personara.ai platform overview"

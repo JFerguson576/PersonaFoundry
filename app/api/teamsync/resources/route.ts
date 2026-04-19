@@ -7,6 +7,12 @@ type ResourceResult = {
   reason: string
 }
 
+type ScenarioExampleResult = {
+  title: string
+  url: string
+  note: string
+}
+
 function normalizeText(value: unknown) {
   if (typeof value !== "string") return ""
   return value.trim()
@@ -112,15 +118,25 @@ Return JSON:
       "url": "https://...",
       "reason": "string"
     }
+  ],
+  "examples": [
+    {
+      "title": "string",
+      "url": "https://...",
+      "note": "string"
+    }
   ]
 }
 
 Rules:
 - Provide exactly 5 items.
+- Provide exactly 3 comparable examples.
 - Each url must be direct and publicly accessible.
 - Keep reason to one sentence and tie it to this scenario's needs.
+- Keep note to one sentence and summarize what happened / why it is similar.
 - Prioritize quality and practical support.
 - Avoid duplicate domains when possible.
+- Prefer real organizations, real teams, or real people with credible reporting.
 
 Scenario title: ${scenarioTitle}
 Scenario category: ${scenarioCategory}
@@ -156,8 +172,23 @@ Actions planned: ${actions.join(" | ") || "Not provided"}`,
                     required: ["title", "url", "reason"],
                   },
                 },
+                examples: {
+                  type: "array",
+                  minItems: 3,
+                  maxItems: 3,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      title: { type: "string" },
+                      url: { type: "string" },
+                      note: { type: "string" },
+                    },
+                    required: ["title", "url", "note"],
+                  },
+                },
               },
-              required: ["resources"],
+              required: ["resources", "examples"],
             },
           },
         },
@@ -183,7 +214,7 @@ Actions planned: ${actions.join(" | ") || "Not provided"}`,
       return NextResponse.json({ error: "Resource search returned empty output." }, { status: 500 })
     }
 
-    let parsed: { resources?: ResourceResult[] } = {}
+    let parsed: { resources?: ResourceResult[]; examples?: ScenarioExampleResult[] } = {}
     try {
       parsed = JSON.parse(outputText) as { resources?: ResourceResult[] }
     } catch {
@@ -205,7 +236,22 @@ Actions planned: ${actions.join(" | ") || "Not provided"}`,
       })
       .slice(0, 5)
 
-    return NextResponse.json({ resources })
+    const exampleUnique = new Set<string>()
+    const examples = (Array.isArray(parsed.examples) ? parsed.examples : [])
+      .map((item) => ({
+        title: normalizeText(item.title),
+        url: normalizeUrl(item.url),
+        note: normalizeText(item.note),
+      }))
+      .filter((item) => item.title && item.url)
+      .filter((item) => {
+        if (exampleUnique.has(item.url)) return false
+        exampleUnique.add(item.url)
+        return true
+      })
+      .slice(0, 3)
+
+    return NextResponse.json({ resources, examples })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })

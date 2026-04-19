@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
+import { AdminTourCompletionPanel } from "@/components/admin/AdminTourCompletionPanel"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { getAuthHeaders } from "@/lib/career-client"
 import { supabase } from "@/lib/supabase"
@@ -99,6 +100,37 @@ type RecoverySweepLog = {
   errorDetails?: string[]
 }
 
+type TeamSyncOutreachQueueRow = {
+  id: string
+  user_id: string | null
+  user_email: string
+  user_name: string | null
+  segment: string
+  source: string
+  status: string
+  last_teamsync_event_at: string | null
+  last_contacted_at: string | null
+  next_action_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+type TeamSyncOutreachCampaignRow = {
+  id: string
+  created_by_email: string | null
+  audience_status: string
+  audience_segment: string
+  support_name: string | null
+  calendly_url: string | null
+  subject: string
+  message: string
+  recipient_count: number
+  sent_count: number
+  status: string
+  created_at: string
+}
+
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
   if (status === "running") return "border-sky-300 bg-sky-50 text-sky-800"
@@ -130,12 +162,27 @@ export function OperationsJobsClient() {
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
   const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
   const [collapsedPanels, setCollapsedPanels] = useState({
+    controlCenter: false,
     digest: false,
     recovery: false,
+    teamsyncOutreach: false,
     healthInbox: false,
     background: false,
     live: false,
   })
+  const [teamsyncOutreachQueue, setTeamsyncOutreachQueue] = useState<TeamSyncOutreachQueueRow[]>([])
+  const [teamsyncOutreachCampaigns, setTeamsyncOutreachCampaigns] = useState<TeamSyncOutreachCampaignRow[]>([])
+  const [loadingTeamSyncOutreach, setLoadingTeamSyncOutreach] = useState(false)
+  const [queueingTeamSyncOutreach, setQueueingTeamSyncOutreach] = useState(false)
+  const [sendingTeamSyncOutreach, setSendingTeamSyncOutreach] = useState(false)
+  const [teamsyncAudienceStatus, setTeamsyncAudienceStatus] = useState<"queued" | "contacted" | "responded">("queued")
+  const [teamsyncAudienceSegment, setTeamsyncAudienceSegment] = useState("all")
+  const [teamsyncOutreachSubject, setTeamsyncOutreachSubject] = useState("Personara TeamSync quick check-in")
+  const [teamsyncOutreachMessage, setTeamsyncOutreachMessage] = useState(
+    "I noticed that you logged into the Personara.ai TeamSync workspace.\n\nTypically we schedule a 15 minute call to better understand your needs. Do you have availability in the coming days?\n\nI have opened my calendar below. Please choose any time that works for you and I will work with your schedule."
+  )
+  const [teamsyncSupportName, setTeamsyncSupportName] = useState("Personara Support")
+  const [teamsyncCalendlyUrl, setTeamsyncCalendlyUrl] = useState("")
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -160,8 +207,10 @@ export function OperationsJobsClient() {
       if (!raw) {
         if (window.matchMedia("(max-width: 767px)").matches) {
           setCollapsedPanels({
+            controlCenter: false,
             digest: false,
             recovery: true,
+            teamsyncOutreach: true,
             healthInbox: true,
             background: true,
             live: true,
@@ -245,6 +294,26 @@ export function OperationsJobsClient() {
     }
   }, [])
 
+  const loadTeamSyncOutreach = useCallback(async () => {
+    setLoadingTeamSyncOutreach(true)
+    try {
+      const response = await fetch("/api/admin/teamsync-outreach", {
+        cache: "no-store",
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load TeamSync outreach")
+      }
+      setTeamsyncOutreachQueue((json.queue ?? []) as TeamSyncOutreachQueueRow[])
+      setTeamsyncOutreachCampaigns((json.campaigns ?? []) as TeamSyncOutreachCampaignRow[])
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load TeamSync outreach")
+    } finally {
+      setLoadingTeamSyncOutreach(false)
+    }
+  }, [])
+
   useEffect(() => {
     async function load() {
       const {
@@ -266,6 +335,11 @@ export function OperationsJobsClient() {
     })
     return () => subscription.unsubscribe()
   }, [loadCandidateHealth, loadHealthInboxState, loadOverview])
+
+  useEffect(() => {
+    if (!overview?.permissions.is_superuser) return
+    void loadTeamSyncOutreach()
+  }, [overview?.permissions.is_superuser, loadTeamSyncOutreach])
 
   const filteredBackground = useMemo(() => {
     if (!overview) return []
@@ -510,6 +584,65 @@ export function OperationsJobsClient() {
     }
   }
 
+  async function handleQueueTeamSyncOutreach() {
+    setQueueingTeamSyncOutreach(true)
+    setMessage("")
+    try {
+      const response = await fetch("/api/admin/teamsync-outreach", {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          action: "queue_from_teamsync",
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to build TeamSync outreach queue")
+      }
+      const queued = Number(json.queued ?? 0)
+      const skipped = Number(json.skipped ?? 0)
+      setMessage(`TeamSync queue refreshed. ${queued} queued${skipped > 0 ? `, ${skipped} skipped` : ""}.`)
+      await loadTeamSyncOutreach()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to build TeamSync outreach queue")
+    } finally {
+      setQueueingTeamSyncOutreach(false)
+    }
+  }
+
+  async function handleSendTeamSyncOutreach() {
+    setSendingTeamSyncOutreach(true)
+    setMessage("")
+    try {
+      const response = await fetch("/api/admin/teamsync-outreach", {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({
+          action: "send_campaign",
+          audience_status: teamsyncAudienceStatus,
+          audience_segment: teamsyncAudienceSegment,
+          subject: teamsyncOutreachSubject,
+          message: teamsyncOutreachMessage,
+          support_name: teamsyncSupportName,
+          calendly_url: teamsyncCalendlyUrl,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to send TeamSync outreach campaign")
+      }
+      const attempted = Number(json.recipients_attempted ?? 0)
+      const sent = Number(json.recipients_sent ?? 0)
+      const mode = json.delivery_mode === "draft_only" ? "draft mode (no email sent)" : "email mode"
+      setMessage(`TeamSync campaign complete. ${sent}/${attempted} sent (${mode}).`)
+      await loadTeamSyncOutreach()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to send TeamSync outreach campaign")
+    } finally {
+      setSendingTeamSyncOutreach(false)
+    }
+  }
+
   async function retryBackgroundJob(jobId: string) {
     setRetryingKey(`bg-${jobId}`)
     setMessage("")
@@ -580,7 +713,7 @@ export function OperationsJobsClient() {
   )
 
   return (
-    <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
+    <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <PlatformModuleNav />
         {!session?.user ? (
@@ -590,7 +723,7 @@ export function OperationsJobsClient() {
         ) : null}
 
         {message ? (
-          <section className="mt-4 rounded-2xl border border-[#d8e4f2] bg-white px-4 py-3 text-sm text-neutral-700">
+          <section className="mt-4 rounded-2xl border border-[#c9d8ef] bg-[#f7fbff] px-4 py-3 text-sm text-[#1e365f]">
             {message}
           </section>
         ) : null}
@@ -602,22 +735,26 @@ export function OperationsJobsClient() {
 
         {overview ? (
           <div className="mt-3 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
-            <aside className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Operations menu</div>
-              <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+            <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Operations menu</div>
+              <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                   Run health
                 </summary>
                 <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Ops summary</button>
-                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recovery queue</button>
-                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Candidate risk inbox</button>
-                  <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Background jobs</button>
-                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Live job runs</button>
+                  <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
+                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recovery queue</button>
+                  {overview.permissions.is_superuser ? (
+                    <button type="button" onClick={() => focusPanel("teamsyncOutreach")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "teamsyncOutreach" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>TeamSync outreach</button>
+                  ) : null}
+                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
+                  <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
+                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
                 </div>
               </details>
-              <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+              <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                   Quick actions
                 </summary>
                 <div className="px-2 pb-2 space-y-1.5">
@@ -625,47 +762,71 @@ export function OperationsJobsClient() {
                     void loadOverview()
                     void loadCandidateHealth()
                     void loadHealthInboxState()
+                    if (overview.permissions.is_superuser) {
+                      void loadTeamSyncOutreach()
+                    }
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
-                  <Link href="/platform#modules" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Main menu</Link>
+                  <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Main menu</Link>
                 </div>
               </details>
-              {overview.permissions.is_superuser ? (
-                <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
-                    Platform management
-                  </summary>
-                  <div className="px-2 pb-2 space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => window.dispatchEvent(new CustomEvent("personara:open-command"))}
-                      className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
-                    >
-                      Open command bar
-                    </button>
-                    <Link href="/admin" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
-                      Admin dashboard
-                    </Link>
-                    <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
-                      Marketing engine
-                    </Link>
-                    <Link href="/career?view=control" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
-                      Candidate control
-                    </Link>
-                    <Link href="/control-center" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
-                      Operations hub
-                    </Link>
-                  </div>
-                </details>
-              ) : null}
             </aside>
 
             <div>
-            <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("digest") ? "" : "hidden"}`}>
+            <section id="operations-controlCenter" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("controlCenter") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Daily ops digest</div>
-                  <h2 className="mt-1 text-sm font-semibold text-[#0f172a]">Operations health | {digest.dateLabel}</h2>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Operations control</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Unified module controls in one workspace</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("controlCenter")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.controlCenter ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.controlCenter ? (
+                <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  <button type="button" onClick={() => focusPanel("digest")} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Operations</div>
+                    <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Ops summary</div>
+                    <div className="mt-1 text-xs text-[#3d567d]">Health snapshot and run quality.</div>
+                  </button>
+                  <button type="button" onClick={() => focusPanel("healthInbox")} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Candidate management</div>
+                    <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Risk inbox</div>
+                    <div className="mt-1 text-xs text-[#3d567d]">Candidates needing intervention first.</div>
+                  </button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Recovery</div>
+                    <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Stalled run recovery</div>
+                    <div className="mt-1 text-xs text-[#3d567d]">Retry failed and stalled workloads.</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => focusPanel(overview.permissions.is_superuser ? "teamsyncOutreach" : "live")}
+                    className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
+                  >
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                      {overview.permissions.is_superuser ? "Marketing + outreach" : "Live search"}
+                    </div>
+                    <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">
+                      {overview.permissions.is_superuser ? "TeamSync outreach" : "Live job runs"}
+                    </div>
+                    <div className="mt-1 text-xs text-[#3d567d]">
+                      {overview.permissions.is_superuser ? "Campaign queue and follow-up actions." : "Monitor live search activity."}
+                    </div>
+                  </button>
+                </div>
+              ) : null}
+            </section>
+            <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("digest") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Daily ops digest</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Operations health | {digest.dateLabel}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -696,7 +857,7 @@ export function OperationsJobsClient() {
                 <SnapshotStat label="Failures 24h" value={String(overview.summary.failed_24h)} />
                 <SnapshotStat label={`Stalled ${STALLED_THRESHOLD_MINUTES}m+`} value={String(stalledRunningCount)} />
               </div>
-              <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+              <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
                 {digest.failedToday > 0
                   ? `${digest.failedToday} failures in the last 24h. Start with recovery activity and failed retries.`
                   : "No failures in the last 24h. Keep monitoring recovery and candidate health."}
@@ -704,8 +865,9 @@ export function OperationsJobsClient() {
                 </>
               ) : null}
             </section>
+            <AdminTourCompletionPanel />
 
-            <section id="operations-recovery" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("recovery") ? "" : "hidden"}`}>
+            <section id="operations-recovery" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("recovery") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-neutral-600">Recovery activity</h2>
                 <div className="flex flex-wrap items-center gap-2">
@@ -781,9 +943,164 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section id="operations-healthInbox" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("healthInbox") ? "" : "hidden"}`}>
+            {overview.permissions.is_superuser ? (
+              <section id="operations-teamsyncOutreach" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("teamsyncOutreach") ? "" : "hidden"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-[#142c4f]">TeamSync outreach</h2>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => togglePanel("teamsyncOutreach")}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {collapsedPanels.teamsyncOutreach ? "Expand" : "Collapse"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadTeamSyncOutreach()}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {loadingTeamSyncOutreach ? "Refreshing..." : "Refresh"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleQueueTeamSyncOutreach()}
+                      disabled={queueingTeamSyncOutreach}
+                      className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {queueingTeamSyncOutreach ? "Building queue..." : "Build queue"}
+                    </button>
+                  </div>
+                </div>
+                {!collapsedPanels.teamsyncOutreach ? (
+                  <>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <SnapshotStat label="Queue size" value={String(teamsyncOutreachQueue.length)} />
+                      <SnapshotStat label="Queued" value={String(teamsyncOutreachQueue.filter((row) => row.status === "queued").length)} />
+                      <SnapshotStat label="Contacted" value={String(teamsyncOutreachQueue.filter((row) => row.status === "contacted").length)} />
+                      <SnapshotStat label="Responded" value={String(teamsyncOutreachQueue.filter((row) => row.status === "responded").length)} />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-[#d0dff2] bg-[#f7fbff] p-3">
+                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Audience status
+                          <select
+                            value={teamsyncAudienceStatus}
+                            onChange={(event) => setTeamsyncAudienceStatus(event.target.value as "queued" | "contacted" | "responded")}
+                            className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          >
+                            <option value="queued">Queued</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="responded">Responded</option>
+                          </select>
+                        </label>
+                        <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Segment
+                          <select
+                            value={teamsyncAudienceSegment}
+                            onChange={(event) => setTeamsyncAudienceSegment(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          >
+                            <option value="all">All segments</option>
+                            <option value="gallup_coach_or_exec">Gallup coaches / exec</option>
+                            <option value="teamsync_user">TeamSync user</option>
+                          </select>
+                        </label>
+                        <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Support name
+                          <input
+                            value={teamsyncSupportName}
+                            onChange={(event) => setTeamsyncSupportName(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                            placeholder="Personara Support"
+                          />
+                        </label>
+                      </div>
+                      <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                        Calendly link
+                        <input
+                          value={teamsyncCalendlyUrl}
+                          onChange={(event) => setTeamsyncCalendlyUrl(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          placeholder="https://calendly.com/your-team/intro"
+                        />
+                      </label>
+                      <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                        Subject
+                        <input
+                          value={teamsyncOutreachSubject}
+                          onChange={(event) => setTeamsyncOutreachSubject(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          placeholder="Campaign subject"
+                        />
+                      </label>
+                      <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                        Message
+                        <textarea
+                          value={teamsyncOutreachMessage}
+                          onChange={(event) => setTeamsyncOutreachMessage(event.target.value)}
+                          className="mt-1 min-h-[120px] w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-2 text-sm font-medium text-[#163159]"
+                        />
+                      </label>
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => void handleSendTeamSyncOutreach()}
+                          disabled={sendingTeamSyncOutreach}
+                          className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#08529a] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {sendingTeamSyncOutreach ? "Sending..." : "Send campaign"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                      <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Queue preview</div>
+                        {teamsyncOutreachQueue.length === 0 ? (
+                          <p className="mt-2 text-sm text-neutral-500">No TeamSync outreach queue rows yet.</p>
+                        ) : (
+                          <div className="mt-2 space-y-1.5">
+                            {teamsyncOutreachQueue.slice(0, 24).map((row) => (
+                              <div key={row.id} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+                                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                  <div className="text-sm font-semibold text-neutral-900">{row.user_name || row.user_email}</div>
+                                  <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">{row.status}</span>
+                                </div>
+                                <div className="mt-0.5 text-xs text-neutral-600">{row.user_email} | {row.segment}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Recent campaigns</div>
+                        {teamsyncOutreachCampaigns.length === 0 ? (
+                          <p className="mt-2 text-sm text-neutral-500">No TeamSync outreach campaigns yet.</p>
+                        ) : (
+                          <div className="mt-2 space-y-1.5">
+                            {teamsyncOutreachCampaigns.slice(0, 16).map((campaign) => (
+                              <div key={campaign.id} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+                                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                  <div className="text-sm font-semibold text-neutral-900">{campaign.subject}</div>
+                                  <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">{campaign.status}</span>
+                                </div>
+                                <div className="mt-0.5 text-xs text-neutral-600">
+                                  {campaign.sent_count}/{campaign.recipient_count} sent | {new Date(campaign.created_at).toLocaleString()}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section id="operations-healthInbox" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("healthInbox") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-[#0f172a]">Candidate health inbox</h2>
+                <h2 className="text-lg font-semibold text-[#142c4f]">Candidate health inbox</h2>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -874,9 +1191,9 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section id="operations-background" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("background") ? "" : "hidden"}`}>
+            <section id="operations-background" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("background") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-[#0f172a]">Background jobs</h2>
+                <h2 className="text-lg font-semibold text-[#142c4f]">Background jobs</h2>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
                     <button
@@ -939,9 +1256,9 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section id="operations-live" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("live") ? "" : "hidden"}`}>
+            <section id="operations-live" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("live") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-[#0f172a]">Live search runs</h2>
+                <h2 className="text-lg font-semibold text-[#142c4f]">Live search runs</h2>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
                     <button
@@ -1016,9 +1333,9 @@ export function OperationsJobsClient() {
 
 function SnapshotStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-neutral-900">{value}</div>
+    <div className="rounded-xl border border-[#cfdced] bg-[#f7fbff] px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4c668c]">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-[#132b4d]">{value}</div>
     </div>
   )
 }

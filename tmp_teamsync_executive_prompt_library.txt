@@ -1,0 +1,517 @@
+ 
+ Personara.ai / TeamSync Executive Prompt Library 
+ Codex-ready premium starter prompts for CEOs, senior executives, CHROs, and HR leaders, including the Boardroom Scenarios add-on. 
+ Document purpose 
+ A productized library of starter prompts for premium executive customers using loaded Gallup Strengths data inside TeamSync. 
+ Primary users 
+ CEO, executive team members, CHRO, HR leaders, strategy leaders, founders, board-facing management teams. 
+ Product tiers 
+ Premium Executive Library; Boardroom Scenarios add-on. 
+ Codex intent 
+ Each prompt includes a stable ID, tier, category, title, canonical prompt text, and fixed response contract for app wiring. 
+ How to use this library 
+ • Assume all relevant executive Gallup Strengths profiles have already been loaded into TeamSync. 
+ • Prompts should drive strengths-aware analysis, not generic leadership commentary. 
+ • Outputs should identify likely behavior, strengths advantages, blind spots, friction patterns, role-fit, and practical action steps. 
+ • The Boardroom Scenarios pack is positioned as an additional paid layer above Premium, designed for governance, investor, capital, and board-pressure simulations. 
+ Core analysis instruction for the prompt engine 
+ Use the loaded Gallup Strengths of each executive to assess likely behavior, contribution patterns, friction points, blind spots, decision risks, leadership fit, and capability gaps. Give practical recommendations, not generic personality commentary. Ground the answer in the actual strengths profile of the team. 
+ Standard response contract 
+ Output section 
+ Required content 
+ 1. Situation read 
+ Brief summary of the challenge or decision context. 
+ 2. Likely team behavior 
+ How the executive team is likely to respond based on strengths. 
+ 3. Strengths advantages 
+ What the team is naturally well positioned to do. 
+ 4. Blind spots and risks 
+ Where the team may misread, delay, overreact, or collide. 
+ 5. Key tension points 
+ Likely executive-to-executive friction or role confusion. 
+ 6. Recommended actions 
+ Practical next steps, role moves, decision structure, or routines. 
+ 7. Capability gaps 
+ What is missing, overloaded, or should be added or borrowed. 
+ Starter prompt data schema 
+ { id, tier, audience, category, title, prompt_text, output_contract, tags } 
+ Library structure 
+ • Premium Executive Library: 125 prompts across executive design, strategy, crisis, finance, transformation, team dynamics, talent, M&A, innovation, culture, governance, simulation, and CHRO use cases. 
+ • Boardroom Scenarios Add-on: 25 prompts designed for board tension, capital decisions, governance pressure, CEO succession, investor scrutiny, and strategic credibility tests. 
+ • Suggested UI packs: Build the Right Executive Team; Strategy and Execution; Crisis and Pressure Lab; Transformation and Change; Executive Dynamics and Performance; CHRO Suite; Boardroom Scenarios. 
+ Executive Team Design 
+ TS-EX-001 | Leadership structure for new division 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: Based on the loaded Gallup Strengths of our executive team, recommend the best leadership structure for the new division we are proposing. Define the roles, reporting lines, decision rights, and the success conditions required for the structure to work well. 
+ TS-EX-002 | Role-fit for new division 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: Using the loaded strengths, identify which executives are best suited to lead strategy, operations, people, growth, innovation, and risk in the new business unit. Explain why each match fits and where support is needed. 
+ TS-EX-003 | Responsibilities from scratch 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: If we were building this division from scratch, how should responsibilities be divided across the current executive team to maximize speed, trust, accountability, and quality of execution? 
+ TS-EX-004 | Overlap and gaps 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: Where do we have too much overlap in executive strengths, and where do we have critical gaps that may weaken the new division or create bottlenecks? 
+ TS-EX-005 | Missing leadership roles 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: What leadership roles or capability archetypes appear missing from our current executive strengths profile for the kind of division we want to build? 
+ TS-EX-006 | Best co-lead pairings 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: Which executive pairings are likely to be strongest for co-leading a major initiative, and which pairings may produce friction, confusion, or duplicated effort? 
+ TS-EX-007 | Decision rights design 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: How should we structure decision rights across this executive team so our strengths are used well without creating bottlenecks, ambiguity, or political tension? 
+ TS-EX-008 | Scale-ready structure 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: If this division needs to scale quickly over the next 12 months, what executive structure best supports growth, operational discipline, customer focus, and cross-functional coordination? 
+ TS-EX-009 | First 90 days leadership map 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: Who should lead the first 90 days of the division launch, and who should serve as stabilizers, challengers, integrators, or executors around them? 
+ TS-EX-010 | Job title versus strengths fit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Executive Team Design 
+ Prompt: What are the likely risks if we assign leadership roles based mainly on current job title or seniority rather than true strengths fit? 
+ Strategy and Execution 
+ TS-EX-011 | How the team builds strategy 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: How is this executive team likely to behave during strategy development, based on our combined Gallup Strengths? Identify patterns in ideation, challenge, alignment, and decision-making. 
+ TS-EX-012 | What we decide well and poorly 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: What types of strategic decisions is this team likely to make well, and which types may be distorted by our strengths biases, blind spots, or internal dynamics? 
+ TS-EX-013 | Over-index risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: Where might this team over-index on vision, action, caution, consensus, relationships, or analysis when building strategy? 
+ TS-EX-014 | Run our annual strategy process 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: Design the best annual strategy process for this executive team so that each leader’s strengths are used productively instead of creating drag, conflict, or rework. 
+ TS-EX-015 | Momentum versus quality of thinking 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: Which executives are most likely to drive momentum, and which are most likely to improve the quality of thinking before we commit to execution? 
+ TS-EX-016 | Move from discussion to execution 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: What is the best way for this executive team to move from strategy discussion to execution discipline, given our strengths mix and likely operating habits? 
+ TS-EX-017 | Growth and market-entry blind spots 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: What blind spots are likely to appear when this executive team evaluates growth opportunities, acquisitions, new markets, or major investments? 
+ TS-EX-018 | Assign strategic priorities 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: How should ownership for strategic priorities be assigned in a way that matches natural strengths rather than forcing unnatural roles? 
+ TS-EX-019 | Best operating cadence 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: What operating cadence would best suit this executive team: fast sprint-based reviews, structured monthly reviews, quarterly strategy cycles, or a hybrid model? Explain why. 
+ TS-EX-020 | Long-term versus near-term split 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Strategy and Execution 
+ Prompt: How should this team divide the work between long-term strategic thinking and near-term delivery across its members? 
+ Crisis and Pressure 
+ TS-EX-021 | Response in a major crisis 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: How is this executive team likely to respond in a major business crisis, based on our strengths? Identify likely stabilizers, accelerators, communicators, and pressure points. 
+ TS-EX-022 | 25 percent revenue drop 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: If we faced a sudden 25% revenue drop, how would each executive likely react, and what strengths-based leadership pattern would best stabilize the business? 
+ TS-EX-023 | Who brings what under pressure 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: Which executives are likely to bring calm, speed, discipline, creativity, stakeholder care, or hard-call decision-making during a crisis? 
+ TS-EX-024 | Unhelpful crisis behaviors 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: Where could our strengths create unhelpful crisis behaviors such as overreaction, indecision, over-analysis, optimism bias, avoidance, or internal friction? 
+ TS-EX-025 | Crisis role split 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: How should we divide executive responsibilities if the company faces a reputational crisis, cyber event, legal issue, safety issue, or major operational failure? 
+ TS-EX-026 | Top customer leaves 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: Run a scenario where our top customer leaves unexpectedly. Show how this executive team would likely respond, what risks emerge, and what strengths-based actions we should take in the first 72 hours. 
+ TS-EX-027 | Fast market turn 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: If the market turns against us quickly, which executive dynamics could become assets and which could become liabilities under pressure? 
+ TS-EX-028 | Decision framework for crisis 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: What crisis decision-making framework would best fit this executive team’s natural strengths and likely pressure responses? 
+ TS-EX-029 | Most visible leadership voice 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: Which leadership voice should be most visible internally and externally during a crisis, and who should support behind the scenes? 
+ TS-EX-030 | Fault lines in prolonged crisis 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Crisis and Pressure 
+ Prompt: What are the most likely fault lines in this executive team during a prolonged crisis, and how should we manage them before they become damaging? 
+ Financial and Commercial Pressure 
+ TS-EX-031 | Response to financial stress 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: How is this executive team likely to respond to financial stress such as margin pressure, cost reduction, slowing demand, or investor scrutiny? 
+ TS-EX-032 | Cost reduction without damage 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: If we needed to cut costs significantly without damaging core capability, how should this team approach the decision using our strengths well? 
+ TS-EX-033 | Who protects what 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: Which executives are most likely to protect the future, the people, the customer, the numbers, or execution quality during financial pressure? 
+ TS-EX-034 | What we may underweight 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: Where could our strengths lead us to underweight financial rigor, commercial opportunity, cultural impact, execution risk, or customer consequences? 
+ TS-EX-035 | Turnaround leadership map 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: Who on this team is best placed to lead a turnaround, and who would be critical in ensuring execution, communication, morale, and rigor? 
+ TS-EX-036 | Debate before tough investment call 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: How should we structure executive debate when making hard investment, divestment, pricing, or cost-cutting decisions, given our strengths mix? 
+ TS-EX-037 | One of three initiatives 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: If we had capital to invest in only one of three major initiatives, how should this team evaluate the choice in a strengths-aware way? 
+ TS-EX-038 | Growth, restructuring, turnaround gaps 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: What strengths gaps could weaken this team’s ability to manage rapid growth, restructuring, or a turnaround phase? 
+ TS-EX-039 | Challenge financial assumptions 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: Which executives are likely to challenge financial assumptions effectively, and which may need support to avoid overcommitting, over-protecting, or underreacting? 
+ TS-EX-040 | Communicate difficult decisions 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Financial and Commercial Pressure 
+ Prompt: How should this executive team communicate financially difficult decisions to the broader organization, based on our leadership strengths? 
+ Change and Transformation 
+ TS-EX-041 | Transformation readiness 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: How well is this executive team wired for leading transformation, and where are the likely strengths-based points of resistance? 
+ TS-EX-042 | Change leadership roles 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: Which executives should lead vision, stakeholder buy-in, implementation planning, culture, accountability, and risk management during a major change program? 
+ TS-EX-043 | Ambiguous and sensitive change 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: How is this team likely to behave when change is ambiguous, politically sensitive, or emotionally difficult? 
+ TS-EX-044 | Types of transformation we suit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: What type of transformation would this executive team naturally lead well, and what type would stretch us too far without added capability? 
+ TS-EX-045 | Communicate operating model change 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: How should we communicate a major operating model change so that it lands effectively across the business, given our strengths mix? 
+ TS-EX-046 | Move too fast or too slow 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: Where might this executive team move too fast, too slowly, too cautiously, or too idealistically during transformation? 
+ TS-EX-047 | Sequence the change program 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: How can we sequence a change program in a way that plays to the team’s natural strengths and reduces friction? 
+ TS-EX-048 | Change fatigue 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: If the organization is fatigued by change, how should this executive group lead differently based on its strengths profile? 
+ TS-EX-049 | Stop start lean in 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: For each executive, what should they stop, start, and lean into during a transformation effort? 
+ TS-EX-050 | Capability to add or borrow 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Change and Transformation 
+ Prompt: What leadership capability would we need to add, borrow, or temporarily supplement to improve the odds of transformation success? 
+ Team Dynamics and Effectiveness 
+ TS-EX-051 | Strongest and weakest dynamics 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: What are the strongest and weakest dynamics in this executive team, based on the loaded Gallup Strengths? 
+ TS-EX-052 | Sources of friction 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: Where are the most likely sources of misunderstanding, tension, or friction across this team? 
+ TS-EX-053 | Productive challenge versus drain 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: Which executive relationships are likely to generate the most productive challenge, and which may become draining, oppositional, or avoidant? 
+ TS-EX-054 | Default decision pattern 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: How does this team likely make decisions under normal conditions, and what are the downsides of that default pattern? 
+ TS-EX-055 | Conversations we avoid 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: What conversations is this executive team most likely to avoid because of our strengths mix? 
+ TS-EX-056 | Trust breakdown risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: Where could trust break down in this team, and what practical routines would improve trust, transparency, and speed? 
+ TS-EX-057 | Handle disagreement well 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: How should this team handle disagreement so conflict becomes productive rather than personal, political, or silently corrosive? 
+ TS-EX-058 | Immediate performance habits 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: What executive habits would improve team performance immediately, based on the natural strengths and blind spots present here? 
+ TS-EX-059 | Who is underused or miscast 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: Which executives may feel unheard, overextended, underused, or miscast in the current operating model? 
+ TS-EX-060 | Top three team upgrades 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Team Dynamics and Effectiveness 
+ Prompt: What are the top three changes this executive team should make to improve collective performance over the next six months? 
+ Talent and Succession 
+ TS-EX-061 | Who we should hire next 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: Based on our executive strengths profile, what kind of leaders should we hire next to complement the current team? 
+ TS-EX-062 | Strategic capability gaps 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: What executive-level strengths gaps could become strategic problems as the company grows? 
+ TS-EX-063 | Who can scale bigger 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: Who on this team appears best suited for larger enterprise leadership over time, and why? 
+ TS-EX-064 | Succession planning through strengths 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: How should we approach succession planning using strengths data rather than relying only on current role performance? 
+ TS-EX-065 | Overrepresented and concentrated capabilities 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: Which leadership capabilities are overrepresented on this team, and which are too dependent on one individual? 
+ TS-EX-066 | Unexpected executive departure 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: If one executive left unexpectedly, where would the team be most exposed and what contingency actions would reduce risk? 
+ TS-EX-067 | HR watchouts 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: What should HR watch for when using this team’s strengths data for succession, development, and role redesign? 
+ TS-EX-068 | Multipliers versus solo performers 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: Which executives are natural multipliers of others, and which may need help building broader leadership leverage? 
+ TS-EX-069 | Second-tier leadership bench 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: What kind of second-tier leadership bench should we build under this executive team to reduce risk and improve scale-readiness? 
+ TS-EX-070 | Development plans without boxing people in 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Talent and Succession 
+ Prompt: How can we use Gallup Strengths to improve executive development plans without boxing leaders into narrow labels? 
+ M&A and Partnerships 
+ TS-EX-071 | Evaluate acquisitions and partnerships 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: How well is this executive team suited to evaluate an acquisition, merger, or strategic partnership? 
+ TS-EX-072 | Deal-stage role split 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: Which executives should lead due diligence, integration, stakeholder communication, commercial assessment, culture risk, and people decisions in a deal scenario? 
+ TS-EX-073 | Biases in target evaluation 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: What strengths-based biases might affect how we assess a target company, merger opportunity, or strategic partner? 
+ TS-EX-074 | Post-merger integration fit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: How is this team likely to perform during post-merger integration, and where are the likely trouble spots? 
+ TS-EX-075 | Protect acquired innovation 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: If we acquired a smaller innovative business, how should this executive team integrate it without crushing its value? 
+ TS-EX-076 | What each leader protects in a deal 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: Which executives are likely to protect commercial value, cultural stability, innovation potential, or execution discipline in a deal scenario? 
+ TS-EX-077 | Integration steering group 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: How should we structure an integration steering group that matches our strengths and offsets our weaknesses? 
+ TS-EX-078 | External partnerships we suit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: M&A and Partnerships 
+ Prompt: What kinds of external partnerships would this executive team likely manage well, and which would stretch us too far without reinforcement? 
+ Innovation and Growth 
+ TS-EX-079 | Innovation readiness 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: How naturally equipped is this executive team to drive innovation, based on our Gallup Strengths? 
+ TS-EX-080 | Innovation role map 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: Which executives are best suited to generate new ideas, challenge stale assumptions, test commercial viability, and drive disciplined execution? 
+ TS-EX-081 | Innovation blind spots 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: What innovation blind spots exist in this team that could slow growth or cause us to miss emerging opportunities? 
+ TS-EX-082 | Innovation governance 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: How should we structure innovation governance so bold ideas are not killed too early, but weak ideas do not drain resources? 
+ TS-EX-083 | Enter a new market 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: If we were entering a new market, how should this team divide leadership responsibilities based on strengths? 
+ TS-EX-084 | Proven models versus future bets 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: Where might this executive team overvalue proven models versus future opportunities, or vice versa? 
+ TS-EX-085 | Experimentation versus discipline 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: How do we create a strengths-aware balance between experimentation and operational discipline? 
+ TS-EX-086 | Growth bets we suit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: Which types of growth bets is this team naturally suited to back, and which might need outside challenge or added capability? 
+ TS-EX-087 | More entrepreneurial culture 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Innovation and Growth 
+ Prompt: What leadership roles, habits, or capability additions are essential if we want to build a more entrepreneurial executive culture? 
+ Culture and Org Health 
+ TS-EX-088 | Culture this team creates 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: What kind of company culture is this executive team most likely to create, intentionally or unintentionally, based on its strengths profile? 
+ TS-EX-089 | Messages and rituals that strengthen culture 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: What messages, rituals, and leadership behaviors would most strengthen culture given the way this team is wired? 
+ TS-EX-090 | Downstream engagement risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: Where could executive blind spots create downstream issues in engagement, trust, cross-functional collaboration, or morale? 
+ TS-EX-091 | Lead through low morale 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: How should this team lead through low morale, fatigue, or organizational uncertainty? 
+ TS-EX-092 | Who energizes, clarifies, enforces, includes 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: Which executives are likely to energize people, provide clarity, enforce standards, or create belonging? 
+ TS-EX-093 | How HR should use the map 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: How can HR use this executive strengths map to improve leadership alignment and culture outcomes across the wider business? 
+ TS-EX-094 | Behaviors that confuse the organization 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: What behaviors from this executive team are most likely to confuse or demotivate the organization if left unmanaged? 
+ TS-EX-095 | Communicate change with confidence 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: How should the executive team communicate during change so the organization experiences confidence instead of mixed signals? 
+ TS-EX-096 | Cultural risks of our strengths mix 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Culture and Org Health 
+ Prompt: What are the cultural risks of this team’s current strengths mix, and how can they be balanced? 
+ Board, Governance, and Communication 
+ TS-EX-097 | Board-facing communication fit 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: How is this executive team likely to perform in board-facing communication and governance discussions? 
+ TS-EX-098 | Who should present what to the board 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: Which executives should lead narrative, evidence, challenge-handling, stakeholder confidence, and risk framing in board settings? 
+ TS-EX-099 | Governance quality risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: What strengths-based tendencies could weaken governance quality, such as overconfidence, lack of challenge, excess caution, weak follow-through, or narrative drift? 
+ TS-EX-100 | Prepare for high-stakes board discussion 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: How should this team prepare for a high-stakes board discussion on strategy, performance, restructuring, or capital allocation? 
+ TS-EX-101 | Project confidence and rigor 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: If we want to project confidence, rigor, alignment, and strategic clarity to the board, who is best suited to present what and why? 
+ TS-EX-102 | Board questions we answer well 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: What kinds of board questions is this team well equipped to answer, and where might it need sharper preparation or support? 
+ TS-EX-103 | Internal pre-read and debate before board 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Board, Governance, and Communication 
+ Prompt: How should the executive team structure internal pre-reads, rehearsals, and challenge sessions before presenting major decisions to the board? 
+ Scenario Simulation 
+ TS-EX-104 | 20 percent market contraction 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate how this executive team would handle a 20% market contraction over the next two quarters. Show likely reactions, strengths-led contributions, risks, and recommended leadership moves. 
+ TS-EX-105 | Major customer loss timeline 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a major customer loss and show how each executive would likely respond in the first week, first month, and first quarter. 
+ TS-EX-106 | Launch a new division under pressure 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate the launch of a new division with limited budget, high board expectations, and internal political resistance. Show how this team should organize and lead it. 
+ TS-EX-107 | Failed product launch 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a failed product launch. How would this team likely process accountability, recovery, learning, and communication? 
+ TS-EX-108 | Acquisition integration clash 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate an acquisition integration where cultures clash. What strengths dynamics would appear inside this executive group, and how should they respond? 
+ TS-EX-109 | Cyber incident and media attention 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a cyber incident that disrupts operations and creates media attention. How should this team divide leadership responsibilities and sequence decisions? 
+ TS-EX-110 | CEO wants growth, CFO and COO cautious 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a scenario where the CEO wants aggressive growth but the CFO and COO are more cautious. How would our strengths profiles shape that conflict, and how should it be managed? 
+ TS-EX-111 | Workforce restructure 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a workforce restructure. What executive dynamics would emerge, and what leadership approach would best maintain trust and momentum? 
+ TS-EX-112 | Two executives strongly disagree 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a situation where two senior executives strongly disagree on strategy. Show the likely strengths-based drivers of the conflict and the best intervention approach. 
+ TS-EX-113 | Enter new market quickly 
+ Tier: Premium Audience: Executive / CHRO / HR Category: Scenario Simulation 
+ Prompt: Simulate a scenario where we must enter a new market quickly because of competitive pressure. How would this executive team perform, and what support would it need? 
+ CHRO / People Leadership 
+ TS-HR-114 | Leadership capability risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: Based on the executive team’s strengths map, where are the biggest leadership capability risks from a people and culture perspective? 
+ TS-HR-115 | Culture carriers and drags 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: Which executives are likely to be natural culture carriers, and which may need coaching to avoid unintended organizational drag? 
+ TS-HR-116 | Redesign leadership routines 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: How can we use this executive strengths profile to redesign leadership meetings, priorities, and team rituals? 
+ TS-HR-117 | Executive coaching priorities 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: What executive coaching priorities should be set for each member of the leadership team based on their strengths role in the collective system? 
+ TS-HR-118 | Succession risks 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: Where are the most important succession risks in this executive group, based on strengths concentration and role dependency? 
+ TS-HR-119 | Develop the next layer down 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: How should we use the executive strengths map to shape leadership development for the next layer down? 
+ TS-HR-120 | Next hiring profile 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: What hiring profile should we prioritize next to strengthen the executive team systemically, not just functionally? 
+ TS-HR-121 | Onboarding, alignment, conflict 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: How can HR use this data to improve executive onboarding, alignment, and conflict resolution? 
+ TS-HR-122 | Structural not personal tensions 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: What leadership tensions in this team are likely structural rather than personal, and how should HR frame them? 
+ TS-HR-123 | Executive offsite agenda 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: How should we use TeamSync to support a strategic offsite for the executive team? Design the agenda around their strengths dynamics. 
+ TS-HR-124 | Readiness for scale from a people lens 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: Using the loaded strengths, assess whether this executive team is truly ready for the next stage of company growth from a people, leadership, and operating model perspective. 
+ TS-HR-125 | Team habits to stop immediately 
+ Tier: Premium Audience: Executive / CHRO / HR Category: CHRO / People Leadership 
+ Prompt: What does this executive team need to stop doing immediately if it wants to operate at a higher level together? 
+ 
+ Boardroom Scenarios Add-on 
+ Positioning: An additional component above Premium for executive teams that need board-facing, investor-grade, or governance-pressure scenario testing. 
+ TS-BR-201 | Board challenge on underperformance 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board meeting where directors are concerned about two quarters of underperformance. Using the loaded executive strengths, show how each executive is likely to respond, where the team may look strong or weak, and how the CEO should steer the room. 
+ TS-BR-202 | Capital allocation showdown 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board-level debate where the company has limited capital and must choose between growth investment, debt reduction, and cost stabilization. Assess how the executive team would present, challenge, and decide using its strengths mix. 
+ TS-BR-203 | Directors question strategy credibility 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board session where directors openly question whether management’s current strategy is credible. Show likely executive reactions, strengths-based tension points, and the best leadership response. 
+ TS-BR-204 | Investor-style scrutiny on execution 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Run an investor-style scrutiny session where the board asks whether this executive team can actually execute the plan it has proposed. Give a strengths-based assessment of confidence, risks, and missing capability. 
+ TS-BR-205 | CEO succession discussion 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board discussion about CEO succession. Based on the loaded strengths, assess which executives may look most credible, who may need development, and what gaps the board would likely notice. 
+ TS-BR-206 | Board demands sharper accountability 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board meeting where directors believe management is too consensus-driven and accountability is too soft. Show how this executive team would likely react and what response would strengthen credibility. 
+ TS-BR-207 | Cash runway pressure 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a boardroom scenario where cash runway becomes a serious concern. Assess how the executive team would handle pressure, what arguments they would make, and where strengths bias could distort judgment. 
+ TS-BR-208 | Acquisition goes off track 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board review where an acquisition is not delivering as expected. Show how the executive team would explain the issue, where blame or defensiveness could surface, and what board-ready recovery plan would fit the team. 
+ TS-BR-209 | Public reputation event 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board meeting following a reputational event that has attracted media and stakeholder concern. Show which executives should lead the narrative, risk framing, remediation plan, and stakeholder assurance. 
+ TS-BR-210 | Missed budget and lowered guidance 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board meeting after the company misses budget and management must lower guidance. Assess how this executive team would likely perform under questioning and what preparation would materially improve the outcome. 
+ TS-BR-211 | Pressure to cut costs 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board-level demand for significant cost reduction within 90 days. Show how the executive team would likely divide, align, or overcorrect based on strengths, and recommend the best boardroom posture. 
+ TS-BR-212 | Board split on risk appetite 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a boardroom scenario where directors are split between aggressive growth and defensive prudence. Show how the executive team should navigate the split, frame trade-offs, and use different leaders effectively. 
+ TS-BR-213 | Activist-style challenge 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Run an activist-style board challenge where management is accused of moving too slowly and under-delivering on value creation. Give a brutally practical strengths-based response plan for the executive team. 
+ TS-BR-214 | Board asks for division redesign 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board request to redesign the leadership structure of a business unit after weak results. Based on the loaded strengths, recommend what changes the executive team should propose before the board imposes them. 
+ TS-BR-215 | Major talent departure 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a boardroom discussion after a major executive or founder departure. Show how the remaining team would be perceived, what succession risks become visible, and how confidence can be restored. 
+ TS-BR-216 | Board asks if team is fit for scale 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Act as the board and assess whether this executive team is fit for the next stage of company growth. Be direct about strengths, blind spots, confidence factors, and missing capability. 
+ TS-BR-217 | Complex turnaround update 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board update in the middle of a complex turnaround. Show how this executive team would likely communicate progress, where governance concerns may arise, and how to present with more rigor. 
+ TS-BR-218 | Boardroom tension between CEO and CFO 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board meeting where the CEO and CFO visibly diverge on outlook and risk appetite. Explain the strengths-based drivers of the tension and how the chair or CEO should manage it. 
+ TS-BR-219 | ESG, culture, or conduct issue 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board discussion around an ESG, culture, or conduct issue that now affects brand and governance confidence. Show which executives should lead, where blind spots may appear, and what board-level response is needed. 
+ TS-BR-220 | Funding round or major raise 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a boardroom scenario where the company is preparing for a funding round or major capital raise. Assess how the executive team would hold up under diligence-style questioning and what narrative architecture best fits their strengths. 
+ TS-BR-221 | Chair asks for sharper operating rhythm 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a chair-led challenge that management’s operating rhythm is weak and too many issues are surfacing late. Show how this executive team would likely respond and what board-ready fixes would be credible. 
+ TS-BR-222 | Expansion into risky market 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a board debate on entering a new but risky market. Assess how the executive team would frame the opportunity, what strengths may overstate or understate the risk, and what board recommendation should be made. 
+ TS-BR-223 | Prepare for annual board strategy retreat 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Design a strengths-aware preparation plan for an annual board strategy retreat. Show who should lead what, what challenge questions to pre-answer, and which executive dynamics need careful management. 
+ TS-BR-224 | Board confidence is slipping 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Simulate a situation where board confidence in management is gradually slipping rather than collapsing all at once. Identify the subtle behaviors or patterns this executive team may be sending and how to reset confidence. 
+ TS-BR-225 | Boardroom grade assessment of team design 
+ Tier: Boardroom Scenarios Audience: CEO / Executive Team / Board-facing Leadership Category: Boardroom Scenarios 
+ Prompt: Give a boardroom-grade assessment of whether our current executive team design is built more for growth, stability, transformation, stewardship, or innovation. State what the board should support, question, or change. 
+ 
+ Implementation notes for Codex 
+ • Store each prompt as a discrete record keyed by the stable prompt ID. 
+ • Keep response rendering consistent by applying the Standard Response Contract to every prompt. 
+ • Allow filters by tier, category, audience, and tags. 
+ • Expose Premium and Boardroom prompts as separate product entitlements. 
+ • Support favorites, recents, scenario packs, and admin-editable prompt variants without changing the canonical ID. 
+ Suggested tags 
+ executive-team, strategy, structure, transformation, crisis, board, governance, succession, culture, innovation, finance, scenario, CHRO, talent, merger, operating-model 
+ 

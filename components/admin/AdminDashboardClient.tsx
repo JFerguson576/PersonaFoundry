@@ -4,10 +4,27 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { getAuthHeaders } from "@/lib/career-client"
+import { AdminTourCompletionPanel } from "@/components/admin/AdminTourCompletionPanel"
 import { supabase } from "@/lib/supabase"
 import type { AuthProviderStatus } from "@/lib/auth-provider-status"
 
 const ADMIN_LAYOUT_PREFS_KEY = "personara-admin-layout-v1"
+const ADMIN_QUICK_LINKS = [
+  { sectionKey: "dashboard-overview", href: "#dashboard-overview", label: "1. Overview" },
+  { sectionKey: "openai-usage", href: "#openai-usage", label: "2. OpenAI usage" },
+  { sectionKey: "unit-economics", href: "#unit-economics", label: "3. Unit economics" },
+  { sectionKey: "operating-signals", href: "#operating-signals", label: "4. Operating signals" },
+  { sectionKey: "acquisition-snapshot", href: "#acquisition-snapshot", label: "5. Acquisition" },
+  { sectionKey: "feature-activity", href: "#feature-activity", label: "6. Feature activity" },
+  { sectionKey: "api-usage-by-feature", href: "#api-usage-by-feature", label: "7. API insights" },
+  { sectionKey: "agent-quality", href: "#agent-quality", label: "8. Agent quality" },
+  { sectionKey: "community-moderation", href: "#community-moderation", label: "9. Community moderation" },
+  { sectionKey: "tester-feedback", href: "#tester-feedback", label: "10. Tester feedback" },
+  { sectionKey: "access-control", href: "#access-control", label: "11. Access control" },
+  { sectionKey: "admin-notebook", href: "#admin-notebook", label: "12. Notebook" },
+  { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "13. Workspace manager" },
+  { sectionKey: "dashboard-help", href: "#dashboard-help", label: "14. Help & to-do" },
+] as const
 
 type OverviewResponse = {
   permissions: {
@@ -310,7 +327,6 @@ export function AdminDashboardClient() {
   const [subscriptionDraftBudget, setSubscriptionDraftBudget] = useState("")
   const [savingSubscription, setSavingSubscription] = useState(false)
   const [activeSection, setActiveSection] = useState("dashboard-overview")
-  const [activeAnchor, setActiveAnchor] = useState("#dashboard-overview")
   const [showWorkflowMap, setShowWorkflowMap] = useState(false)
   const [showAdvancedTools, setShowAdvancedTools] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
@@ -1185,7 +1201,6 @@ export function AdminDashboardClient() {
 
   const openAndScroll = useCallback((sectionKey: string, href: string) => {
     setActiveSection(sectionKey)
-    setActiveAnchor(href)
     setCollapsedSections((current) =>
       Object.keys(current).reduce<Record<string, boolean>>((next, key) => {
         next[key] = key !== sectionKey
@@ -1252,6 +1267,25 @@ export function AdminDashboardClient() {
       }),
     [testerFeedbackModuleFilter, testerFeedbackNotes, testerFeedbackSeverityFilter, testerFeedbackStatusFilter]
   )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    function syncFromHash() {
+      const hash = window.location.hash || ""
+      const matched = ADMIN_QUICK_LINKS.find((item) => item.href === hash)
+      if (!matched) return
+      setActiveSection(matched.sectionKey)
+      setCollapsedSections((current) =>
+        Object.keys(current).reduce<Record<string, boolean>>((next, key) => {
+          next[key] = key !== matched.sectionKey
+          return next
+        }, {})
+      )
+    }
+    syncFromHash()
+    window.addEventListener("hashchange", syncFromHash)
+    return () => window.removeEventListener("hashchange", syncFromHash)
+  }, [])
 
   if (!session?.user) {
     return (
@@ -1622,22 +1656,7 @@ export function AdminDashboardClient() {
         ? "border-amber-200 bg-amber-50 text-amber-900"
         : "border-emerald-200 bg-emerald-50 text-emerald-900"
 
-  const quickLinks = [
-    { sectionKey: "dashboard-overview", href: "#dashboard-overview", label: "1. Overview" },
-    { sectionKey: "openai-usage", href: "#openai-usage", label: "2. OpenAI usage" },
-    { sectionKey: "unit-economics", href: "#unit-economics", label: "3. Unit economics" },
-    { sectionKey: "operating-signals", href: "#operating-signals", label: "4. Operating signals" },
-    { sectionKey: "acquisition-snapshot", href: "#acquisition-snapshot", label: "5. Acquisition" },
-    { sectionKey: "feature-activity", href: "#feature-activity", label: "6. Feature activity" },
-    { sectionKey: "api-usage-by-feature", href: "#api-usage-by-feature", label: "7. API insights" },
-    { sectionKey: "agent-quality", href: "#agent-quality", label: "8. Agent quality" },
-    { sectionKey: "community-moderation", href: "#community-moderation", label: "9. Community moderation" },
-    { sectionKey: "tester-feedback", href: "#tester-feedback", label: "10. Tester feedback" },
-    { sectionKey: "access-control", href: "#access-control", label: "11. Access control" },
-    { sectionKey: "admin-notebook", href: "#admin-notebook", label: "12. Notebook" },
-    { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "13. Workspace manager" },
-    { sectionKey: "dashboard-help", href: "#dashboard-help", label: "14. Help & to-do" },
-  ]
+  const quickLinks = ADMIN_QUICK_LINKS
   const sectionSubmenuLinks: Record<string, Array<{ label: string; sectionKey: string; href: string }>> = {
     "dashboard-overview": [
       { label: "Platform pulse", sectionKey: "dashboard-overview", href: "#dashboard-overview" },
@@ -1705,25 +1724,6 @@ export function AdminDashboardClient() {
   const isSectionVisible = (sectionKey: string) =>
     activeSection === sectionKey || sectionVisibilityAliases[sectionKey] === activeSection
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    function syncFromHash() {
-      const hash = window.location.hash || ""
-      const matched = quickLinks.find((item) => item.href === hash)
-      if (!matched) return
-      setActiveSection(matched.sectionKey)
-      setActiveAnchor(matched.href)
-      setCollapsedSections((current) =>
-        Object.keys(current).reduce<Record<string, boolean>>((next, key) => {
-          next[key] = key !== matched.sectionKey
-          return next
-        }, {})
-      )
-    }
-    syncFromHash()
-    window.addEventListener("hashchange", syncFromHash)
-    return () => window.removeEventListener("hashchange", syncFromHash)
-  }, [quickLinks])
   const workflowMapSections = quickLinks.map((link) => ({
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
@@ -1754,7 +1754,7 @@ export function AdminDashboardClient() {
   ]
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="mb-7">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -1779,19 +1779,19 @@ export function AdminDashboardClient() {
               Refresh data
             </button>
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#0f172a] sm:text-[2.6rem]">Admin dashboard</h1>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#142c4f] sm:text-[2.6rem]">Admin dashboard</h1>
           <p className="mt-2 max-w-3xl text-sm text-neutral-600">
             Monitor adoption across Persona Generator and Career Intelligence, review user growth, and track AI usage and cost through a more visual operating dashboard.
           </p>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
-          <aside data-sticky-nav="true" className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Dashboard menu</div>
+          <aside data-sticky-nav="true" className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Dashboard menu</div>
             <div className="mt-3 space-y-2">
               {dashboardRailGroups.map((group) => (
-                <details key={`admin-rail-${group.title}`} open className="rounded-xl border border-neutral-200 bg-white">
-                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+                <details key={`admin-rail-${group.title}`} open className="rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                     {group.title}
                   </summary>
                   <div className="px-2 pb-2">
@@ -1802,8 +1802,8 @@ export function AdminDashboardClient() {
                         onClick={() => openAndScroll(link.sectionKey, link.href)}
                         className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold transition ${
                           activeSection === link.sectionKey
-                            ? "border-sky-300 bg-sky-50 text-sky-800"
-                            : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                            ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                            : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                         }`}
                       >
                         {link.label}
@@ -1813,9 +1813,9 @@ export function AdminDashboardClient() {
                 </details>
               ))}
             </div>
-            <details className="mt-2 rounded-xl border border-neutral-200 bg-white" open={showAdvancedTools}>
+            <details className="mt-2 rounded-xl border border-[#c7d8ee] bg-white" open={showAdvancedTools}>
               <summary
-                className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600"
+                className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                 onClick={(event) => {
                   event.preventDefault()
                   setShowAdvancedTools((current) => !current)
@@ -1872,7 +1872,7 @@ export function AdminDashboardClient() {
 
           <div className="min-w-0">
 
-          <section id="dashboard-overview" className={`scroll-mt-24 mb-4 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_34%,#eef2ff_100%)] p-4 shadow-sm ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
+          <section id="dashboard-overview" className={`scroll-mt-24 mb-4 overflow-hidden rounded-[2rem] border border-[#bfd2ed] bg-[linear-gradient(135deg,#ffffff_0%,#edf4ff_34%,#eaf2ff_100%)] p-4 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isSectionVisible("dashboard-overview") ? "" : "hidden"}`}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#536471]">Overview</div>
             <button
@@ -1942,6 +1942,7 @@ export function AdminDashboardClient() {
               </div>
             )}
           </div>
+          <AdminTourCompletionPanel compact />
             </>
           )}
         </section>

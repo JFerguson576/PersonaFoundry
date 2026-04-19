@@ -38,7 +38,9 @@ export function GlobalCommandBar() {
   const [busy, setBusy] = useState(false)
   const [candidateResults, setCandidateResults] = useState<CandidateQuickPick[]>([])
   const [hideFloatingButton, setHideFloatingButton] = useState(false)
-  const shouldShowOnRoute = pathname.startsWith("/operations")
+  const isInternalWorkspace =
+    pathname.startsWith("/operations") || pathname.startsWith("/admin") || pathname.startsWith("/control-center")
+  const shouldShowOnRoute = !isInternalWorkspace
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

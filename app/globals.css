@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f8fc;
-  --foreground: #0f1e46;
+  --background: #f2f5fb;
+  --foreground: #111f39;
   --surface: #ffffff;
-  --surface-muted: #f1f5ff;
-  --border-soft: #d8e2f2;
-  --brand-navy: #0f1e46;
-  --brand-blue: #2f6df6;
-  --brand-blue-deep: #1f56d5;
+  --surface-muted: #ecf2fd;
+  --border-soft: #cfd9ea;
+  --brand-navy: #101d36;
+  --brand-blue: #2a63e5;
+  --brand-blue-deep: #1f4fc8;
   --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-geist-mono: "Consolas", "Courier New", monospace;
 }
@@ -35,8 +35,8 @@ body {
 
 @media (prefers-color-scheme: light) {
   body {
-    background-image: radial-gradient(circle at 12% -10%, rgba(47, 109, 246, 0.08) 0, transparent 34%),
-      radial-gradient(circle at 88% -4%, rgba(15, 30, 70, 0.04) 0, transparent 26%);
+    background-image: radial-gradient(circle at 10% -12%, rgba(42, 99, 229, 0.12) 0, transparent 36%),
+      radial-gradient(circle at 86% -8%, rgba(16, 29, 54, 0.08) 0, transparent 30%);
     background-attachment: fixed;
   }
 }
@@ -141,6 +141,25 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.personara-explainer-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid #bfdbfe;
+  background: #ffffff;
+  padding: 0.28rem 0.68rem;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  color: #1d4ed8;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.personara-explainer-chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
 }
 
 @media (min-width: 768px) and (max-width: 1280px) {

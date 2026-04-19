@@ -120,6 +120,35 @@ type IntegrationHealth = {
   detail: string
 }
 
+type CoachLead = {
+  id: string
+  owner_email: string | null
+  full_name: string
+  business_name: string | null
+  email: string
+  country: string | null
+  segment: string
+  source: string
+  stage: string
+  next_action_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+type CoachTemplate = {
+  id: string
+  template_name: string
+  segment: string
+  channel: string
+  subject: string | null
+  body: string
+  active: boolean
+  created_by_email: string | null
+  created_at: string
+  updated_at: string
+}
+
 const INTEGRATION_SETUP_GUIDES: Record<
   string,
   {
@@ -165,6 +194,21 @@ const INTEGRATION_SETUP_GUIDES: Record<
   },
 }
 
+const COACH_SEGMENTS = [
+  { value: "independent_coach", label: "Independent coach" },
+  { value: "enterprise_coach", label: "Enterprise/internal coach" },
+  { value: "practice_partner", label: "Multi-coach practice / partner" },
+] as const
+
+const COACH_STAGES = [
+  { value: "identified", label: "Identified" },
+  { value: "contacted", label: "Contacted" },
+  { value: "replied", label: "Replied" },
+  { value: "discovery_booked", label: "Discovery booked" },
+  { value: "trial_started", label: "Trial started" },
+  { value: "converted", label: "Converted" },
+] as const
+
 function formatMoney(value: number | null | undefined) {
   const amount = Number(value ?? 0)
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount)
@@ -180,6 +224,7 @@ export function MarketingEngineClient() {
   const MARKETING_LAYOUT_PREFS_KEY = "personara-marketing-layout-v1"
   const panelDefaults = {
     playbooks: false,
+    coachOutreach: false,
     recommendations: false,
     alerts: false,
     integrations: true,
@@ -200,7 +245,7 @@ export function MarketingEngineClient() {
   const [isRunningPlaybook, setIsRunningPlaybook] = useState("")
   const [showBlueprintModal, setShowBlueprintModal] = useState(false)
   const [collapsedPanels, setCollapsedPanels] = useState<Record<keyof typeof panelDefaults, boolean>>(panelDefaults)
-  const [activePanel, setActivePanel] = useState<keyof typeof panelDefaults>("playbooks")
+  const [activePanel, setActivePanel] = useState<keyof typeof panelDefaults>("coachOutreach")
 
   const [policy, setPolicy] = useState<Policy | null>(null)
   const [policyDraft, setPolicyDraft] = useState({
@@ -239,6 +284,21 @@ export function MarketingEngineClient() {
   const [alerts, setAlerts] = useState<MarketingAlert[]>([])
   const [integrationsHealth, setIntegrationsHealth] = useState<IntegrationHealth[]>([])
   const [integrationsCheckedAt, setIntegrationsCheckedAt] = useState<string | null>(null)
+  const [coachLeads, setCoachLeads] = useState<CoachLead[]>([])
+  const [coachTemplates, setCoachTemplates] = useState<CoachTemplate[]>([])
+  const [isSavingCoachLead, setIsSavingCoachLead] = useState(false)
+  const [isUpdatingCoachLead, setIsUpdatingCoachLead] = useState("")
+  const [coachLeadDraft, setCoachLeadDraft] = useState({
+    full_name: "",
+    business_name: "",
+    email: "",
+    country: "New Zealand",
+    segment: "independent_coach",
+    source: "manual",
+    stage: "identified",
+    next_action_at: "",
+    notes: "",
+  })
   const [copiedEnvTemplateKey, setCopiedEnvTemplateKey] = useState("")
   const [isSavingRecommendation, setIsSavingRecommendation] = useState(false)
   const [isProcessingRecommendation, setIsProcessingRecommendation] = useState("")
@@ -255,7 +315,16 @@ export function MarketingEngineClient() {
   const loadAll = useCallback(async () => {
     setIsBusy(true)
     try {
-      const [policyResponse, ledgerResponse, budgetResponse, campaignsResponse, recommendationsResponse, alertsResponse, integrationsResponse] = await Promise.all([
+      const [
+        policyResponse,
+        ledgerResponse,
+        budgetResponse,
+        campaignsResponse,
+        recommendationsResponse,
+        alertsResponse,
+        integrationsResponse,
+        coachOutreachResponse,
+      ] = await Promise.all([
         fetch("/api/admin/marketing/policy", { headers: await getAuthHeaders(), cache: "no-store" }),
         fetch("/api/admin/marketing/cash-ledger", { headers: await getAuthHeaders(), cache: "no-store" }),
         fetch("/api/admin/marketing/budget/recompute", { headers: await getAuthHeaders(), cache: "no-store" }),
@@ -263,9 +332,10 @@ export function MarketingEngineClient() {
         fetch("/api/admin/marketing/recommendations", { headers: await getAuthHeaders(), cache: "no-store" }),
         fetch("/api/admin/marketing/alerts", { headers: await getAuthHeaders(), cache: "no-store" }),
         fetch("/api/admin/marketing/integrations/health", { headers: await getAuthHeaders(), cache: "no-store" }),
+        fetch("/api/admin/marketing/coach-outreach", { headers: await getAuthHeaders(), cache: "no-store" }),
       ])
 
-      const [policyJson, ledgerJson, budgetJson, campaignsJson, recommendationsJson, alertsJson, integrationsJson] = await Promise.all([
+      const [policyJson, ledgerJson, budgetJson, campaignsJson, recommendationsJson, alertsJson, integrationsJson, coachOutreachJson] = await Promise.all([
         policyResponse.json(),
         ledgerResponse.json(),
         budgetResponse.json(),
@@ -273,6 +343,7 @@ export function MarketingEngineClient() {
         recommendationsResponse.json(),
         alertsResponse.json(),
         integrationsResponse.json(),
+        coachOutreachResponse.json(),
       ])
 
       if (!policyResponse.ok) throw new Error(policyJson.error || "Failed to load policy")
@@ -282,6 +353,7 @@ export function MarketingEngineClient() {
       if (!recommendationsResponse.ok) throw new Error(recommendationsJson.error || "Failed to load recommendations")
       if (!alertsResponse.ok) throw new Error(alertsJson.error || "Failed to load alerts")
       if (!integrationsResponse.ok) throw new Error(integrationsJson.error || "Failed to load integrations health")
+      if (!coachOutreachResponse.ok) throw new Error(coachOutreachJson.error || "Failed to load coach outreach")
 
       const nextPolicy = policyJson.policy as Policy
       setPolicy(nextPolicy)
@@ -310,6 +382,8 @@ export function MarketingEngineClient() {
       setAlerts((alertsJson.alerts ?? []) as MarketingAlert[])
       setIntegrationsHealth((integrationsJson.integrations ?? []) as IntegrationHealth[])
       setIntegrationsCheckedAt((integrationsJson.checked_at as string | undefined) ?? null)
+      setCoachLeads((coachOutreachJson.leads ?? []) as CoachLead[])
+      setCoachTemplates((coachOutreachJson.templates ?? []) as CoachTemplate[])
       setMessage("")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load marketing engine")
@@ -339,6 +413,7 @@ export function MarketingEngineClient() {
         if (window.matchMedia("(max-width: 767px)").matches) {
           setCollapsedPanels({
             playbooks: false,
+            coachOutreach: false,
             recommendations: true,
             alerts: false,
             integrations: true,
@@ -366,6 +441,7 @@ export function MarketingEngineClient() {
   const panelAnchorMap: Record<keyof typeof panelDefaults, string> = useMemo(
     () => ({
       playbooks: "marketing-playbooks",
+      coachOutreach: "marketing-coach-outreach",
       recommendations: "marketing-recommendations",
       alerts: "alerts-policy-risk",
       integrations: "marketing-integrations",
@@ -420,6 +496,11 @@ export function MarketingEngineClient() {
   const integrationSetupQueue = useMemo(
     () => integrationsHealth.filter((integration) => integration.status !== "connected"),
     [integrationsHealth]
+  )
+  const coachConvertedCount = useMemo(() => coachLeads.filter((lead) => lead.stage === "converted").length, [coachLeads])
+  const coachActivePipelineCount = useMemo(
+    () => coachLeads.filter((lead) => lead.stage !== "converted").length,
+    [coachLeads]
   )
   const missingEnvTemplate = useMemo(() => {
     const lines: string[] = []
@@ -556,6 +637,90 @@ export function MarketingEngineClient() {
       setMessage(error instanceof Error ? error.message : "Failed to create campaign")
     } finally {
       setIsSavingCampaign(false)
+    }
+  }
+
+  async function createCoachLead() {
+    if (!coachLeadDraft.full_name.trim() || !coachLeadDraft.email.trim()) {
+      setMessage("Coach lead full name and email are required.")
+      return
+    }
+
+    setIsSavingCoachLead(true)
+    try {
+      const response = await fetch("/api/admin/marketing/coach-outreach", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: coachLeadDraft.full_name,
+          business_name: coachLeadDraft.business_name,
+          email: coachLeadDraft.email,
+          country: coachLeadDraft.country,
+          segment: coachLeadDraft.segment,
+          source: coachLeadDraft.source,
+          stage: coachLeadDraft.stage,
+          next_action_at: coachLeadDraft.next_action_at || null,
+          notes: coachLeadDraft.notes || null,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || "Failed to create coach lead")
+      setCoachLeadDraft({
+        full_name: "",
+        business_name: "",
+        email: "",
+        country: "New Zealand",
+        segment: "independent_coach",
+        source: "manual",
+        stage: "identified",
+        next_action_at: "",
+        notes: "",
+      })
+      setMessage("Coach lead added to outreach pipeline.")
+      await loadAll()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to create coach lead")
+    } finally {
+      setIsSavingCoachLead(false)
+    }
+  }
+
+  async function updateCoachLead(leadId: string, updates: { stage?: string; next_action_at?: string }) {
+    setIsUpdatingCoachLead(leadId)
+    try {
+      const response = await fetch("/api/admin/marketing/coach-outreach", {
+        method: "PATCH",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: leadId,
+          ...updates,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || "Failed to update coach lead")
+      setCoachLeads((current) =>
+        current.map((lead) =>
+          lead.id === leadId
+            ? ({
+                ...lead,
+                stage: json.lead?.stage ?? lead.stage,
+                next_action_at: json.lead?.next_action_at ?? lead.next_action_at,
+                updated_at: json.lead?.updated_at ?? lead.updated_at,
+              } as CoachLead)
+            : lead
+        )
+      )
+      setMessage("Coach lead updated.")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to update coach lead")
+    } finally {
+      setIsUpdatingCoachLead("")
     }
   }
 
@@ -805,6 +970,7 @@ export function MarketingEngineClient() {
   function setAllPanelsCollapsed(nextValue: boolean) {
     setCollapsedPanels({
       playbooks: nextValue,
+      coachOutreach: nextValue,
       recommendations: nextValue,
       alerts: nextValue,
       integrations: nextValue,
@@ -822,14 +988,14 @@ export function MarketingEngineClient() {
   )
 
   return (
-    <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
+    <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <PlatformModuleNav />
-        <section className="rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_40%,#f5f8ff_100%)] p-4 shadow-sm sm:p-6">
+        <section className="rounded-[2rem] border border-[#bfd2ed] bg-[linear-gradient(135deg,#ffffff_0%,#edf4ff_40%,#eef3ff_100%)] p-4 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5b6b7c]">Control Center</div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f172a]">Marketing Engine</h1>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2f4a73]">Control Center</div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#142c4f]">Marketing Engine</h1>
               <p className="mt-2 max-w-3xl text-sm text-[#475569]">
                 Free-tier MVP: set policy, log cash, and compute safe-to-spend budgets with audit-friendly controls.
               </p>
@@ -873,30 +1039,31 @@ export function MarketingEngineClient() {
         ) : null}
 
         {message ? (
-          <section className="mt-4 rounded-2xl border border-[#d8e4f2] bg-white px-4 py-3 text-sm text-neutral-700">{message}</section>
+          <section className="mt-4 rounded-2xl border border-[#c9d8ef] bg-[#f7fbff] px-4 py-3 text-sm text-[#1e365f]">{message}</section>
         ) : null}
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
-          <aside className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Marketing menu</div>
-            <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
-              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+          <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Marketing menu</div>
+            <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                 Core sections
               </summary>
               <div className="px-2 pb-2">
-                <button type="button" onClick={() => focusPanel("playbooks")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "playbooks" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Playbooks</button>
-                <button type="button" onClick={() => focusPanel("recommendations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recommendations" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recommendations</button>
-                <button type="button" onClick={() => focusPanel("alerts")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "alerts" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Alerts</button>
-                <button type="button" onClick={() => focusPanel("integrations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "integrations" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Integrations</button>
-                <button type="button" onClick={() => focusPanel("checklist")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "checklist" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Setup checklist</button>
-                <button type="button" onClick={() => focusPanel("blueprint")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "blueprint" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Blueprint</button>
-                <button type="button" onClick={() => focusPanel("campaigns")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "campaigns" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Campaigns</button>
-                <button type="button" onClick={() => focusPanel("policy")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "policy" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Policy</button>
-                <button type="button" onClick={() => focusPanel("ledger")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "ledger" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Cash & budget</button>
+                <button type="button" onClick={() => focusPanel("playbooks")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "playbooks" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Playbooks</button>
+                <button type="button" onClick={() => focusPanel("coachOutreach")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "coachOutreach" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Coach outreach</button>
+                <button type="button" onClick={() => focusPanel("recommendations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recommendations" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recommendations</button>
+                <button type="button" onClick={() => focusPanel("alerts")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "alerts" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Alerts</button>
+                <button type="button" onClick={() => focusPanel("integrations")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "integrations" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Integrations</button>
+                <button type="button" onClick={() => focusPanel("checklist")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "checklist" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Setup checklist</button>
+                <button type="button" onClick={() => focusPanel("blueprint")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "blueprint" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Blueprint</button>
+                <button type="button" onClick={() => focusPanel("campaigns")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "campaigns" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Campaigns</button>
+                <button type="button" onClick={() => focusPanel("policy")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "policy" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Policy</button>
+                <button type="button" onClick={() => focusPanel("ledger")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "ledger" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Cash & budget</button>
               </div>
             </details>
-            <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
-              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+            <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                 Actions
               </summary>
               <div className="px-2 pb-2 space-y-1.5">
@@ -964,6 +1131,214 @@ export function MarketingEngineClient() {
               {isRunningPlaybook === "refresh_engine" ? "Running..." : "Refresh engine"}
             </button>
             </div>
+          ) : null}
+        </section>
+
+        <section id="marketing-coach-outreach" className={`mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("coachOutreach") ? "" : "hidden"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-[#0f172a]">Gallup coach outreach</h2>
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-neutral-500">
+                {coachActivePipelineCount} active | {coachConvertedCount} converted
+              </div>
+              <button
+                type="button"
+                onClick={() => togglePanel("coachOutreach")}
+                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {collapsedPanels.coachOutreach ? "Expand" : "Collapse"}
+              </button>
+            </div>
+          </div>
+          {!collapsedPanels.coachOutreach ? (
+            <>
+              <div className="mt-3 rounded-xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#f8fbff_0%,#eef6ff_100%)] px-3 py-2.5 text-sm text-[#334155]">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#5b6b7c]">Commercial model recommendation</div>
+                <div className="mt-1.5">
+                  Start with a <strong>free coach seat + referral revenue share</strong>: 20% recurring for 12 months per paying referral.
+                  Upgrade to 30% only for high-performing partners with volume targets.
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-sm font-semibold text-[#0f172a]">Add coach lead</div>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <Field label="Full name">
+                      <input
+                        value={coachLeadDraft.full_name}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, full_name: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                        placeholder="Coach full name"
+                      />
+                    </Field>
+                    <Field label="Email">
+                      <input
+                        value={coachLeadDraft.email}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, email: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                        placeholder="coach@domain.com"
+                      />
+                    </Field>
+                    <Field label="Business">
+                      <input
+                        value={coachLeadDraft.business_name}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, business_name: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                        placeholder="Practice or company"
+                      />
+                    </Field>
+                    <Field label="Country">
+                      <input
+                        value={coachLeadDraft.country}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, country: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                        placeholder="New Zealand"
+                      />
+                    </Field>
+                    <Field label="Segment">
+                      <select
+                        value={coachLeadDraft.segment}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, segment: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                      >
+                        {COACH_SEGMENTS.map((segment) => (
+                          <option key={segment.value} value={segment.value}>
+                            {segment.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Stage">
+                      <select
+                        value={coachLeadDraft.stage}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, stage: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                      >
+                        {COACH_STAGES.map((stage) => (
+                          <option key={stage.value} value={stage.value}>
+                            {stage.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Next action date">
+                      <input
+                        type="date"
+                        value={coachLeadDraft.next_action_at}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, next_action_at: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                      />
+                    </Field>
+                    <Field label="Source">
+                      <input
+                        value={coachLeadDraft.source}
+                        onChange={(event) => setCoachLeadDraft((current) => ({ ...current, source: event.target.value }))}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                        placeholder="manual, event, referral"
+                      />
+                    </Field>
+                    <div className="md:col-span-2">
+                      <Field label="Notes">
+                        <input
+                          value={coachLeadDraft.notes}
+                          onChange={(event) => setCoachLeadDraft((current) => ({ ...current, notes: event.target.value }))}
+                          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                          placeholder="Context, fit notes, and next talking point"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => void createCoachLead()}
+                      disabled={isSavingCoachLead}
+                      className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#004182] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingCoachLead ? "Saving..." : "Add coach lead"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-sm font-semibold text-[#0f172a]">Template starter pack</div>
+                  <div className="mt-2 space-y-2">
+                    {coachTemplates.length === 0 ? (
+                      <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-600">
+                        No templates saved yet. Add v1 templates for independent, enterprise, and partner coach segments.
+                      </div>
+                    ) : (
+                      coachTemplates.slice(0, 5).map((template) => (
+                        <div key={template.id} className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+                          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">{template.segment.replaceAll("_", " ")}</div>
+                          <div className="mt-0.5 text-sm font-semibold text-neutral-900">{template.template_name}</div>
+                          <div className="mt-0.5 text-xs text-neutral-500">{template.channel}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 max-h-[360px] overflow-auto rounded-xl border border-neutral-200">
+                <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                  <thead className="bg-neutral-50 text-xs uppercase tracking-[0.08em] text-neutral-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Coach</th>
+                      <th className="px-3 py-2 text-left">Segment</th>
+                      <th className="px-3 py-2 text-left">Stage</th>
+                      <th className="px-3 py-2 text-left">Next action</th>
+                      <th className="px-3 py-2 text-left">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {coachLeads.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-3 text-neutral-500">
+                          No coach leads yet.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {coachLeads.map((lead) => (
+                      <tr key={lead.id}>
+                        <td className="px-3 py-2 text-neutral-800">
+                          <div className="font-semibold">{lead.full_name}</div>
+                          <div className="text-xs text-neutral-500">
+                            {lead.business_name || "Independent"} | {lead.email}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-neutral-700">{lead.segment.replaceAll("_", " ")}</td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={lead.stage}
+                            onChange={(event) => void updateCoachLead(lead.id, { stage: event.target.value })}
+                            disabled={isUpdatingCoachLead === lead.id}
+                            className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs"
+                          >
+                            {COACH_STAGES.map((stage) => (
+                              <option key={stage.value} value={stage.value}>
+                                {stage.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2 text-neutral-700">
+                          <input
+                            type="date"
+                            value={lead.next_action_at ? new Date(lead.next_action_at).toISOString().slice(0, 10) : ""}
+                            onChange={(event) => void updateCoachLead(lead.id, { next_action_at: event.target.value || "" })}
+                            disabled={isUpdatingCoachLead === lead.id}
+                            className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-xs text-neutral-500">{new Date(lead.updated_at).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : null}
         </section>
 

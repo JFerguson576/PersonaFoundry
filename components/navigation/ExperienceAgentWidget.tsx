@@ -338,7 +338,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
             await ensureSession()
           }
         }}
-        className={`fixed right-4 top-[max(4.5rem,env(safe-area-inset-top))] z-[220] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+        className={`fixed right-4 top-[max(3.75rem,env(safe-area-inset-top))] z-[220] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
           open ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
@@ -346,7 +346,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       </button>
 
       {open ? (
-        <div className="fixed right-4 top-[max(7rem,env(safe-area-inset-top))] z-[222] max-h-[calc(100dvh-7.5rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
+        <div className="fixed right-4 top-[max(6rem,env(safe-area-inset-top))] z-[222] max-h-[calc(100dvh-6.5rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Ask Agent</div>

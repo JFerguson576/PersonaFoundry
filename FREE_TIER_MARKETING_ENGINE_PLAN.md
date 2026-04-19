@@ -218,7 +218,124 @@ Exit criteria:
 ## 11) Next Build Command
 
 Implementation should begin with:
+
+## 12) New Channel: Gallup Coach Outreach Program (Todo)
+
+Objective:
+- create a dedicated acquisition motion for Gallup strengths provider coaches
+- manage this channel directly inside the Marketing Engine admin console
+
+MVP scope:
+- add `Coach Outreach` as a first-class section in Marketing Engine
+- support lead lifecycle stages:
+  - identified
+  - contacted
+  - replied
+  - discovery booked
+  - trial started
+  - converted
+- include next-action date and owner for every coach lead
+- include outreach templates for core segments:
+  - independent coach
+  - enterprise/internal coach
+  - multi-coach practice/partner
+
+Data model additions (MVP):
+- `mkt_coach_leads`
+  - full_name
+  - business_name
+  - email
+  - country
+  - segment
+  - stage
+  - source
+  - owner_user_id
+  - next_action_at
+  - notes
+- `mkt_coach_touchpoints`
+  - coach_lead_id
+  - channel (`email`, `linkedin`, `call`, `webinar`, `event`)
+  - touch_type (`outreach`, `followup`, `demo`, `proposal`, `close`)
+  - outcome
+  - occurred_at
+  - actor_user_id
+- `mkt_coach_templates`
+  - template_name
+  - segment
+  - channel
+  - subject
+  - body
+  - active
+
+Dashboard additions:
+- coach outreach sent (7d/30d)
+- reply rate
+- demo-booked rate
+- conversion count
+- lightweight CAC proxy (manual spend / converted coaches)
+
+Why this matters:
+- Gallup coach channel is a high-fit, trust-based B2B2C path for Personara adoption
+- gives you a repeatable partner-led growth lane without paid-ad dependence
+
+## 13) Sprint Checklist: Gallup Coach Channel (Build Order)
+
+Commercial decision to test first:
+- offer each Gallup coach a free partner license
+- pay 20% recurring rev share for 12 months per referred paid user
+- increase to 30% for high-performing partners only after conversion thresholds are met
+
+Sprint 1 (Schema + API foundation):
+- DB tasks:
+  - create `mkt_coach_leads`
+  - create `mkt_coach_touchpoints`
+  - create `mkt_coach_templates`
+  - add indexes + updated_at triggers + RLS no-direct-access policies
+- API tasks:
+  - `GET /api/admin/marketing/coach-outreach`
+  - `POST /api/admin/marketing/coach-outreach` (create lead)
+  - `PATCH /api/admin/marketing/coach-outreach` (stage and follow-up updates)
+- UI tasks:
+  - add `Coach outreach` nav item in Marketing Engine
+  - add lead intake form
+  - add stage tracking table with inline stage updates
+- Estimated effort: 1-2 days
+
+Sprint 2 (Execution workflow):
+- DB tasks:
+  - add outreach sequence table for templated steps per segment
+  - add touchpoint outcome enums + optional reply sentiment field
+- API tasks:
+  - add endpoint to log outbound touchpoint in one click
+  - add endpoint to mark demo booked / trial started / converted
+- UI tasks:
+  - one-click "log outreach" actions
+  - follow-up queue by `next_action_at`
+  - "due today / overdue" board view
+- Estimated effort: 2-3 days
+
+Sprint 3 (Attribution + dashboard):
+- DB tasks:
+  - map partner coach to referral code and converted users
+  - store monthly partner payout snapshots
+- API tasks:
+  - conversion attribution endpoint (referral -> paid)
+  - payout summary endpoint
+- UI tasks:
+  - channel KPI cards: sent, replies, demos, trials, conversions
+  - partner leaderboard
+  - payout readiness report
+- Estimated effort: 2-4 days
+
+Sprint 4 (Scale + controls):
+- DB/API tasks:
+  - role-based assignment for outreach owners
+  - audit log hooks for lead stage changes
+- UI tasks:
+  - admin bulk import/export
+  - segment-level playbooks and A/B message variants
+  - fail-safe controls for duplicate leads and contact suppression
+- Estimated effort: 2-3 days
 1. SQL migration for the tables above
 2. `/control-center/marketing-engine` page scaffold
 3. Policy + cash ledger + budget recompute path end-to-end
-

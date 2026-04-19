@@ -447,6 +447,18 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     setOpenSections(openSectionsFor(activeStep))
   }, [activeStep, openSectionsFor])
 
+  useEffect(() => {
+    setExpandedLeftSections({
+      workflow: activeStep === "workflow",
+      source: activeStep === "source",
+      positioning: activeStep === "positioning",
+      documents: activeStep === "documents",
+      company: activeStep === "company",
+      interview: activeStep === "interview",
+      jobs: activeStep === "jobs",
+    })
+  }, [activeStep])
+
   if (!session?.user) {
     return (
       <main className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -1321,17 +1333,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
 
-  useEffect(() => {
-    setExpandedLeftSections({
-      workflow: activeStep === "workflow",
-      source: activeStep === "source",
-      positioning: activeStep === "positioning",
-      documents: activeStep === "documents",
-      company: activeStep === "company",
-      interview: activeStep === "interview",
-      jobs: activeStep === "jobs",
-    })
-  }, [activeStep])
   const sectionActionGuides = {
     source: {
       statusLabel: hasCv && hasGallupStrengths ? "Ready for narrative" : "Needs input",

@@ -32,6 +32,7 @@ export function CareerHomeClient() {
   const searchParams = useSearchParams()
   const requestedView = searchParams.get("view")
   const ownerPreviewUserId = searchParams.get("owner")
+  const shouldRelaunchTour = searchParams.get("tour") === "1"
   const isNewUserSimulation = searchParams.get("test") === "new-user"
   const careerViewMode = requestedView === "preview" ? "preview" : requestedView === "owner-preview" ? "owner-preview" : "control"
   const isCandidatePreviewMode = careerViewMode === "preview"
@@ -113,6 +114,14 @@ export function CareerHomeClient() {
       }
     }
   }, [isNewUserSimulation])
+
+  useEffect(() => {
+    if (!shouldRelaunchTour || typeof window === "undefined") return
+    window.localStorage.setItem("personara-tour-force-open-career", "1")
+    if (candidates.length > 0) {
+      window.location.href = `/career/${candidates[0].id}?tour=1`
+    }
+  }, [candidates, shouldRelaunchTour])
 
   const totalProfiles = candidates.reduce((sum, candidate) => sum + candidate.profile_count, 0)
   const totalAssets = candidates.reduce((sum, candidate) => sum + candidate.asset_count, 0)

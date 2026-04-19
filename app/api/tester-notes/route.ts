@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
   const noteType = payload.note_type === "bug" || payload.note_type === "question" ? payload.note_type : "improvement"
   const severity = payload.severity === "low" || payload.severity === "high" ? payload.severity : "medium"
-  const module = asText(payload.module) || "platform"
+  const moduleKey = asText(payload.module) || "platform"
   const routePath = asText(payload.route_path) || "/"
 
   const supabase = createRouteClient(accessToken)
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     note_type: noteType,
     severity,
     message,
-    module,
+    module: moduleKey,
     route_path: routePath,
     full_url: asText(payload.full_url) || null,
     section_anchor: asText(payload.section_anchor) || null,
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       note_id: data.id,
       note_type: noteType,
       severity,
-      module,
+      module: moduleKey,
       route_path: routePath,
       section_anchor: insertPayload.section_anchor,
     },
@@ -111,4 +111,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ note: data })
 }
-

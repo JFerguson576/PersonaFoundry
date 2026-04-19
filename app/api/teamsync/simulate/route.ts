@@ -23,6 +23,56 @@ function normalizeText(value: unknown) {
   return value.trim()
 }
 
+function normalizeCompanyUrl(value: unknown) {
+  const raw = normalizeText(value)
+  if (!raw) return ""
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+  try {
+    const parsed = new URL(withProtocol)
+    if (!/^https?:$/.test(parsed.protocol)) return ""
+    return parsed.toString()
+  } catch {
+    return ""
+  }
+}
+
+async function fetchCompanyContextSnapshot(companyUrl: string) {
+  if (!companyUrl) return ""
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 6500)
+  try {
+    const response = await fetch(companyUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Personara-TeamSync/1.0 (+https://www.personara.ai)",
+      },
+    })
+    if (!response.ok) return ""
+    const html = await response.text()
+    if (!html) return ""
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+    const metaDescriptionMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["'][^>]*>/i)
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 1800)
+    const title = normalizeText(titleMatch?.[1])
+    const description = normalizeText(metaDescriptionMatch?.[1])
+    return [title ? `Title: ${title}` : "", description ? `Description: ${description}` : "", text ? `Page summary: ${text}` : ""]
+      .filter(Boolean)
+      .join("\n")
+  } catch {
+    return ""
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 export async function POST(req: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
@@ -39,6 +89,9 @@ export async function POST(req: Request) {
     const scenarioTitle = normalizeText(body?.scenario_title)
     const scenarioCategory = normalizeText(body?.scenario_category) || "Professional"
     const desiredOutcome = normalizeText(body?.desired_outcome)
+    const companyContextEnabled = Boolean(body?.company_context_enabled)
+    const companyContextInfluence = normalizeText(body?.company_context_influence).toLowerCase()
+    const companyUrl = companyContextEnabled ? normalizeCompanyUrl(body?.company_url) : ""
     const pressureLevel = Number.isFinite(body?.pressure_level) ? Math.max(1, Math.min(5, Number(body.pressure_level))) : 3
     const members = Array.isArray(body?.members) ? (body.members as MemberInput[]) : []
 
@@ -49,6 +102,10 @@ export async function POST(req: Request) {
     if (members.length < 2) {
       return NextResponse.json({ error: "At least two members are required" }, { status: 400 })
     }
+
+    const companySnapshot = companyUrl ? await fetchCompanyContextSnapshot(companyUrl) : ""
+    const contextInfluenceLabel =
+      companyContextInfluence === "high" ? "High" : companyContextInfluence === "low" ? "Low" : "Medium"
 
     const response = await openai.responses.create({
       model: process.env.OPENAI_CAREER_MODEL || process.env.OPENAI_MODEL || "gpt-5.4-mini",
@@ -75,6 +132,7 @@ Return JSON:
 {
   "groupSummary": "string",
   "semanticLens": "string",
+  "companyContextSummary": "string",
   "likelyBehaviors": ["string"],
   "roleReactions": [
     {
@@ -98,12 +156,21 @@ Rules:
 - If the scenario implies bereavement or family loss, include role-based likely responses for children, grandchildren, and primary adults where relevant.
 - Tie each role response to strengths patterns and provide one actionable support behavior.
 - Keep roleReactions between 2 and 6 items.
+- Ensure roleReactions are member-specific where possible (use names from Members list when you can).
+- Avoid repeating near-identical support advice across all members.
+- Gallup strengths remain the primary behavioral signal.
+- If company context is supplied, use it only as an external environment overlay (industry pressure, language tone, governance context).
+- Keep company-context summary to 1-2 concise sentences and avoid speculative claims.
 
 Group name: ${groupName}
 Scenario category: ${scenarioCategory}
 Scenario title: ${scenarioTitle}
 Pressure level: ${pressureLevel}/5
 Desired outcome: ${desiredOutcome || "Not provided"}
+Company context enabled: ${companyContextEnabled ? "Yes" : "No"}
+Company context influence: ${contextInfluenceLabel}
+Company URL: ${companyUrl || "Not provided"}
+Company snapshot (public): ${companySnapshot || "Not available"}
 
 Members:
 ${JSON.stringify(members, null, 2)}`,
@@ -122,6 +189,7 @@ ${JSON.stringify(members, null, 2)}`,
             properties: {
               groupSummary: { type: "string" },
               semanticLens: { type: "string" },
+              companyContextSummary: { type: "string" },
               likelyBehaviors: { type: "array", items: { type: "string" } },
               roleReactions: {
                 type: "array",
@@ -140,7 +208,7 @@ ${JSON.stringify(members, null, 2)}`,
               adjustments: { type: "array", items: { type: "string" } },
               actions: { type: "array", items: { type: "string" } },
             },
-            required: ["groupSummary", "semanticLens", "likelyBehaviors", "roleReactions", "risks", "adjustments", "actions"],
+            required: ["groupSummary", "semanticLens", "companyContextSummary", "likelyBehaviors", "roleReactions", "risks", "adjustments", "actions"],
           },
         },
       },
@@ -149,6 +217,7 @@ ${JSON.stringify(members, null, 2)}`,
     const parsed = JSON.parse(response.output_text || "{}") as {
       groupSummary?: string
       semanticLens?: string
+      companyContextSummary?: string
       likelyBehaviors?: string[]
       roleReactions?: RoleReaction[]
       risks?: string[]
@@ -164,6 +233,7 @@ ${JSON.stringify(members, null, 2)}`,
       result: {
         groupSummary: normalizeText(parsed.groupSummary),
         semanticLens: normalizeText(parsed.semanticLens),
+        companyContextSummary: normalizeText(parsed.companyContextSummary),
         likelyBehaviors: Array.isArray(parsed.likelyBehaviors) ? parsed.likelyBehaviors : [],
         roleReactions: Array.isArray(parsed.roleReactions) ? parsed.roleReactions : [],
         risks: Array.isArray(parsed.risks) ? parsed.risks : [],

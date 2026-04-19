@@ -230,6 +230,38 @@ export function CareerIntelligenceLandingClient() {
                 summary="Career Intelligence combines your identity profile, strengths signals, and role evidence into one guided execution flow so every output is more targeted, coherent, and interview-ready."
                 docHref="/docs/personara-ai-career-intelligence-explainer.docx"
               />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <a
+                  href="/docs/personara-ai-career-intelligence-explainer.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open career explainer
+                </a>
+                <a
+                  href="/docs/personara-candidate-explainer-v2.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open candidate guide
+                </a>
+                <a
+                  href="/docs/personara-ai-gallup-strengths-explainer.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open Gallup explainer
+                </a>
+                <Link
+                  href="/resources#career"
+                  className="personara-explainer-chip"
+                >
+                  Open resource hub
+                </Link>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/career" className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">

@@ -3910,7 +3910,39 @@ export function TeamSyncWorkspaceClient() {
                 summary="TeamSync turns Gallup strengths into practical relational intelligence so teams and families can predict friction, support each other faster, and communicate with more precision."
                 docHref="/docs/personara-ai-teamsync-explainer.docx"
               />
-              <details className="mt-2 rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <a
+                  href="/docs/personara-ai-teamsync-explainer.docx"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open TeamSync explainer
+                </a>
+                <a
+                  href={TEAMSYNC_EXECUTIVE_BRIEF_PDF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open executive briefing
+                </a>
+                <a
+                  href={TEAMSYNC_EXECUTIVE_DECK_PDF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="personara-explainer-chip"
+                >
+                  Open executive deck
+                </a>
+                <a
+                  href="/resources#teamsync"
+                  className="personara-explainer-chip"
+                >
+                  Open resource hub
+                </a>
+              </div>
+              <details open className="mt-2 rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2">
                 <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-[0.12em] text-[#334155]">
                   Executive Intelligence Briefing
                 </summary>
@@ -3931,13 +3963,25 @@ export function TeamSyncWorkspaceClient() {
                       Do we have the right people, in the right roles, making decisions in the right way for the future we are trying to build?
                     </p>
                   </div>
+                  <div className="rounded-lg border border-[#dbe4f2] bg-[#f8fbff] px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Problem solved</div>
+                    <p className="mt-0.5 text-xs text-[#334155]">
+                      Exposes structural conflict, hidden strengths gaps, and likely crisis-response failure points before they become expensive.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-[#dbe4f2] bg-[#f8fbff] px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Primary users</div>
+                    <p className="mt-0.5 text-xs text-[#334155]">
+                      CEOs, CHROs, executive teams, and boards needing role-fit clarity, governance readiness, and pre-emptive team design.
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <a
                     href={TEAMSYNC_EXECUTIVE_BRIEF_PDF}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                    className="personara-explainer-chip"
                   >
                     Open executive brief (PDF)
                   </a>
@@ -3945,7 +3989,7 @@ export function TeamSyncWorkspaceClient() {
                     href={TEAMSYNC_EXECUTIVE_DECK_PDF}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                    className="personara-explainer-chip"
                   >
                     Open executive deck (PDF)
                   </a>
@@ -3953,7 +3997,7 @@ export function TeamSyncWorkspaceClient() {
                     href={TEAMSYNC_EXECUTIVE_VISUAL_IMAGE}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                    className="personara-explainer-chip"
                   >
                     View visual architecture
                   </a>

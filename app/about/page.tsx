@@ -2,10 +2,10 @@ import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-[#f4f8fc] text-[#0f172a]">
+    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
-        <section className="rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-[#c9d8ef] bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">About Personara</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Identity. Decisions. Intelligence.</h1>
           <p className="mt-3 max-w-4xl text-sm leading-7 text-[#475569]">
@@ -13,21 +13,21 @@ export default function AboutPage() {
             turns that identity into practical outcomes across career, AI behavior, and team coordination.
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <article className="rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
+            <article className="rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Persona Foundry</div>
               <p className="mt-2 text-sm leading-6 text-[#334155]">
                 Builds an AI personality aligned to a user&apos;s Gallup strengths and working style.
               </p>
               <p className="mt-2 text-xs text-[#475569]">Primary value: AI feels natural, trusted, and productive from day one.</p>
             </article>
-            <article className="rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
+            <article className="rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Career Intelligence</div>
               <p className="mt-2 text-sm leading-6 text-[#334155]">
                 Translates strengths into positioning, career documents, interview guidance, and live job execution.
               </p>
               <p className="mt-2 text-xs text-[#475569]">Primary value: clearer decisions, stronger market traction, and better outcomes.</p>
             </article>
-            <article className="rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
+            <article className="rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">TeamSync</div>
               <p className="mt-2 text-sm leading-6 text-[#334155]">
                 Applies strengths intelligence to teams, families, and groups to improve communication and coordination.
@@ -35,15 +35,15 @@ export default function AboutPage() {
               <p className="mt-2 text-xs text-[#475569]">Primary value: less friction, faster alignment, and better shared decisions.</p>
             </article>
           </div>
-          <div className="mt-5 rounded-2xl border border-[#d8e4f2] bg-[#f8fbff] p-4">
-            <h2 className="text-lg font-semibold tracking-tight text-[#0f172a]">Our mission</h2>
+          <div className="mt-5 rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
+            <h2 className="text-lg font-semibold tracking-tight text-[#142c4f]">Our mission</h2>
             <p className="mt-2 text-sm leading-7 text-[#475569]">
               Build a strengths-based intelligence platform where identity becomes infrastructure for growth. Personara helps people and groups
               use AI in a way that is more human, more aligned, and more effective.
             </p>
           </div>
-          <div className="mt-5 rounded-2xl border border-[#d8e4f2] bg-white p-4">
-            <h2 className="text-lg font-semibold tracking-tight text-[#0f172a]">Where this is headed</h2>
+          <div className="mt-5 rounded-2xl border border-[#c9d8ef] bg-white p-4">
+            <h2 className="text-lg font-semibold tracking-tight text-[#142c4f]">Where this is headed</h2>
             <p className="mt-2 text-sm leading-7 text-[#475569]">
               We are building the layer between human potential and human performance. As users move across life and work moments, Personara
               compounds understanding with every interaction, so intelligence becomes more personal, more precise, and more useful over time.

@@ -42,11 +42,11 @@ const navItems: NavItem[] = [
     href: "/about",
     items: [
       { label: "Mission and story", href: "/about", detail: "Why Personara exists" },
-      { label: "Investors/Partners", href: "/investors-partners", detail: "Partner opportunities" },
+      { label: "Investors & Partners", href: "/investors-partners", detail: "Partner opportunities" },
       { label: "Contact", href: "/contact", detail: "Talk to the team" },
     ],
   },
-  { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
+  { key: "investors-partners", label: "Investors & Partners", href: "/investors-partners" },
   { key: "community", label: "Community", href: "/community" },
   { key: "help", label: "Help Center", href: "/help" },
   { key: "contact", label: "Contact", href: "/contact" },
@@ -88,7 +88,7 @@ export function PlatformModuleNav() {
     [pathname]
   )
   const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
-  const showSectionReturnMenu = isSignedIn && (isModulePage || isInternalWorkspace)
+  const showSectionReturnMenu = isSignedIn && isModulePage
 
   useEffect(() => {
     setOpenDropdownKey(null)
@@ -301,52 +301,40 @@ export function PlatformModuleNav() {
         </div>
         <div ref={dropdownWrapRef} className="flex flex-wrap items-center gap-2">
           {showSectionReturnMenu ? (
-            <>
-              <div className="flex flex-col items-start gap-1">
-                <Link
-                  href="/platform#modules"
-                  className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
-                  title="Return to main modules"
-                >
-                  Main menu
-                </Link>
-                <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-neutral-500">Need another area? Use Go to.</p>
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowReturnMenu((current) => !current)}
-                  className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
-                  title="Jump to another section"
-                >
-                  Go to
-                </button>
-                {showReturnMenu ? (
-                  <div className="absolute right-0 top-10 z-[75] w-56 rounded-xl border border-[#d8e4f2] bg-white p-2 shadow-lg">
-                    {[
-                      { label: "Platform hub", href: "/platform#modules" },
-                      { label: "Career Intelligence", href: "/career-intelligence" },
-                      { label: "Persona Foundry", href: "/persona-foundry" },
-                      { label: "TeamSync", href: "/teamsync" },
-                      { label: "Operations Hub", href: "/operations" },
-                      { label: "Operations Summary", href: "/control-center" },
-                    ].map((item) => (
-                      <Link
-                        key={`goto-${item.href}`}
-                        href={item.href}
-                        onClick={() => setShowReturnMenu(false)}
-                        className="block rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowReturnMenu((current) => !current)}
+                className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                title="Return to modules and internal areas"
+              >
+                Main menu
+              </button>
+              {showReturnMenu ? (
+                <div className="absolute right-0 top-10 z-[75] w-56 rounded-xl border border-[#d8e4f2] bg-white p-2 shadow-lg">
+                  {[
+                    { label: "Platform hub", href: "/platform#modules" },
+                    { label: "Career Intelligence", href: "/career-intelligence" },
+                    { label: "Persona Foundry", href: "/persona-foundry" },
+                    { label: "TeamSync", href: "/teamsync" },
+                    { label: "Operations Hub", href: "/operations" },
+                    { label: "Operations Summary", href: "/control-center" },
+                  ].map((item) => (
+                    <Link
+                      key={`goto-${item.href}`}
+                      href={item.href}
+                      onClick={() => setShowReturnMenu(false)}
+                      className="block rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ) : null}
-          {isSignedIn ? <ExperienceAgentWidget enabled /> : null}
-          {isSignedIn ? <TesterNotesWidget enabled /> : null}
+          {isSignedIn && !isInternalWorkspace ? <ExperienceAgentWidget enabled /> : null}
+          {isSignedIn && !isInternalWorkspace && roleBadge === "Superuser" ? <TesterNotesWidget enabled /> : null}
           {isSignedIn && isModulePage ? (
             <button
               type="button"
@@ -391,9 +379,12 @@ export function PlatformModuleNav() {
                   >
                     <button
                       type="button"
-                      onClick={() => setOpenDropdownKey((current) => (current === item.key ? null : item.key))}
+                      onClick={() => {
+                        setOpenDropdownKey(null)
+                        window.location.href = item.href
+                      }}
                       className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                        active || menuOpen
+                        active
                           ? "border-[#8fb0f5] bg-[#edf3ff] text-[var(--brand-blue-deep)]"
                           : "border-[#c9d4e8] bg-white text-[#243a63] hover:bg-[#f4f7ff]"
                       }`}
