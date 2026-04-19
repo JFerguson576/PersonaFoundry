@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f8fc;
+  --foreground: #0f1e46;
+  --surface: #ffffff;
+  --surface-muted: #f1f5ff;
+  --border-soft: #d8e2f2;
+  --brand-navy: #0f1e46;
+  --brand-blue: #2f6df6;
+  --brand-blue-deep: #1f56d5;
   --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-geist-mono: "Consolas", "Courier New", monospace;
 }
@@ -24,7 +30,30 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans);
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background-image: radial-gradient(circle at 12% -10%, rgba(47, 109, 246, 0.08) 0, transparent 34%),
+      radial-gradient(circle at 88% -4%, rgba(15, 30, 70, 0.04) 0, transparent 26%);
+    background-attachment: fixed;
+  }
+}
+
+@keyframes nav-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.nav-dropdown-enter {
+  animation: nav-dropdown-enter 150ms ease-out;
 }
 
 @keyframes wizard-spotlight {

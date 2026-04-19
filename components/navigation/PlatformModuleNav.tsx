@@ -2,20 +2,50 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
 import { getAuthProviderLabel, type AuthProviderLabel } from "@/lib/auth-provider"
 import { TesterNotesWidget } from "@/components/navigation/TesterNotesWidget"
 import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 
-type NavItem = { key: string; label: string; href: string }
+type NavChild = { label: string; href: string; detail?: string; badge?: string }
+type NavItem = { key: string; label: string; href: string; items?: NavChild[] }
 
 const navItems: NavItem[] = [
-  { key: "tools", label: "Tools", href: "/platform#modules" },
-  { key: "resources", label: "Resources", href: "/resources" },
+  {
+    key: "tools",
+    label: "Tools",
+    href: "/platform#modules",
+    items: [
+      { label: "Career Intelligence", href: "/career-intelligence", detail: "Career strategy and execution" },
+      { label: "Persona Foundry", href: "/persona-foundry", detail: "Custom AI personality studio" },
+      { label: "TeamSync", href: "/teamsync", detail: "Team and executive simulations" },
+      { label: "Module overview", href: "/platform#modules", detail: "Compare all modules", badge: "Platform" },
+    ],
+  },
+  {
+    key: "resources",
+    label: "Resources",
+    href: "/resources",
+    items: [
+      { label: "Resource hub", href: "/resources", detail: "Guides, decks, and explainers" },
+      { label: "Help center", href: "/help", detail: "How to use each module" },
+      { label: "Community", href: "/community", detail: "Ideas and success stories" },
+      { label: "Pricing", href: "/pricing", detail: "Plans and tiers", badge: "Plans" },
+    ],
+  },
   { key: "pricing", label: "Pricing", href: "/pricing" },
-  { key: "about", label: "About", href: "/about" },
+  {
+    key: "about",
+    label: "About",
+    href: "/about",
+    items: [
+      { label: "Mission and story", href: "/about", detail: "Why Personara exists" },
+      { label: "Investors/Partners", href: "/investors-partners", detail: "Partner opportunities" },
+      { label: "Contact", href: "/contact", detail: "Talk to the team" },
+    ],
+  },
   { key: "investors-partners", label: "Investors/Partners", href: "/investors-partners" },
   { key: "community", label: "Community", href: "/community" },
   { key: "help", label: "Help Center", href: "/help" },
@@ -43,8 +73,9 @@ export function PlatformModuleNav() {
   const [referralMessage, setReferralMessage] = useState("")
   const [referralTone, setReferralTone] = useState<"success" | "error" | "info">("info")
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false)
-  const [showSuperuserQuickActions, setShowSuperuserQuickActions] = useState(true)
   const [showReturnMenu, setShowReturnMenu] = useState(false)
+  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null)
+  const dropdownWrapRef = useRef<HTMLDivElement | null>(null)
 
   const isModulePage = useMemo(() => {
     return pathname.startsWith("/career") || pathname.startsWith("/teamsync") || pathname.startsWith("/persona-foundry")
@@ -59,15 +90,32 @@ export function PlatformModuleNav() {
   const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
   const showSectionReturnMenu = isSignedIn && (isModulePage || isInternalWorkspace)
 
-  const superuserDockVisible = isSignedIn && roleBadge === "Superuser" && pathname.startsWith("/operations")
+  useEffect(() => {
+    setOpenDropdownKey(null)
+    setShowReturnMenu(false)
+  }, [pathname])
 
   useEffect(() => {
-    if (typeof document === "undefined") return
-    document.body.dataset.hideCommandButton = superuserDockVisible ? "1" : "0"
-    return () => {
-      delete document.body.dataset.hideCommandButton
+    function closeMenus(event: MouseEvent) {
+      if (dropdownWrapRef.current && !dropdownWrapRef.current.contains(event.target as Node)) {
+        setOpenDropdownKey(null)
+      }
     }
-  }, [superuserDockVisible])
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenDropdownKey(null)
+        setShowReturnMenu(false)
+      }
+    }
+
+    window.addEventListener("mousedown", closeMenus)
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      window.removeEventListener("mousedown", closeMenus)
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [])
 
   useEffect(() => {
     function onScroll() {
@@ -220,15 +268,15 @@ export function PlatformModuleNav() {
 
   return (
     <nav
-      className={`sticky top-3 z-40 mb-4 rounded-2xl border border-[#d8e4f2] bg-white/95 px-4 py-3 backdrop-blur transition-shadow ${
-        scrolled ? "shadow-md" : "shadow-sm"
+      className={`sticky top-3 z-40 mb-4 rounded-2xl border border-[var(--border-soft)] bg-[color:var(--surface)]/95 px-4 py-3 backdrop-blur transition-shadow ${
+        scrolled ? "shadow-[0_14px_34px_-22px_rgba(15,30,70,0.45)]" : "shadow-[0_8px_20px_-18px_rgba(15,30,70,0.35)]"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-[180px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#64748b]">Personara</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6d8f]">Personara</p>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-[#0f172a]">Identity. Decisions. Intelligence.</p>
+            <p className="text-sm font-semibold text-[var(--brand-navy)]">Identity. Decisions. Intelligence.</p>
             {authProviderBadge ? (
               <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 {authProviderBadge} login
@@ -245,13 +293,13 @@ export function PlatformModuleNav() {
               </button>
             ) : null}
             {roleBadge ? (
-              <span className="rounded-full border border-[#c7d8ea] bg-[#edf5ff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2]">
+              <span className="rounded-full border border-[#c9dafb] bg-[#edf3ff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-blue-deep)]">
                 {roleBadge}
               </span>
             ) : null}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div ref={dropdownWrapRef} className="flex flex-wrap items-center gap-2">
           {showSectionReturnMenu ? (
             <>
               <div className="flex flex-col items-start gap-1">
@@ -315,18 +363,75 @@ export function PlatformModuleNav() {
           {showGlobalMarketingNav
             ? navItems.map((item) => {
                 const active = isActive(pathname, item.href)
+                const hasMenu = Boolean(item.items?.length)
+                const menuOpen = openDropdownKey === item.key
+
+                if (!hasMenu) {
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "border-[#8fb0f5] bg-[#edf3ff] text-[var(--brand-blue-deep)]"
+                          : "border-[#c9d4e8] bg-white text-[#243a63] hover:bg-[#f4f7ff]"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                }
+
                 return (
-                  <Link
+                  <div
                     key={item.key}
-                    href={item.href}
-                    className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                      active
-                        ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                    }`}
+                    className="relative"
+                    onMouseEnter={() => setOpenDropdownKey(item.key)}
+                    onMouseLeave={() => setOpenDropdownKey((current) => (current === item.key ? null : current))}
                   >
-                    {item.label}
-                  </Link>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdownKey((current) => (current === item.key ? null : item.key))}
+                      className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                        active || menuOpen
+                          ? "border-[#8fb0f5] bg-[#edf3ff] text-[var(--brand-blue-deep)]"
+                          : "border-[#c9d4e8] bg-white text-[#243a63] hover:bg-[#f4f7ff]"
+                      }`}
+                      aria-expanded={menuOpen}
+                      aria-haspopup="menu"
+                    >
+                      {item.label}
+                      <span className={`text-[10px] transition-transform ${menuOpen ? "rotate-180" : ""}`}>▼</span>
+                    </button>
+                    {menuOpen ? (
+                      <div className="nav-dropdown-enter absolute left-0 top-10 z-[80] w-[320px] rounded-2xl border border-[#cfdbf3] bg-white p-2.5 shadow-[0_24px_44px_-30px_rgba(15,30,70,0.45)]">
+                        <div className="mb-1.5 rounded-xl border border-[#dde8fb] bg-[#f6f9ff] px-3 py-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5f7294]">{item.label}</p>
+                          <p className="mt-0.5 text-[11px] text-[#556788]">Quick paths to high-value pages.</p>
+                        </div>
+                        {item.items?.map((menuItem) => (
+                          <Link
+                            key={`${item.key}-${menuItem.href}`}
+                            href={menuItem.href}
+                            onClick={() => setOpenDropdownKey(null)}
+                            className="block rounded-xl border border-transparent px-3 py-2 transition hover:border-[#d6e2f7] hover:bg-[#f5f8ff]"
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="block text-sm font-semibold text-[var(--brand-navy)]">{menuItem.label}</span>
+                              {menuItem.badge ? (
+                                <span className="rounded-full border border-[#d1ddf3] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5e7398]">
+                                  {menuItem.badge}
+                                </span>
+                              ) : null}
+                            </span>
+                            {menuItem.detail ? (
+                              <span className="mt-0.5 block text-[11px] font-medium text-[#5f7294]">{menuItem.detail}</span>
+                            ) : null}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 )
               })
             : null}
@@ -335,8 +440,8 @@ export function PlatformModuleNav() {
               href="/operations"
               className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                 isActive(pathname, "/operations")
-                  ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]"
-                  : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                  ? "border-[#8fb0f5] bg-[#edf3ff] text-[var(--brand-blue-deep)]"
+                  : "border-[#c9d4e8] bg-white text-[#243a63] hover:bg-[#f4f7ff]"
               }`}
             >
               Operations
@@ -449,53 +554,6 @@ export function PlatformModuleNav() {
                 ) : null}
               </div>
             </form>
-          </div>
-        </div>
-      ) : null}
-      {superuserDockVisible ? (
-        <div className="fixed right-4 top-20 z-[65] w-[248px] max-w-[calc(100vw-2rem)]">
-          <div className="rounded-2xl border border-[#d8e4f2] bg-white/95 p-3 shadow-lg backdrop-blur">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Command + control</div>
-              <button
-                type="button"
-                onClick={() => setShowSuperuserQuickActions((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                {showSuperuserQuickActions ? "Hide" : "Show"}
-              </button>
-            </div>
-            {showSuperuserQuickActions ? (
-              <div className="mt-2 grid gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent("personara:open-command"))
-                  }}
-                  className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-left text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]"
-                >
-                  Command + control
-                </button>
-                <Link href="/control-center" className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]">
-                  Operations summary
-                </Link>
-                <Link href="/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
-                  Admin dashboard
-                </Link>
-                <Link href="/operations" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
-                  Operations hub
-                </Link>
-                <Link
-                  href="/control-center/marketing-engine"
-                  className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
-                >
-                  Marketing engine
-                </Link>
-                <Link href="/career?view=control" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
-                  Candidate control view
-                </Link>
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}
