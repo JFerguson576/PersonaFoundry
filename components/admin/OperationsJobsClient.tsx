@@ -128,6 +128,7 @@ export function OperationsJobsClient() {
   const [isRecoveringStalled, setIsRecoveringStalled] = useState(false)
   const [recoveryLogs, setRecoveryLogs] = useState<RecoverySweepLog[]>([])
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
+  const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
   const [collapsedPanels, setCollapsedPanels] = useState({
     digest: false,
     recovery: false,
@@ -558,12 +559,21 @@ export function OperationsJobsClient() {
   }
 
   function focusPanel(panel: keyof typeof collapsedPanels) {
+    setActivePanel(panel)
     setCollapsedPanels((current) =>
       Object.keys(current).reduce<typeof current>((next, key) => {
         next[key as keyof typeof current] = key !== panel
         return next
       }, { ...current })
     )
+    if (typeof window !== "undefined") {
+      const target = document.getElementById(`operations-${panel}`)
+      if (target) {
+        window.setTimeout(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "start" })
+        }, 80)
+      }
+    }
   }
 
   function setAllPanelsCollapsed(nextValue: boolean) {
@@ -576,61 +586,15 @@ export function OperationsJobsClient() {
       live: nextValue,
     })
   }
+  const isPanelVisible = useCallback(
+    (panel: keyof typeof collapsedPanels) => activePanel === panel,
+    [activePanel]
+  )
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <PlatformModuleNav />
-        <section className="rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_40%,#f5f8ff_100%)] p-4 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#5b6b7c]">Operations</div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f172a]">Unified Jobs Monitor</h1>
-              <p className="mt-2 max-w-3xl text-sm text-[#475569]">
-                Track background generation jobs and live search runs in one place, spot failures fast, and requeue work without leaving operations.
-              </p>
-            </div>
-            <div className="flex w-full flex-wrap gap-2 md:w-auto">
-              <button
-                type="button"
-                onClick={() => setAllPanelsCollapsed(true)}
-                className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 sm:text-sm"
-              >
-                Collapse all sections
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllPanelsCollapsed(false)}
-                className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 sm:text-sm"
-              >
-                Expand all sections
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void loadOverview()
-                  void loadCandidateHealth()
-                  void loadHealthInboxState()
-                }}
-                className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 sm:text-sm"
-              >
-                {isRefreshing ? "Refreshing..." : "Refresh data"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void runStalledRecoverySweep(false)}
-                disabled={isRecoveringStalled}
-                className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-xs font-medium text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
-              >
-                {isRecoveringStalled ? "Recovering..." : `Recover stalled (${STALLED_THRESHOLD_MINUTES}m+)`}
-              </button>
-              <Link href="/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 sm:text-sm">
-                Back to control center
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {!session?.user ? (
           <section className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             Please sign in with an admin account to access Operations.
@@ -657,12 +621,12 @@ export function OperationsJobsClient() {
                   Workflow
                 </summary>
                 <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("digest")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Daily digest</button>
-                  <button type="button" onClick={() => focusPanel("recovery")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Recovery activity</button>
-                  <button type="button" onClick={() => focusPanel("filters")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Status filters</button>
-                  <button type="button" onClick={() => focusPanel("healthInbox")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Candidate health</button>
-                  <button type="button" onClick={() => focusPanel("background")} className="mb-1 w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Background jobs</button>
-                  <button type="button" onClick={() => focusPanel("live")} className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100">Live search runs</button>
+                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Daily digest</button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Recovery activity</button>
+                  <button type="button" onClick={() => focusPanel("filters")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "filters" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Status filters</button>
+                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Candidate health</button>
+                  <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Background jobs</button>
+                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"}`}>Live search runs</button>
                 </div>
               </details>
               <details open className="mt-2 rounded-xl border border-neutral-200 bg-white">
@@ -670,19 +634,23 @@ export function OperationsJobsClient() {
                   Actions
                 </summary>
                 <div className="px-2 pb-2 space-y-1.5">
-                  <button type="button" onClick={() => setAllPanelsCollapsed(true)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Collapse all</button>
-                  <button type="button" onClick={() => setAllPanelsCollapsed(false)} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Expand all</button>
+                  <button type="button" onClick={() => {
+                    void loadOverview()
+                    void loadCandidateHealth()
+                    void loadHealthInboxState()
+                  }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
+                  <Link href="/admin" className="block w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">Back to control center</Link>
                 </div>
               </details>
             </aside>
 
             <div>
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("digest") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Daily ops digest</div>
-                  <h2 className="mt-1 text-lg font-semibold text-[#0f172a]">Operations health for {digest.dateLabel}</h2>
+                  <h2 className="mt-1 text-sm font-semibold text-[#0f172a]">Operations health | {digest.dateLabel}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -707,50 +675,22 @@ export function OperationsJobsClient() {
               </div>
               {!collapsedPanels.digest ? (
                 <>
-              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label="Completion rate (24h)" value={`${digest.completionRate}%`} tone={digest.completionRate < 70 ? "danger" : "normal"} />
-                <MetricCard label="Runs today" value={`${digest.completedToday}/${digest.totalToday}`} />
-                <MetricCard label="Running + queued" value={`${digest.runningNow + digest.queuedNow}`} tone={digest.runningNow + digest.queuedNow > 12 ? "danger" : "normal"} />
-                <MetricCard label="High-risk candidates" value={String(digest.highRiskCount)} tone={digest.highRiskCount > 0 ? "danger" : "normal"} />
+              <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <SnapshotStat label="Completion 24h" value={`${digest.completionRate}%`} />
+                <SnapshotStat label="Runs today" value={`${digest.completedToday}/${digest.totalToday}`} />
+                <SnapshotStat label="Failures 24h" value={String(overview.summary.failed_24h)} />
+                <SnapshotStat label={`Stalled ${STALLED_THRESHOLD_MINUTES}m+`} value={String(stalledRunningCount)} />
               </div>
-              <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-700">
-                <div className="font-semibold text-neutral-900">Recommended actions now</div>
-                <ul className="mt-1 space-y-1 text-xs">
-                  <li>
-                    {digest.failedToday > 0
-                      ? `${digest.failedToday} job failures in the last 24h. Retry failed runs first, then review provider/API errors.`
-                      : "No job failures in the last 24h. Keep the queue flowing and review only if failures appear."}
-                  </li>
-                  <li>
-                    {digest.highRiskCount > 0
-                      ? `${digest.highRiskCount} candidates are high-risk. Work top inbox items before adding new automation layers.`
-                      : "No high-risk candidates currently flagged. Focus on medium-risk follow-through and momentum."}
-                  </li>
-                  <li>
-                    {stalledRunningCount > 0
-                      ? `${stalledRunningCount} jobs appear stalled past ${STALLED_THRESHOLD_MINUTES} minutes. Run recovery sweep now.`
-                      : `No stalled jobs detected beyond ${STALLED_THRESHOLD_MINUTES} minutes.`}
-                  </li>
-                  <li>
-                    {digest.topBackgroundFailureEntry
-                      ? `Most common failing generator: ${digest.topBackgroundFailureEntry[0].replaceAll("_", " ")} (${digest.topBackgroundFailureEntry[1]} fails).`
-                      : "No repeated generator failure pattern detected right now."}
-                  </li>
-                </ul>
+              <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+                {digest.failedToday > 0
+                  ? `${digest.failedToday} failures in the last 24h. Start with recovery activity and failed retries.`
+                  : "No failures in the last 24h. Keep monitoring recovery and candidate health."}
               </div>
                 </>
               ) : null}
             </section>
 
-            <section className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              <MetricCard label="Background jobs" value={String(overview.summary.background.total)} />
-              <MetricCard label="Live search runs" value={String(overview.summary.live.total)} />
-              <MetricCard label="Failures (24h)" value={String(overview.summary.failed_24h)} tone={overview.summary.failed_24h > 0 ? "danger" : "normal"} />
-              <MetricCard label="Running now" value={String(overview.summary.background.running + overview.summary.live.running)} />
-              <MetricCard label={`Stalled (${STALLED_THRESHOLD_MINUTES}m+)`} value={String(stalledRunningCount)} tone={stalledRunningCount > 0 ? "danger" : "normal"} />
-            </section>
-
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-recovery" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("recovery") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-neutral-600">Recovery activity</h2>
                 <div className="flex flex-wrap items-center gap-2">
@@ -826,7 +766,7 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-filters" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("filters") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Filter by status</div>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -857,7 +797,7 @@ export function OperationsJobsClient() {
               </div>
             </section>
 
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-healthInbox" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("healthInbox") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Candidate health inbox</h2>
                 <div className="flex flex-wrap items-center gap-2">
@@ -950,7 +890,7 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-background" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("background") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Background jobs</h2>
                 <button
@@ -1001,7 +941,7 @@ export function OperationsJobsClient() {
               ) : null}
             </section>
 
-            <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+            <section id="operations-live" className={`mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm ${isPanelVisible("live") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-[#0f172a]">Live search runs</h2>
                 <button

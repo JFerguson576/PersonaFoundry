@@ -1696,28 +1696,14 @@ export function AdminDashboardClient() {
       { label: "Saved enhancements", sectionKey: "admin-notebook", href: "#admin-notebook" },
     ],
   }
-  const activeSubmenuLinks = sectionSubmenuLinks[activeSection] ?? []
-  const activeSectionLabel = quickLinks.find((link) => link.sectionKey === activeSection)?.label?.replace(/^\d+\.\s*/, "") || "Overview"
-  const activeSubsectionLabel =
-    activeSubmenuLinks.find((item) => item.href === activeAnchor)?.label ||
-    activeSubmenuLinks[0]?.label ||
-    "Overview"
-  const sectionVisibilityAliases: Record<string, string> = useMemo(
-    () => ({
-      "recent-activity": "feature-activity",
-      "recent-api-calls": "api-usage-by-feature",
-      "recent-signups": "acquisition-snapshot",
-    }),
-    []
-  )
+  const sectionVisibilityAliases: Record<string, string> = {
+    "recent-activity": "feature-activity",
+    "recent-api-calls": "api-usage-by-feature",
+    "recent-signups": "acquisition-snapshot",
+  }
 
-  const isSectionVisible = useCallback(
-    (sectionKey: string) =>
-      activeSection === sectionKey ||
-      sectionVisibilityAliases[sectionKey] === activeSection ||
-      showAdvancedTools,
-    [activeSection, sectionVisibilityAliases, showAdvancedTools]
-  )
+  const isSectionVisible = (sectionKey: string) =>
+    activeSection === sectionKey || sectionVisibilityAliases[sectionKey] === activeSection
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1802,10 +1788,6 @@ export function AdminDashboardClient() {
         <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
           <aside data-sticky-nav="true" className="h-fit rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-3 shadow-sm xl:sticky xl:top-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Dashboard menu</div>
-            <div className="mt-1 text-[11px] text-neutral-600">
-              Current: <span className="font-semibold text-neutral-800">{activeSectionLabel}</span> /{" "}
-              <span className="font-semibold text-neutral-800">{activeSubsectionLabel}</span>
-            </div>
             <div className="mt-3 space-y-2">
               {dashboardRailGroups.map((group) => (
                 <details key={`admin-rail-${group.title}`} open className="rounded-xl border border-neutral-200 bg-white">

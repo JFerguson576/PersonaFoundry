@@ -209,12 +209,13 @@ export function CareerHomeClient() {
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
+  const sectionVisible = (sectionKey: string) => activeSection === sectionKey
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
       <div className="w-full px-6 py-6 lg:pl-[248px] lg:pr-6">
         <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Career control nav</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Candidate control nav</div>
           <div className="mt-1 text-[11px] text-neutral-600">Navigate the control center quickly</div>
           <div className="mt-3 space-y-1.5">
             {quickLinks.map((link) => (
@@ -232,23 +233,6 @@ export function CareerHomeClient() {
               </button>
             ))}
           </div>
-          {activeSubmenuLinks.length > 0 ? (
-            <div className="mt-3 border-t border-neutral-200 pt-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current section</div>
-              <div className="mt-2 space-y-1.5">
-                {activeSubmenuLinks.map((item) => (
-                  <button
-                    key={`career-left-submenu-${item.sectionKey}-${item.href}-${item.label}`}
-                    type="button"
-                    onClick={() => openAndScroll(item.sectionKey, item.href)}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-left text-[10px] font-semibold text-neutral-700 hover:bg-white"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </aside>
         <section id="career-overview" className="scroll-mt-24 mb-6 overflow-hidden rounded-[2rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
@@ -285,7 +269,7 @@ export function CareerHomeClient() {
                   </button>
                 ) : null}
               </div>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[#0f172a]">Career Intelligence workspaces built for serious job outcomes</h1>
+              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[#0f172a]">Candidate Control</h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-[#475569]">
                 This is the separate Career Intelligence module inside Persona Foundry. It is designed to help users move from raw career material to sharper positioning, stronger applications, better interview performance, and live opportunity matching.
               </p>
@@ -309,7 +293,7 @@ export function CareerHomeClient() {
                     : "border-sky-300 bg-sky-50 text-sky-900"
                 }`}
               >
-                Control center view
+                Candidate control view
               </Link>
               <Link
                 href="/career?view=preview"
@@ -333,7 +317,7 @@ export function CareerHomeClient() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className={`mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4 ${sectionVisible("career-overview") ? "" : "hidden"}`}>
             <MetricCard label="Candidate workspaces" value={String(candidates.length)} hint="One workspace per person" />
             <MetricCard label="Profiles generated" value={String(totalProfiles)} hint="Professional narrative packs saved" />
             <MetricCard label="Saved outputs" value={String(totalAssets)} hint="CVs, cover letters, dossiers and more" />
@@ -534,7 +518,7 @@ export function CareerHomeClient() {
           </section>
         )}
 
-        <section id="priority-signals" className="scroll-mt-24 mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <section id="priority-signals" className={`scroll-mt-24 mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5 ${sectionVisible("priority-signals") ? "" : "hidden"}`}>
           <UrgencyCard
             title="Overdue follow-ups"
             value={String(overdueFollowUps)}
@@ -579,7 +563,7 @@ export function CareerHomeClient() {
           </div>
         ) : (
           <div className="space-y-6">
-            <section id="setup-workflow" className="scroll-mt-24 rounded-[2rem] border border-[#d9e2ec] bg-white p-6 shadow-sm">
+            <section id="setup-workflow" className={`scroll-mt-24 rounded-[2rem] border border-[#d9e2ec] bg-white p-6 shadow-sm ${sectionVisible("setup-workflow") ? "" : "hidden"}`}>
               <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Career Intelligence workflow</div>
@@ -618,7 +602,7 @@ export function CareerHomeClient() {
               </div>
             </section>
 
-            <section id="feature-capabilities" className="scroll-mt-24 grid gap-4 lg:grid-cols-3">
+            <section id="feature-capabilities" className={`scroll-mt-24 grid gap-4 lg:grid-cols-3 ${sectionVisible("feature-capabilities") ? "" : "hidden"}`}>
               <FeaturePanel
                 title="Professional positioning"
                 description="Turn raw career material into a sharper market narrative with strengths, seniority signals, and target-role direction."
@@ -633,12 +617,12 @@ export function CareerHomeClient() {
               />
             </section>
 
-            <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-              <div id="create-workspace" className="scroll-mt-24">
+            <div className="grid gap-6">
+              <div id="create-workspace" className={`scroll-mt-24 ${sectionVisible("create-workspace") ? "" : "hidden"}`}>
                 <CareerCandidateForm />
               </div>
 
-              <section id="workspace-library" className="scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+              <section id="workspace-library" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm ${sectionVisible("workspace-library") ? "" : "hidden"}`}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-semibold">Existing workspaces</h2>

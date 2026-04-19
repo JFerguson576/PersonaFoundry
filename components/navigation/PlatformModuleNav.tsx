@@ -48,6 +48,13 @@ export function PlatformModuleNav() {
   const isModulePage = useMemo(() => {
     return pathname.startsWith("/career") || pathname.startsWith("/teamsync") || pathname.startsWith("/persona-foundry")
   }, [pathname])
+  const isInternalWorkspace = useMemo(
+    () =>
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/operations") ||
+      pathname.startsWith("/control-center"),
+    [pathname]
+  )
 
   useEffect(() => {
     function onScroll() {
@@ -166,7 +173,7 @@ export function PlatformModuleNav() {
 
   return (
     <nav
-      className={`sticky top-3 z-40 mb-5 rounded-2xl border border-[#d8e4f2] bg-white/95 px-4 py-3 backdrop-blur transition-shadow ${
+      className={`sticky top-3 z-40 mb-4 rounded-2xl border border-[#d8e4f2] bg-white/95 px-4 py-3 backdrop-blur transition-shadow ${
         scrolled ? "shadow-md" : "shadow-sm"
       }`}
     >
@@ -214,23 +221,25 @@ export function PlatformModuleNav() {
               Refer
             </button>
           ) : null}
-          {navItems.map((item) => {
-            const active = isActive(pathname, item.href)
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                  active
-                    ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]"
-                    : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                }`}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-          {roleBadge ? (
+          {!isInternalWorkspace
+            ? navItems.map((item) => {
+                const active = isActive(pathname, item.href)
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                      active
+                        ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })
+            : null}
+          {roleBadge && !isInternalWorkspace ? (
             <Link
               href="/operations"
               className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
@@ -330,7 +339,7 @@ export function PlatformModuleNav() {
           </div>
         </div>
       ) : null}
-      {isSignedIn && roleBadge === "Superuser" ? (
+      {isSignedIn && roleBadge === "Superuser" && !isInternalWorkspace ? (
         <div className="fixed right-4 top-20 z-[65] w-[248px] max-w-[calc(100vw-2rem)]">
           <div className="rounded-2xl border border-[#d8e4f2] bg-white/95 p-3 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between gap-2">
@@ -348,7 +357,7 @@ export function PlatformModuleNav() {
                 <Link href="/control-center" className="rounded-xl border border-[#0a66c2] bg-[#e8f3ff] px-3 py-2 text-sm font-semibold text-[#0a66c2] hover:bg-[#dcecff]">
                   Control center
                 </Link>
-                <Link href="/control-center/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
+                <Link href="/admin" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
                   Admin dashboard
                 </Link>
                 <Link href="/operations" className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100">
