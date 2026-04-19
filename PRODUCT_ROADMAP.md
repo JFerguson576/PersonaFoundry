@@ -40,6 +40,12 @@ The long-term direction is to make Career Copilot feel premium, strategic, and v
 - detect stuck patterns and offer proactive unblock guidance
 - track impact on completion rate, support load, and premium conversion
 
+5. Post-success referral prompt + tracked attribution:
+- when a candidate completes setup and runs a live job search, trigger a lightweight "Share with a friend" prompt
+- if accepted, share the public site link with a hidden referral code tied to the current user
+- store referral sends and successful referred signups/conversions
+- surface referral performance in dashboard: invites sent, accepted, and converted
+
 ### 1. Application Sprint Automation
 
 Create a one-click sprint for a selected role that can start the missing workflow pieces in sequence:

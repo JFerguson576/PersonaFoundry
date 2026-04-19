@@ -27,6 +27,7 @@ import { CareerSourceSetupWizard } from "@/components/career/CareerSourceSetupWi
 import { CareerSourceDocumentEditor } from "@/components/career/CareerSourceDocumentEditor"
 import { CareerStrategicDocumentGenerator } from "@/components/career/CareerStrategicDocumentGenerator"
 import { CareerTargetCompanyWorkflow } from "@/components/career/CareerTargetCompanyWorkflow"
+import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import {
   CAREER_WORKSPACE_NAVIGATE_EVENT,
@@ -187,10 +188,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [showSourceSecondaryPanels, setShowSourceSecondaryPanels] = useState(false)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
   const [isMyFilesDrawerOpen, setIsMyFilesDrawerOpen] = useState(false)
-  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => {
-    if (typeof window === "undefined") return true
-    return window.localStorage.getItem(`career-whats-new-hidden-${candidateId}`) !== "1"
-  })
   const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
   const [issueType, setIssueType] = useState("Workflow confusion")
   const [issueDetail, setIssueDetail] = useState("")
@@ -225,6 +222,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     interview: false,
     jobs: false,
   })
+  const [expandedLeftSections, setExpandedLeftSections] = useState<Record<string, boolean>>({
+    workflow: true,
+    source: false,
+    positioning: false,
+    documents: false,
+    company: false,
+    interview: false,
+    jobs: false,
+  })
+  const [showCompletedLeftSteps, setShowCompletedLeftSteps] = useState(false)
 
   const showToast = useCallback((nextToast: { tone: "success" | "error" | "info"; message: string }) => {
     setToast(nextToast)
@@ -1339,6 +1346,18 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
+
+  useEffect(() => {
+    setExpandedLeftSections({
+      workflow: activeStep === "workflow",
+      source: activeStep === "source",
+      positioning: activeStep === "positioning",
+      documents: activeStep === "documents",
+      company: activeStep === "company",
+      interview: activeStep === "interview",
+      jobs: activeStep === "jobs",
+    })
+  }, [activeStep])
   const sectionActionGuides = {
     source: {
       statusLabel: hasCv && hasGallupStrengths ? "Ready for narrative" : "Needs input",
@@ -1827,6 +1846,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           : "bg-amber-100 text-amber-800",
     }
   })
+  const visibleLeftWorkflowLinks = showCompletedLeftSteps
+    ? workflowLinkStatuses
+    : workflowLinkStatuses.filter((link) => !link.complete || link.isActive)
   const contextRailItems = [
     {
       label: "Needs attention",
@@ -2169,13 +2191,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }))
   }
 
-  function dismissWhatsNewPanel() {
-    setIsWhatsNewOpen(false)
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(`career-whats-new-hidden-${candidateId}`, "1")
-    }
-  }
-
   function getRecoveryAnchorForBackgroundJob(jobType: string | null | undefined) {
     switch (jobType) {
       case "generate_recruiter_match_search":
@@ -2236,32 +2251,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 lg:pl-[280px] ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`w-full px-4 py-4 md:px-6 lg:pl-[260px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
-        {isWhatsNewOpen ? (
-          <section className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">What&apos;s new</div>
-                <p className="mt-0.5 text-xs text-sky-900">
-                  Wizard-first guidance, tighter work cards, and faster progress controls are now live.
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Wizard focus</span>
-                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Compact cards</span>
-                  <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-800">Faster step nav</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={dismissWhatsNewPanel}
-                className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 hover:bg-sky-100"
-              >
-                Dismiss
-              </button>
-            </div>
-          </section>
-        ) : null}
+        <ExperienceAgentWidget enabled={Boolean(session?.access_token)} />
         {previewOwnerUserId ? (
           <div className="mb-2 rounded-2xl border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-medium text-sky-900">
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
@@ -6006,7 +5998,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       </div>
       </div>
       <aside
-        className={`fixed left-4 top-24 z-40 hidden w-[252px] rounded-2xl border border-[#d8e4f2] bg-white/95 p-3 shadow-xl backdrop-blur lg:block ${
+        className={`fixed left-0 top-0 z-40 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block ${
           isWizardFocusActive ? "ring-2 ring-[#0a66c2]/20" : ""
         }`}
       >
@@ -6055,43 +6047,85 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             >
               Reset
             </button>
+            <button
+              type="button"
+              onClick={() => setShowCompletedLeftSteps((current) => !current)}
+              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {showCompletedLeftSteps ? "Hide done" : "Show done"}
+            </button>
           </div>
           <div className="mt-3 space-y-1.5">
-            {workflowLinkStatuses.map((link) => (
-              <button
-                key={`left-step-${link.href}`}
-                type="button"
-                onClick={() => openAndScroll(link.sectionKey, link.href)}
-                className={`w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
-                  link.isActive
-                    ? "border-sky-300 bg-sky-100 text-sky-900"
-                    : link.complete
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                }`}
-              >
-                {link.complete ? "✓ " : ""}
-                {link.label}
-              </button>
+            {visibleLeftWorkflowLinks.map((link) => (
+              <div key={`left-step-${link.href}`} className="rounded-xl border border-neutral-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isCurrentlyOpen = Boolean(expandedLeftSections[link.sectionKey])
+                    setExpandedLeftSections({
+                      workflow: false,
+                      source: false,
+                      positioning: false,
+                      documents: false,
+                      company: false,
+                      interview: false,
+                      jobs: false,
+                      [link.sectionKey]: !isCurrentlyOpen,
+                    })
+                    if (!isCurrentlyOpen) {
+                      openAndScroll(link.sectionKey, link.href)
+                    }
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                    link.isActive
+                      ? "border-sky-300 bg-sky-100 text-sky-900"
+                      : link.complete
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                  }`}
+                >
+                  <span className="truncate">
+                    {link.complete ? "✓ " : ""}
+                    {link.sectionKey === "workflow"
+                      ? "[Start] "
+                      : link.sectionKey === "source"
+                        ? "[Files] "
+                        : link.sectionKey === "positioning"
+                          ? "[Profile] "
+                          : link.sectionKey === "documents"
+                            ? "[Docs] "
+                            : link.sectionKey === "company"
+                              ? "[Company] "
+                              : link.sectionKey === "interview"
+                                ? "[Interview] "
+                                : "[Jobs] "}
+                    {link.label}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">
+                    {expandedLeftSections[link.sectionKey] ? "▾" : "▸"}
+                  </span>
+                </button>
+                <div
+                  className={`overflow-hidden border-t border-neutral-200 transition-[max-height,opacity,padding] duration-200 ease-out ${
+                    expandedLeftSections[link.sectionKey] ? "max-h-56 px-2.5 py-2 opacity-100" : "max-h-0 px-2.5 py-0 opacity-0"
+                  }`}
+                >
+                  <div className="space-y-1">
+                    {(sectionSubmenuLinks[link.sectionKey] ?? []).slice(0, 5).map((item) => (
+                      <button
+                        key={`left-submenu-inline-${item.sectionKey}-${item.href}-${item.label}`}
+                        type="button"
+                        onClick={() => openAndScroll(item.sectionKey, item.href)}
+                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-left text-[10px] font-semibold text-neutral-700 hover:bg-white"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-          {!isWizardFocusActive && activeSectionSubmenuLinks.length > 0 ? (
-            <div className="mt-3 border-t border-neutral-200 pt-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current section</div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {activeSectionSubmenuLinks.slice(0, 6).map((item) => (
-                  <button
-                    key={`left-submenu-${item.sectionKey}-${item.href}-${item.label}`}
-                    type="button"
-                    onClick={() => openAndScroll(item.sectionKey, item.href)}
-                    className="rounded-full border border-neutral-300 bg-white px-2 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </aside>
       {isMyFilesDrawerOpen && !isWizardFocusActive ? (
         <aside className="fixed right-4 top-24 z-40 hidden w-[340px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block">
