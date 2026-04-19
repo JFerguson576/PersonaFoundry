@@ -27,6 +27,7 @@ import { CareerSourceSetupWizard } from "@/components/career/CareerSourceSetupWi
 import { CareerSourceDocumentEditor } from "@/components/career/CareerSourceDocumentEditor"
 import { CareerStrategicDocumentGenerator } from "@/components/career/CareerStrategicDocumentGenerator"
 import { CareerTargetCompanyWorkflow } from "@/components/career/CareerTargetCompanyWorkflow"
+import { AdaptiveProductTour } from "@/components/navigation/AdaptiveProductTour"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import {
   CAREER_WORKSPACE_NAVIGATE_EVENT,
@@ -2223,15 +2224,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   }
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
       <div className={`w-full px-4 py-4 md:px-6 lg:pl-[248px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+        <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
           <div className="mb-2 rounded-2xl border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-medium text-sky-900">
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
           </div>
         ) : null}
-        <div className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
+        <div id="career-header" className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Link href="/career" className="text-[11px] font-medium text-neutral-500 hover:text-neutral-900">
@@ -5970,6 +5972,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       </div>
       </div>
       <aside
+        id="career-left-nav"
         className={`fixed left-0 top-0 z-40 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block ${
           isWizardFocusActive ? "ring-2 ring-[#0a66c2]/20" : ""
         }`}

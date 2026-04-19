@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import PersonaChatSandbox from '@/components/PersonaChatSandbox'
 import { PlatformModuleNav } from '@/components/navigation/PlatformModuleNav'
+import { AdaptiveProductTour } from '@/components/navigation/AdaptiveProductTour'
 import { WelcomeBackNotice } from '@/components/navigation/WelcomeBackNotice'
 import type { AuthProviderStatus } from '@/lib/auth-provider-status'
 import { getAuthHeaders } from '@/lib/career-client'
@@ -2207,7 +2208,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
+    <main id="persona-workspace-root" className="min-h-screen bg-[#f7f8fb] text-neutral-900">
       {uploadingFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="rounded-3xl bg-white px-8 py-7 shadow-2xl">
@@ -2222,6 +2223,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-7xl px-6 py-6">
         <PlatformModuleNav />
+        <AdaptiveProductTour moduleKey="persona" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Persona Foundry" />
         {isWhatsNewOpen ? (
           <section className="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
@@ -2242,7 +2244,7 @@ export default function Home() {
             </div>
           </section>
         ) : null}
-        <div className="mb-3 overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_45%,#f3f8ff_100%)] shadow-sm">
+        <div id="persona-hero" className="mb-3 overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eef6ff_45%,#f3f8ff_100%)] shadow-sm">
           <div className="p-3">
             <div>
               <div className="flex items-start justify-between gap-3">
@@ -2454,7 +2456,7 @@ export default function Home() {
           </div>
         )}
 
-        <section data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-2.5 shadow-sm backdrop-blur">
+        <section id="persona-step-menu" data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-2.5 shadow-sm backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Step-by-step menu</div>
             <div className="flex flex-wrap items-center gap-1.5">

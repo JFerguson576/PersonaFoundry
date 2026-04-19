@@ -8,6 +8,7 @@ import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx"
 import { getAuthHeaders } from "@/lib/career-client"
 import { supabase } from "@/lib/supabase"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
+import { AdaptiveProductTour } from "@/components/navigation/AdaptiveProductTour"
 import { ModuleExplainerPanel } from "@/components/navigation/ModuleExplainerPanel"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import { teamsyncExecutivePromptLibrary } from "@/lib/teamsync-executive-prompts"
@@ -103,6 +104,9 @@ type RunResult = {
   actions: string[]
   actionChecklist: ActionChecklistItem[]
   memberSupportPriorities: MemberSupportPriority[]
+  companyUrl?: string
+  companyContextInfluence?: "low" | "medium" | "high"
+  companyContextSummary?: string
 }
 
 type ConversationTurn = {
@@ -216,6 +220,9 @@ const executivePromptLibrary: ExecutivePromptTemplate[] = teamsyncExecutivePromp
 }))
 
 const TEAMSYNC_EXECUTIVE_ENGINE_IMAGE = "/images/teamsync-executive-intelligence-engine.png"
+const TEAMSYNC_EXECUTIVE_VISUAL_IMAGE = "/images/teamsync-executive-intelligence-visual.png"
+const TEAMSYNC_EXECUTIVE_BRIEF_PDF = "/docs/teamsync-executive-intelligence.pdf"
+const TEAMSYNC_EXECUTIVE_DECK_PDF = "/docs/teamsync-executive-intelligence-deck.pdf"
 
 const executorSet = new Set([
   "achiever",
@@ -445,6 +452,15 @@ function hashText(value: string) {
   return hash
 }
 
+function truncateWords(text: string, maxWords = 8) {
+  const parts = text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length <= maxWords) return parts.join(" ")
+  return `${parts.slice(0, maxWords).join(" ")}...`
+}
+
 function buildMemberSupportPriorities(
   members: TeamMember[],
   scenarioTitle: string,
@@ -480,9 +496,14 @@ function buildMemberSupportPriorities(
       .filter((item) => item.length >= 4)
     const roleMentioned = roleTokens.some((token) => reactionRows.some((row) => row.includes(token)))
     const nameMentioned = reactionRows.some((row) => row.includes(member.name.toLowerCase()))
+    const memberReactionText = reactionRows.filter((row) => row.includes(member.name.toLowerCase()) || roleTokens.some((token) => row.includes(token))).join(" ")
+    const stressSignals = ["pressure", "strain", "overload", "burnout", "escalat", "conflict", "reactive", "friction", "tension", "blocked"]
+    const memberShowsStressSignal = containsAny(memberReactionText, stressSignals)
     if (nameMentioned) {
-      score += 10
-      reasons.push("Current role reactions suggest this member may carry elevated response load.")
+      score += memberShowsStressSignal ? 10 : 4
+      if (memberShowsStressSignal) {
+        reasons.push("Current role reactions indicate this member may carry elevated response load.")
+      }
     } else if (roleMentioned) {
       score += 6
       reasons.push("Role-level reaction patterns suggest this member may carry part of the response load.")
@@ -582,6 +603,31 @@ function buildMemberSupportPriorities(
     const roleSummary = member.role ? `${member.role}: ` : ""
     const strengthsSummary = topThemes ? `Top strengths: ${topThemes}.` : ""
     const laneSummary = dominantLane !== "balanced" ? `Likely style leans ${dominantLane}.` : ""
+    const openerByLevel = {
+      high: [
+        `${member.name} is likely to feel concentrated load early in this scenario.`,
+        `${member.name} may become a pressure point without explicit support boundaries.`,
+      ],
+      medium: [
+        `${member.name} should be monitored as a steady contributor with moderate load risk.`,
+        `${member.name} is likely to stay effective if role boundaries remain clear.`,
+      ],
+      low: [
+        `${member.name} looks positioned to remain stable in this scenario.`,
+        `${member.name} can likely act as a support anchor for others right now.`,
+      ],
+    } as const
+    const opener = openerByLevel[level][memberSeed % openerByLevel[level].length]
+    const fallbackReason =
+      dominantLane === "relationship"
+        ? "Relational strengths may absorb extra emotional signals as pressure rises."
+        : dominantLane === "execution"
+          ? "Execution strengths may pull this member toward over-functioning under urgency."
+          : dominantLane === "strategy"
+            ? "Strategic strengths may increase cognitive load when ambiguity is high."
+            : dominantLane === "influence"
+              ? "Influence strengths may draw this member into high-friction decision moments."
+              : "Balanced strengths suggest this member can remain stable with clear role boundaries."
 
     return {
       memberId: member.id,
@@ -589,7 +635,7 @@ function buildMemberSupportPriorities(
       role: member.role,
       score: clampedScore,
       level,
-      rationale: `${roleSummary}${reasonsText || "Moderate scenario pressure indicates normal monitoring is still valuable."} ${strengthsSummary} ${laneSummary} ${memberSummary}`.replace(/\s+/g, " ").trim(),
+      rationale: `${roleSummary}${opener} ${reasonsText || fallbackReason} ${strengthsSummary} ${laneSummary} ${memberSummary}`.replace(/\s+/g, " ").trim(),
       supportMove,
     }
   })
@@ -905,6 +951,156 @@ function buildTeamsUpdate(run: RunResult, groupName: string) {
   ].join("\n")
 }
 
+function buildSignalMapRows(run: RunResult) {
+  return run.memberSupportPriorities.slice(0, 5).map((item, index) => ({
+    rank: index + 1,
+    member: item.memberName,
+    role: item.role || "Role not set",
+    level: item.level.toUpperCase(),
+    score: item.score,
+    signal: item.rationale,
+    move: item.supportMove,
+  }))
+}
+
+function deriveRiskStrip(run: RunResult) {
+  const riskText = `${run.risks.join(" ")} ${run.groupSummary} ${run.semanticLens}`.toLowerCase()
+  const doneCount = run.actionChecklist.filter((item) => item.done).length
+  const totalChecklist = Math.max(run.actionChecklist.length, 1)
+  const completionRate = doneCount / totalChecklist
+  const frictionKeywords = ["conflict", "friction", "tension", "misunderstanding", "breakdown", "trust"]
+  const pressureStatus = run.pressureLevel >= 4 ? "red" : run.pressureLevel === 3 ? "amber" : "green"
+  const trustStatus = containsAny(riskText, frictionKeywords) ? "amber" : "green"
+  const executionStatus = completionRate < 0.4 ? "red" : completionRate < 0.7 ? "amber" : "green"
+  const alignmentStatus =
+    run.roleReactions.length >= 3 && run.risks.length <= 2
+      ? "green"
+      : run.risks.length >= 4
+        ? "red"
+        : "amber"
+
+  return [
+    {
+      key: "pressure",
+      label: "Pressure",
+      status: pressureStatus,
+      detail: `Pressure ${run.pressureLevel}/5`,
+    },
+    {
+      key: "alignment",
+      label: "Alignment",
+      status: alignmentStatus,
+      detail: `${run.roleReactions.length} role reactions modeled`,
+    },
+    {
+      key: "trust",
+      label: "Trust climate",
+      status: trustStatus,
+      detail: run.risks[0] ? truncateWords(run.risks[0], 8) : "No immediate trust risk detected",
+    },
+    {
+      key: "execution",
+      label: "Execution rhythm",
+      status: executionStatus,
+      detail: `${Math.round(completionRate * 100)}% checklist progress`,
+    },
+  ] as const
+}
+
+function deriveActionTimeline(run: RunResult) {
+  const buckets = {
+    "Next 24 hours": [] as string[],
+    "Next 7 days": [] as string[],
+    "Next 30 days": [] as string[],
+  }
+  const pending = run.actionChecklist.filter((item) => !item.done)
+
+  if (pending.length > 0) {
+    pending.forEach((item, index) => {
+      const label = `${item.label}${item.owner ? ` (Owner: ${item.owner})` : ""}`
+      if (item.dueDate) {
+        const parsed = new Date(item.dueDate)
+        if (!Number.isNaN(parsed.getTime())) {
+          const now = Date.now()
+          const deltaDays = (parsed.getTime() - now) / (1000 * 60 * 60 * 24)
+          if (deltaDays <= 1) {
+            buckets["Next 24 hours"].push(label)
+            return
+          }
+          if (deltaDays <= 7) {
+            buckets["Next 7 days"].push(label)
+            return
+          }
+        }
+      }
+      if (index < 2) buckets["Next 24 hours"].push(label)
+      else if (index < 5) buckets["Next 7 days"].push(label)
+      else buckets["Next 30 days"].push(label)
+    })
+  } else {
+    const actions = run.actions.length > 0 ? run.actions : ["Maintain weekly pulse and monitor risk signals."]
+    actions.slice(0, 6).forEach((item, index) => {
+      if (index < 2) buckets["Next 24 hours"].push(item)
+      else if (index < 4) buckets["Next 7 days"].push(item)
+      else buckets["Next 30 days"].push(item)
+    })
+  }
+
+  return [
+    { horizon: "Next 24 hours", items: buckets["Next 24 hours"] },
+    { horizon: "Next 7 days", items: buckets["Next 7 days"] },
+    { horizon: "Next 30 days", items: buckets["Next 30 days"] },
+  ]
+}
+
+function buildSignalMapSvgMarkup(run: RunResult) {
+  const rows = buildSignalMapRows(run)
+  const slots = [
+    { x: 140, y: 64 },
+    { x: 620, y: 64 },
+    { x: 620, y: 250 },
+    { x: 140, y: 250 },
+    { x: 380, y: 282 },
+  ]
+  const esc = (value: string) => escapeHtml(value)
+  const toneFor = (level: string) =>
+    level === "HIGH"
+      ? { stroke: "#ef4444", fill: "#fff1f2" }
+      : level === "MEDIUM"
+        ? { stroke: "#f59e0b", fill: "#fffbeb" }
+        : { stroke: "#10b981", fill: "#ecfdf5" }
+
+  const nodes = rows
+    .map((row, index) => {
+      const slot = slots[index] ?? slots[0]
+      const tone = toneFor(row.level)
+      return `
+      <g>
+        <line x1="380" y1="160" x2="${slot.x}" y2="${slot.y}" stroke="${tone.stroke}" stroke-width="1.8" stroke-dasharray="4 3" />
+        <rect x="${slot.x - 96}" y="${slot.y - 36}" width="192" height="72" rx="12" fill="${tone.fill}" stroke="${tone.stroke}" stroke-width="1.5" />
+        <text x="${slot.x - 84}" y="${slot.y - 14}" font-size="11" font-weight="700" fill="#0f172a">${esc(truncateWords(row.member, 2))}</text>
+        <text x="${slot.x - 84}" y="${slot.y + 2}" font-size="10" fill="#334155">${row.level} | ${row.score}/100</text>
+        <text x="${slot.x - 84}" y="${slot.y + 18}" font-size="10" fill="#334155">${esc(truncateWords(row.move, 6))}</text>
+      </g>`
+    })
+    .join("")
+
+  return `
+  <svg viewBox="0 0 760 320" role="img" aria-label="Team signal map" style="width:100%;border:1px solid #dbe7f5;border-radius:10px;background:#fff;">
+    <defs>
+      <linearGradient id="signalCenterReport" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#dbeafe" />
+        <stop offset="100%" stop-color="#e0e7ff" />
+      </linearGradient>
+    </defs>
+    <circle cx="380" cy="160" r="72" fill="url(#signalCenterReport)" stroke="#93c5fd" stroke-width="2" />
+    <text x="380" y="148" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">SCENARIO</text>
+    <text x="380" y="166" text-anchor="middle" font-size="12" font-weight="600" fill="#0f172a">${esc(truncateWords(run.scenarioTitle, 5))}</text>
+    <text x="380" y="184" text-anchor="middle" font-size="10" fill="#334155">Pressure ${run.pressureLevel}/5</text>
+    ${nodes}
+  </svg>`
+}
+
 function buildTeamSyncReportMarkdown(
   run: RunResult,
   groupName: string,
@@ -912,12 +1108,25 @@ function buildTeamSyncReportMarkdown(
   resources: ResourceLink[],
   examples: ScenarioExample[]
 ) {
+  const riskStrip = deriveRiskStrip(run)
+  const actionTimeline = deriveActionTimeline(run)
+  const signalMapRows = buildSignalMapRows(run)
   const supportRows = run.memberSupportPriorities
     .slice(0, 5)
     .map(
       (item, index) =>
         `${index + 1}. ${item.memberName} (${item.role || "Role not set"}) - ${item.level.toUpperCase()} ${item.score}/100\n   - Rationale: ${item.rationale}\n   - Support move: ${item.supportMove}`
     )
+    .join("\n")
+  const signalMapSummaryRows = signalMapRows
+    .map(
+      (item) =>
+        `${item.rank}. ${item.member} (${item.role}) - ${item.level} ${item.score}/100\n   - Signal: ${item.signal}\n   - Priority move: ${item.move}`
+    )
+    .join("\n")
+  const riskStripRows = riskStrip.map((item, index) => `${index + 1}. ${item.label}: ${item.status.toUpperCase()} - ${item.detail}`).join("\n")
+  const actionTimelineRows = actionTimeline
+    .map((bucket) => [`### ${bucket.horizon}`, ...(bucket.items.length > 0 ? bucket.items.map((item, index) => `${index + 1}. ${item}`) : ["No actions queued."]), ""].join("\n"))
     .join("\n")
 
   const checklistRows = run.actionChecklist
@@ -945,6 +1154,11 @@ function buildTeamSyncReportMarkdown(
     `## Scenario`,
     `${run.scenarioTitle} (${run.scenarioCategory})`,
     `Pressure: ${run.pressureLevel}/5`,
+    ...(run.companyUrl ? [`Company context URL: ${run.companyUrl}`] : []),
+    ...(run.companyContextInfluence ? [`Company context influence: ${run.companyContextInfluence.toUpperCase()}`] : []),
+    ``,
+    `## Company Context`,
+    `${run.companyContextSummary || "Not enabled for this run."}`,
     ``,
     `## Summary`,
     `${run.groupSummary || "No summary provided."}`,
@@ -966,6 +1180,15 @@ function buildTeamSyncReportMarkdown(
     ``,
     `## Support Priorities`,
     supportRows || "No member support priorities generated.",
+    ``,
+    `## Team Signal Map (Visual Summary)`,
+    signalMapSummaryRows || "No team signal map available yet.",
+    ``,
+    `## Executive Signal Strip`,
+    riskStripRows || "No signal strip available.",
+    ``,
+    `## Action Timeline`,
+    actionTimelineRows || "No action timeline available.",
     ``,
     `## Action Checklist`,
     checklistRows || "No checklist generated.",
@@ -1367,6 +1590,20 @@ type AiSimulationResponse = {
   risks: string[]
   adjustments: string[]
   actions: string[]
+  companyContextSummary?: string
+}
+
+function normalizeCompanyUrlInput(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed) return ""
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const parsed = new URL(withProtocol)
+    if (!/^https?:$/.test(parsed.protocol)) return ""
+    return parsed.toString()
+  } catch {
+    return ""
+  }
 }
 
 function relativeTime(iso: string) {
@@ -1547,6 +1784,9 @@ export function TeamSyncWorkspaceClient() {
   const [selectedExecutivePromptId, setSelectedExecutivePromptId] = useState(executivePromptLibrary[0]?.id || "")
   const [executivePromptPack, setExecutivePromptPack] = useState("all")
   const [executivePromptSearch, setExecutivePromptSearch] = useState("")
+  const [useCompanyContext, setUseCompanyContext] = useState(true)
+  const [companyUrlInput, setCompanyUrlInput] = useState("")
+  const [companyContextInfluence, setCompanyContextInfluence] = useState<"low" | "medium" | "high">("medium")
   const [customScenarioText, setCustomScenarioText] = useState("")
   const [customScenarios, setCustomScenarios] = useState<ScenarioTemplate[]>([])
   const [scenarioMode, setScenarioMode] = useState<"library" | "custom" | "executive">("library")
@@ -1869,6 +2109,8 @@ export function TeamSyncWorkspaceClient() {
   const teamScores = useMemo(() => scoreTeam(members), [members])
   const totalSignals = teamScores.executor + teamScores.relationship + teamScores.strategy + teamScores.influence
   const readinessPercent = Math.min(100, Math.round((totalSignals / 30) * 100))
+  const riskStrip = useMemo(() => (latestRun ? deriveRiskStrip(latestRun) : []), [latestRun])
+  const actionTimeline = useMemo(() => (latestRun ? deriveActionTimeline(latestRun) : []), [latestRun])
   const recommendedResources = useMemo(() => buildResourceLinks(latestRun), [latestRun])
   const recommendedExamples = useMemo(() => buildScenarioExamples(latestRun), [latestRun])
   const displayedResources = onlineResources.length > 0 ? onlineResources : recommendedResources
@@ -3009,6 +3251,44 @@ export function TeamSyncWorkspaceClient() {
             )
             .join("")
         : "<li>No comparable examples available.</li>"
+    const signalMapRows = buildSignalMapRows(latestRun)
+    const signalMapSvg = buildSignalMapSvgMarkup(latestRun)
+    const riskStrip = deriveRiskStrip(latestRun)
+    const actionTimeline = deriveActionTimeline(latestRun)
+    const signalMapSummaryHtml =
+      signalMapRows.length > 0
+        ? signalMapRows
+            .map(
+              (item) =>
+                `<tr><td>${item.rank}</td><td>${escapeHtml(item.member)}</td><td>${escapeHtml(item.role)}</td><td>${escapeHtml(item.level)}</td><td>${item.score}</td><td>${escapeHtml(item.move)}</td></tr>`
+            )
+            .join("")
+        : `<tr><td colspan="6">No team signal map data available.</td></tr>`
+    const riskStripHtml =
+      riskStrip.length > 0
+        ? riskStrip
+            .map((item) => {
+              const toneClass =
+                item.status === "red"
+                  ? "tone-red"
+                  : item.status === "amber"
+                    ? "tone-amber"
+                    : "tone-green"
+              return `<div class="signal-card ${toneClass}"><div class="signal-label">${escapeHtml(item.label)}</div><div class="signal-status">${escapeHtml(item.status.toUpperCase())}</div><div class="signal-detail">${escapeHtml(item.detail)}</div></div>`
+            })
+            .join("")
+        : `<div class="signal-card">No signal strip available.</div>`
+    const actionTimelineHtml =
+      actionTimeline.length > 0
+        ? actionTimeline
+            .map(
+              (bucket) =>
+                `<div class="timeline-card"><div class="timeline-title">${escapeHtml(bucket.horizon)}</div><ul>${
+                  bucket.items.length > 0 ? bucket.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>No actions queued.</li>"
+                }</ul></div>`
+            )
+            .join("")
+        : `<div class="timeline-card">No timeline available.</div>`
     const html = `
 <!doctype html>
 <html>
@@ -3024,6 +3304,21 @@ export function TeamSyncWorkspaceClient() {
       li { margin: 4px 0; }
       .card { border: 1px solid #d8e4f2; border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
       .pill { display: inline-block; border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin-right: 6px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+      th, td { border: 1px solid #dbe3ef; padding: 6px 8px; text-align: left; vertical-align: top; }
+      th { background: #f8fbff; color: #334155; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+      .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+      .signal-card { border: 1px solid #dbe3ef; border-radius: 10px; padding: 8px; }
+      .signal-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; font-weight: 700; }
+      .signal-status { margin-top: 4px; font-size: 14px; font-weight: 700; }
+      .signal-detail { margin-top: 4px; font-size: 11px; color: #334155; }
+      .tone-red { background: #fff1f2; border-color: #fecdd3; color: #881337; }
+      .tone-amber { background: #fffbeb; border-color: #fde68a; color: #78350f; }
+      .tone-green { background: #ecfdf5; border-color: #bbf7d0; color: #065f46; }
+      .timeline-card { border: 1px solid #dbe3ef; border-radius: 10px; padding: 8px; background: #f8fbff; }
+      .timeline-title { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; font-weight: 700; margin-bottom: 4px; }
+      .timeline-card ul { margin: 0 0 0 16px; }
       @media print { body { margin: 10mm; } }
     </style>
   </head>
@@ -3035,8 +3330,20 @@ export function TeamSyncWorkspaceClient() {
     <div class="card">
       <div><strong>${escapeHtml(latestRun.scenarioTitle)}</strong> (${escapeHtml(latestRun.scenarioCategory)})</div>
       <div class="meta">Pressure ${latestRun.pressureLevel}/5</div>
+      ${
+        latestRun.companyUrl
+          ? `<div class="meta"><strong>Company URL:</strong> <a href="${escapeHtml(latestRun.companyUrl)}" target="_blank" rel="noreferrer">${escapeHtml(latestRun.companyUrl)}</a></div>`
+          : ""
+      }
+      ${
+        latestRun.companyContextInfluence
+          ? `<div class="meta"><strong>Context influence:</strong> ${escapeHtml(latestRun.companyContextInfluence.toUpperCase())}</div>`
+          : ""
+      }
       <div>${escapeHtml(latestRun.groupSummary || "No summary provided.")}</div>
     </div>
+    <h2>Company Context</h2>
+    <div class="card">${escapeHtml(latestRun.companyContextSummary || "Not enabled for this run.")}</div>
 
     <h2>Members and Strengths Summary</h2>
     <ul>${memberRowsHtml}</ul>
@@ -3058,6 +3365,30 @@ export function TeamSyncWorkspaceClient() {
           )
           .join("")
       : `<div class="card">No member support priorities generated.</div>`)}
+
+    <h2>Team Signal Map</h2>
+    <div class="card">
+      ${signalMapSvg}
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Member</th>
+            <th>Role</th>
+            <th>Signal</th>
+            <th>Score</th>
+            <th>Priority move</th>
+          </tr>
+        </thead>
+        <tbody>${signalMapSummaryHtml}</tbody>
+      </table>
+    </div>
+
+    <h2>Executive Signal Strip</h2>
+    <div class="grid-4">${riskStripHtml}</div>
+
+    <h2>Action Timeline</h2>
+    <div class="grid-3">${actionTimelineHtml}</div>
 
     <h2>Useful Support Links</h2>
     <ul>${resourceLinksHtml}</ul>
@@ -3360,6 +3691,12 @@ export function TeamSyncWorkspaceClient() {
       setMessage("Choose an executive prompt before running.")
       return
     }
+    const normalizedCompanyUrl =
+      scenarioMode === "executive" && useCompanyContext ? normalizeCompanyUrlInput(companyUrlInput) : ""
+    if (scenarioMode === "executive" && useCompanyContext && companyUrlInput.trim() && !normalizedCompanyUrl) {
+      setMessage("Company URL format is invalid. Use a public website URL.")
+      return
+    }
 
     let scenarioForRun = selectedScenario
     let scenarioContextTextForRun = scenarioMode === "custom" ? customText : ""
@@ -3406,6 +3743,9 @@ export function TeamSyncWorkspaceClient() {
           scenario_category: scenarioForRun.category,
           scenario_prompt_id: scenarioMode === "executive" ? selectedExecutivePrompt?.id ?? null : null,
           scenario_prompt_text: scenarioContextTextForRun || null,
+          company_context_enabled: scenarioMode === "executive" ? useCompanyContext : false,
+          company_url: scenarioMode === "executive" ? normalizedCompanyUrl || null : null,
+          company_context_influence: scenarioMode === "executive" ? companyContextInfluence : "low",
           pressure_level: pressureLevel,
           desired_outcome: desiredOutcome,
           members: membersForRun,
@@ -3425,6 +3765,12 @@ export function TeamSyncWorkspaceClient() {
           adjustments: Array.isArray(ai.adjustments) ? ai.adjustments : run.adjustments,
           actions: nextActions,
           actionChecklist: buildActionChecklist(nextActions, run.actionChecklist),
+          companyUrl: scenarioMode === "executive" ? normalizedCompanyUrl || undefined : undefined,
+          companyContextInfluence: scenarioMode === "executive" && useCompanyContext ? companyContextInfluence : undefined,
+          companyContextSummary:
+            typeof ai.companyContextSummary === "string" && ai.companyContextSummary.trim()
+              ? ai.companyContextSummary.trim()
+              : undefined,
           memberSupportPriorities: buildMemberSupportPriorities(
             membersForRun,
             scenarioForRun.title,
@@ -3484,11 +3830,12 @@ export function TeamSyncWorkspaceClient() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f8fc] text-[#0f172a]">
+    <main id="teamsync-workspace-root" className="min-h-screen bg-[#f5f8fc] text-[#0f172a]">
       <div className="w-full px-4 py-5 lg:pl-[240px] lg:pr-4">
         <PlatformModuleNav />
+        <AdaptiveProductTour moduleKey="teamsync" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="TeamSync" />
-        <aside className="fixed left-0 top-0 z-20 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-20 shadow-sm backdrop-blur lg:block">
+        <aside id="teamsync-left-nav" className="fixed left-0 top-0 z-20 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-20 shadow-sm backdrop-blur lg:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">TeamSync nav</div>
           <div className="mt-1 text-[11px] text-neutral-600">One module, one clear workflow</div>
           <div className="mt-3 space-y-1.5">
@@ -3563,6 +3910,55 @@ export function TeamSyncWorkspaceClient() {
                 summary="TeamSync turns Gallup strengths into practical relational intelligence so teams and families can predict friction, support each other faster, and communicate with more precision."
                 docHref="/docs/personara-ai-teamsync-explainer.docx"
               />
+              <details className="mt-2 rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2">
+                <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-[0.12em] text-[#334155]">
+                  Executive Intelligence Briefing
+                </summary>
+                <p className="mt-1 text-xs text-[#334155]">
+                  TeamSync converts executive Gallup strengths into live operating intelligence for structure design, pressure simulation,
+                  succession planning, and board-level readiness.
+                </p>
+                <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
+                  <div className="rounded-lg border border-[#dbe4f2] bg-[#f8fbff] px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Core flow</div>
+                    <p className="mt-0.5 text-xs text-[#334155]">
+                      Input layer → intelligence engine → premium prompts → boardroom scenarios → actionable leadership outcomes.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-[#dbe4f2] bg-[#f8fbff] px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Board-level question</div>
+                    <p className="mt-0.5 text-xs text-[#334155]">
+                      Do we have the right people, in the right roles, making decisions in the right way for the future we are trying to build?
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <a
+                    href={TEAMSYNC_EXECUTIVE_BRIEF_PDF}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                  >
+                    Open executive brief (PDF)
+                  </a>
+                  <a
+                    href={TEAMSYNC_EXECUTIVE_DECK_PDF}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                  >
+                    Open executive deck (PDF)
+                  </a>
+                  <a
+                    href={TEAMSYNC_EXECUTIVE_VISUAL_IMAGE}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-[#bfdbfe] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1d4ed8] hover:bg-[#eff6ff]"
+                  >
+                    View visual architecture
+                  </a>
+                </div>
+              </details>
             </div>
             <div className="rounded-2xl border border-[#bfdbfe] bg-white px-3 py-2 text-xs text-[#334155]">
               {session?.user?.email ? (
@@ -4290,6 +4686,50 @@ export function TeamSyncWorkspaceClient() {
                   ))}
                 </select>
                 <p className="mt-0.5 text-[11px] text-[#64748b]">{filteredExecutivePrompts.length} prompt(s) in this view.</p>
+                <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-white px-2.5 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Company context (optional)</label>
+                    <label className="inline-flex items-center gap-1.5 text-xs font-medium text-[#334155]">
+                      <input
+                        type="checkbox"
+                        checked={useCompanyContext}
+                        onChange={(e) => setUseCompanyContext(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded border-neutral-300"
+                      />
+                      Use company/industry context
+                    </label>
+                  </div>
+                  <div className="mt-1 grid gap-1.5 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                      <input
+                        value={companyUrlInput}
+                        onChange={(e) => setCompanyUrlInput(e.target.value)}
+                        placeholder="example.com or https://example.com"
+                        disabled={!useCompanyContext}
+                        className={`w-full rounded-lg border px-2.5 py-1.5 text-sm ${
+                          useCompanyContext ? "border-neutral-300 bg-white" : "border-neutral-200 bg-neutral-100 text-neutral-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <select
+                        value={companyContextInfluence}
+                        onChange={(e) => setCompanyContextInfluence(e.target.value as "low" | "medium" | "high")}
+                        disabled={!useCompanyContext}
+                        className={`w-full rounded-lg border px-2.5 py-1.5 text-sm ${
+                          useCompanyContext ? "border-neutral-300 bg-white" : "border-neutral-200 bg-neutral-100 text-neutral-500"
+                        }`}
+                      >
+                        <option value="low">Influence: Low</option>
+                        <option value="medium">Influence: Medium</option>
+                        <option value="high">Influence: High</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#64748b]">
+                    Gallup strengths remain primary. Company context only refines scenario language and external pressure cues.
+                  </p>
+                </div>
                 {selectedExecutivePrompt ? (
                   <div className="mt-1 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
                     <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
@@ -4517,6 +4957,21 @@ export function TeamSyncWorkspaceClient() {
                   <div className="mt-1 text-sm font-semibold text-[#0f172a]">{latestRun.scenarioTitle}</div>
                   <p className="mt-1 text-sm text-[#334155]">{latestRun.groupSummary}</p>
                   <p className="mt-2 text-xs text-[#475569]">{latestRun.semanticLens}</p>
+                  {latestRun.companyUrl || latestRun.companyContextSummary ? (
+                    <div className="mt-2 rounded-lg border border-[#bfdbfe] bg-white px-2.5 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#1e3a8a]">Company context overlay</div>
+                      {latestRun.companyUrl ? (
+                        <p className="mt-0.5 text-xs text-[#334155]">
+                          URL:{" "}
+                          <a className="text-[#1d4ed8] underline-offset-2 hover:underline" href={latestRun.companyUrl} target="_blank" rel="noreferrer">
+                            {latestRun.companyUrl}
+                          </a>
+                          {latestRun.companyContextInfluence ? ` | Influence: ${latestRun.companyContextInfluence.toUpperCase()}` : ""}
+                        </p>
+                      ) : null}
+                      <p className="mt-0.5 text-xs text-[#334155]">{latestRun.companyContextSummary || "No company context summary available for this run."}</p>
+                    </div>
+                  ) : null}
                   <div className="ui-action-row mt-2">
                     <button
                       type="button"
@@ -4548,6 +5003,54 @@ export function TeamSyncWorkspaceClient() {
                     </button>
                   </div>
                 </div>
+
+                {riskStrip.length > 0 ? (
+                  <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Executive signal strip</div>
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-4">
+                      {riskStrip.map((signal) => (
+                        <div
+                          key={signal.key}
+                          className={`rounded-lg border px-2 py-1.5 ${
+                            signal.status === "red"
+                              ? "border-rose-200 bg-rose-50 text-rose-900"
+                              : signal.status === "amber"
+                                ? "border-amber-200 bg-amber-50 text-amber-900"
+                                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                          }`}
+                        >
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em]">{signal.label}</div>
+                          <div className="mt-0.5 text-sm font-semibold">{signal.status.toUpperCase()}</div>
+                          <p className="mt-0.5 text-[11px]">{signal.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {actionTimeline.length > 0 ? (
+                  <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Action timeline</div>
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-3">
+                      {actionTimeline.map((bucket) => (
+                        <div key={bucket.horizon} className="rounded-lg border border-[#dbe4f2] bg-[#f8fbff] px-2 py-1.5">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#475569]">{bucket.horizon}</div>
+                          {bucket.items.length > 0 ? (
+                            <ul className="mt-1 space-y-1">
+                              {bucket.items.slice(0, 3).map((item, index) => (
+                                <li key={`${bucket.horizon}-${index}`} className="text-xs text-[#0f172a]">
+                                  {index + 1}. {item}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-1 text-xs text-[#64748b]">No actions queued in this window.</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                 {runHealth ? (
                   <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
@@ -4700,6 +5203,63 @@ export function TeamSyncWorkspaceClient() {
                 ) : null}
 
                 <ExpandableCard title="Who needs support first" subtitle="Member-level support scoring">
+                  {latestRun.memberSupportPriorities.length > 0 ? (
+                    <div className="mb-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Team signal map</div>
+                      <svg viewBox="0 0 760 320" className="w-full rounded-md border border-[#dbe7f5] bg-white">
+                        <defs>
+                          <linearGradient id="signalCenter" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#dbeafe" />
+                            <stop offset="100%" stopColor="#e0e7ff" />
+                          </linearGradient>
+                        </defs>
+                        <circle cx="380" cy="160" r="72" fill="url(#signalCenter)" stroke="#93c5fd" strokeWidth="2" />
+                        <text x="380" y="148" textAnchor="middle" fontSize="11" fontWeight="700" fill="#1e3a8a">
+                          SCENARIO
+                        </text>
+                        <text x="380" y="166" textAnchor="middle" fontSize="12" fontWeight="600" fill="#0f172a">
+                          {truncateWords(latestRun.scenarioTitle, 5)}
+                        </text>
+                        <text x="380" y="184" textAnchor="middle" fontSize="10" fill="#334155">
+                          Pressure {latestRun.pressureLevel}/5
+                        </text>
+                        {latestRun.memberSupportPriorities.slice(0, 5).map((item, index) => {
+                          const slots = [
+                            { x: 140, y: 62 },
+                            { x: 620, y: 62 },
+                            { x: 620, y: 250 },
+                            { x: 140, y: 250 },
+                            { x: 380, y: 278 },
+                          ]
+                          const slot = slots[index] ?? slots[0]
+                          const tone =
+                            item.level === "high"
+                              ? { stroke: "#ef4444", fill: "#fff1f2" }
+                              : item.level === "medium"
+                                ? { stroke: "#f59e0b", fill: "#fffbeb" }
+                                : { stroke: "#10b981", fill: "#ecfdf5" }
+                          return (
+                            <g key={`signal-node-${item.memberId}-${index}`}>
+                              <line x1="380" y1="160" x2={slot.x} y2={slot.y} stroke={tone.stroke} strokeWidth="1.8" strokeDasharray="4 3" />
+                              <rect x={slot.x - 96} y={slot.y - 36} width="192" height="72" rx="12" fill={tone.fill} stroke={tone.stroke} strokeWidth="1.5" />
+                              <text x={slot.x - 84} y={slot.y - 14} fontSize="11" fontWeight="700" fill="#0f172a">
+                                {truncateWords(item.memberName, 2)}
+                              </text>
+                              <text x={slot.x - 84} y={slot.y + 2} fontSize="10" fill="#334155">
+                                {item.level.toUpperCase()} | Score {item.score}
+                              </text>
+                              <text x={slot.x - 84} y={slot.y + 18} fontSize="10" fill="#334155">
+                                {truncateWords(item.supportMove, 6)}
+                              </text>
+                            </g>
+                          )
+                        })}
+                      </svg>
+                      <p className="mt-1 text-[11px] text-[#64748b]">
+                        Visual map shows where support pressure sits right now and the first move for each member.
+                      </p>
+                    </div>
+                  ) : null}
                   {latestRun.memberSupportPriorities.length > 0 ? (
                     <div className="mt-2 grid gap-2">
                       {latestRun.memberSupportPriorities.map((item) => (
@@ -5659,6 +6219,47 @@ export function TeamSyncWorkspaceClient() {
                   </a>
                 ))}
               </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">TeamSync executive materials</div>
+              <p className="mt-0.5 text-xs text-[#475569]">Additional board-ready context and architecture references.</p>
+              <div className="mt-1 grid gap-2 md:grid-cols-2">
+                <a
+                  href={TEAMSYNC_EXECUTIVE_BRIEF_PDF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-neutral-200 bg-[#fbfdff] px-3 py-2 hover:bg-[#f4f9ff]"
+                >
+                  <div className="text-sm font-semibold text-[#0f172a]">TeamSync Executive Intelligence Brief</div>
+                  <div className="mt-1 break-all text-xs text-[#1d4ed8]">{TEAMSYNC_EXECUTIVE_BRIEF_PDF}</div>
+                  <p className="mt-1 text-xs text-[#475569]">Comprehensive briefing: architecture, strategic use-cases, and stakeholder value.</p>
+                </a>
+                <a
+                  href={TEAMSYNC_EXECUTIVE_DECK_PDF}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-neutral-200 bg-[#fbfdff] px-3 py-2 hover:bg-[#f4f9ff]"
+                >
+                  <div className="text-sm font-semibold text-[#0f172a]">TeamSync Executive Deck</div>
+                  <div className="mt-1 break-all text-xs text-[#1d4ed8]">{TEAMSYNC_EXECUTIVE_DECK_PDF}</div>
+                  <p className="mt-1 text-xs text-[#475569]">Presentation-ready deck for leadership and board conversations.</p>
+                </a>
+              </div>
+              <a
+                href={TEAMSYNC_EXECUTIVE_VISUAL_IMAGE}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 block rounded-lg border border-neutral-200 bg-[#fbfdff] p-2 hover:bg-[#f4f9ff]"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">Executive visual explainer</div>
+                <Image
+                  src={TEAMSYNC_EXECUTIVE_VISUAL_IMAGE}
+                  alt="TeamSync executive intelligence visual"
+                  width={1365}
+                  height={768}
+                  className="mt-1 h-auto w-full rounded-md border border-[#dbe4f2] bg-white"
+                />
+              </a>
             </div>
             </ExpandableCard>
           </section>
