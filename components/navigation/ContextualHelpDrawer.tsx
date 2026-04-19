@@ -68,12 +68,12 @@ export function ContextualHelpDrawer() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[80] overflow-y-auto bg-black/30 p-2 sm:p-4"
+          className="fixed inset-0 z-[120] overflow-y-auto bg-black/35 px-2 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-4 sm:pb-6 sm:pt-20"
           onClick={() => setOpen(false)}
         >
-          <div className="flex min-h-full items-start justify-end sm:items-center">
+          <div className="flex min-h-full items-start justify-end">
             <div
-              className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#d8e4f2] bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
+              className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#d8e4f2] bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-6rem)]"
               onClick={(event) => event.stopPropagation()}
             >
             <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 flex items-start justify-between gap-3 border-b border-[#e2e8f0] bg-white px-5 py-4">

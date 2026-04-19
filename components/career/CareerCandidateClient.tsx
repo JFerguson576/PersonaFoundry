@@ -2236,7 +2236,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`mx-auto max-w-6xl px-4 py-4 md:px-6 lg:pl-[280px] ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {isWhatsNewOpen ? (
           <section className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5 shadow-sm">
@@ -2464,7 +2464,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         ) : null}
 
         {hideWorkspaceMenuInFocus ? (
-          <section data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2 shadow-sm backdrop-blur">
+          <section data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2 shadow-sm backdrop-blur lg:hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-[11px] text-neutral-600">
                 Working in <span className="font-semibold text-neutral-900">{activeSectionLabel}</span> /{" "}
@@ -2535,7 +2535,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             </div>
           </section>
         ) : (
-          <section data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] px-2.5 py-2 shadow-sm backdrop-blur">
+          <section data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] px-2.5 py-2 shadow-sm backdrop-blur lg:hidden">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Step-by-step menu</div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -2625,7 +2625,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                     }`}
                   >
-                    {link.complete ? "✓ " : ""}
+                    {link.complete ? "? " : ""}
                     {link.label}
                   </button>
                 ))}
@@ -4471,7 +4471,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     </div>
                     <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Order</div>
-                      <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets → Letter → Strategy</div>
+                      <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets ? Letter ? Strategy</div>
                     </div>
                   </div>
                   <div className="mt-2 grid gap-1.5 md:grid-cols-3">
@@ -6005,6 +6005,94 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
       </div>
       </div>
+      <aside
+        className={`fixed left-4 top-24 z-40 hidden w-[252px] rounded-2xl border border-[#d8e4f2] bg-white/95 p-3 shadow-xl backdrop-blur lg:block ${
+          isWizardFocusActive ? "ring-2 ring-[#0a66c2]/20" : ""
+        }`}
+      >
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Workflow navigator</div>
+          <div className="mt-1 text-[11px] text-neutral-600">
+            {completionCount}/{preparationSteps.length} steps done
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={openWizardFlow}
+              className={`rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182] ${
+                showOnboardingGuide ? "wizard-spotlight-soft" : ""
+              }`}
+            >
+              Wizard
+            </button>
+            {!isWizardFocusActive ? (
+              <button
+                type="button"
+                onClick={() => openAndScroll(activePrimaryAction.sectionKey, activePrimaryAction.href)}
+                className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+              >
+                Next action
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {!hideWorkspaceGuideToggle ? (
+              <button
+                type="button"
+                onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                  isGuidedMode
+                    ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                    : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                {isGuidedMode ? "Guide on" : "Guide off"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={resetWorkspaceView}
+              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              Reset
+            </button>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {workflowLinkStatuses.map((link) => (
+              <button
+                key={`left-step-${link.href}`}
+                type="button"
+                onClick={() => openAndScroll(link.sectionKey, link.href)}
+                className={`w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                  link.isActive
+                    ? "border-sky-300 bg-sky-100 text-sky-900"
+                    : link.complete
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                {link.complete ? "✓ " : ""}
+                {link.label}
+              </button>
+            ))}
+          </div>
+          {!isWizardFocusActive && activeSectionSubmenuLinks.length > 0 ? (
+            <div className="mt-3 border-t border-neutral-200 pt-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Current section</div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {activeSectionSubmenuLinks.slice(0, 6).map((item) => (
+                  <button
+                    key={`left-submenu-${item.sectionKey}-${item.href}-${item.label}`}
+                    type="button"
+                    onClick={() => openAndScroll(item.sectionKey, item.href)}
+                    className="rounded-full border border-neutral-300 bg-white px-2 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </aside>
       {isMyFilesDrawerOpen && !isWizardFocusActive ? (
         <aside className="fixed right-4 top-24 z-40 hidden w-[340px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block">
           <div className="flex items-center justify-between gap-3">
@@ -7180,3 +7268,4 @@ function buildWorkspaceCampaignLane({
     },
   ]
 }
+

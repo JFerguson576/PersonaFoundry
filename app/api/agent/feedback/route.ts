@@ -47,7 +47,11 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (sessionResult.error) {
     if (isMissingTable(sessionResult.error)) {
-      return NextResponse.json({ error: "Missing experience agent tables. Run supabase/experience_agent.sql and supabase/experience_agent_feedback.sql." }, { status: 400 })
+      return NextResponse.json({
+        ok: false,
+        table_missing: true,
+        error: "Missing experience agent tables. Run supabase/experience_agent.sql and supabase/experience_agent_feedback.sql.",
+      })
     }
     return NextResponse.json({ error: sessionResult.error.message }, { status: 400 })
   }
@@ -71,11 +75,14 @@ export async function POST(request: Request) {
 
   if (error) {
     if (isMissingTable(error)) {
-      return NextResponse.json({ error: "Missing table experience_agent_feedback. Run supabase/experience_agent_feedback.sql." }, { status: 400 })
+      return NextResponse.json({
+        ok: false,
+        table_missing: true,
+        error: "Missing table experience_agent_feedback. Run supabase/experience_agent_feedback.sql.",
+      })
     }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
   return NextResponse.json({ feedback: data })
 }
-

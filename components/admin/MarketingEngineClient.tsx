@@ -738,6 +738,29 @@ export function MarketingEngineClient() {
         return next
       }, { ...current })
     )
+    if (typeof window !== "undefined") {
+      const panelAnchorMap: Record<keyof typeof panelDefaults, string> = {
+        playbooks: "marketing-playbooks",
+        recommendations: "marketing-recommendations",
+        alerts: "alerts-policy-risk",
+        integrations: "marketing-integrations",
+        checklist: "marketing-checklist",
+        blueprint: "marketing-blueprint",
+        campaigns: "marketing-campaigns",
+        policy: "marketing-policy",
+        ledger: "marketing-ledger",
+      }
+      const targetId = panelAnchorMap[panel]
+      window.setTimeout(() => {
+        const target = document.getElementById(targetId)
+        if (!target) return
+        target.scrollIntoView({ behavior: "smooth", block: "start" })
+        target.classList.add("ring-2", "ring-sky-300", "ring-offset-2")
+        window.setTimeout(() => {
+          target.classList.remove("ring-2", "ring-sky-300", "ring-offset-2")
+        }, 1200)
+      }, 80)
+    }
   }
 
   function setAllPanelsCollapsed(nextValue: boolean) {
@@ -846,7 +869,7 @@ export function MarketingEngineClient() {
           <MetricCard label="Reserve state" value={reserveStateLabel} tone={latestSnapshot?.reserve_status === "critical" ? "danger" : "normal"} />
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-playbooks" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Playbooks</h2>
             <div className="flex items-center gap-2">
@@ -898,7 +921,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-recommendations" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Recommendations and approvals</h2>
             <div className="flex items-center gap-2">
@@ -1122,7 +1145,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section id="alerts-policy-risk" className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="alerts-policy-risk" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Alerts and policy risk</h2>
             <div className="flex items-center gap-2">
@@ -1248,7 +1271,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-integrations" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Integrations health</h2>
             <div className="flex items-center gap-2">
@@ -1294,7 +1317,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-checklist" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Setup checklist</h2>
             <div className="flex items-center gap-2">
@@ -1405,8 +1428,12 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
-          <div className="mb-2 flex items-center justify-end">
+        <section id="marketing-blueprint" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Overview blueprint</div>
+              <h2 className="mt-1 text-base font-semibold text-[#0f172a]">Customer-Funded Growth Engine</h2>
+            </div>
             <button
               type="button"
               onClick={() => togglePanel("blueprint")}
@@ -1415,11 +1442,12 @@ export function MarketingEngineClient() {
               {collapsedPanels.blueprint ? "Expand" : "Collapse"}
             </button>
           </div>
+          {collapsedPanels.blueprint ? (
+            <p className="text-sm text-neutral-600">Blueprint preview is collapsed.</p>
+          ) : null}
           {!collapsedPanels.blueprint ? (
             <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Overview blueprint</div>
-              <h2 className="mt-1 text-lg font-semibold text-[#0f172a]">Customer-Funded Growth Engine</h2>
               <p className="mt-1 text-sm text-neutral-600">
                 This visual explains the full operating loop behind the marketing engine.
               </p>
@@ -1449,7 +1477,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-campaigns" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Campaign workspace</h2>
             <div className="flex items-center gap-2">
@@ -1594,7 +1622,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-policy" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Policy settings</h2>
             <div className="flex items-center gap-2">
@@ -1670,7 +1698,7 @@ export function MarketingEngineClient() {
           ) : null}
         </section>
 
-        <section className="mt-3 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
+        <section id="marketing-ledger" className="mt-3 scroll-mt-24 rounded-2xl border border-[#d8e4f2] bg-white p-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-[#0f172a]">Cash and budget snapshots</h2>
             <button

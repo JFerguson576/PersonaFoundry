@@ -1195,7 +1195,9 @@ export function AdminDashboardClient() {
 
     if (typeof window !== "undefined") {
       window.setTimeout(() => {
-        const target = document.querySelector(href)
+        const target =
+          document.querySelector(href) ||
+          document.getElementById(href.replace(/^#/, ""))
         if (target instanceof HTMLElement) {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -1214,6 +1216,8 @@ export function AdminDashboardClient() {
               }, 1300)
             })
           })
+        } else if (href.startsWith("#")) {
+          window.location.hash = href
         }
       }, 180)
     }

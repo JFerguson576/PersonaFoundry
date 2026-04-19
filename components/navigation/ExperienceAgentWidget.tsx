@@ -147,6 +147,8 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
     },
   ])
   const [statusMessage, setStatusMessage] = useState("")
+  const [statusTone, setStatusTone] = useState<"error" | "info">("error")
+  const [feedbackTableMissing, setFeedbackTableMissing] = useState(false)
   const [feedbackByMessageId, setFeedbackByMessageId] = useState<Record<string, "up" | "down">>({})
   const moduleName = useMemo(() => mapModuleFromPath(pathname), [pathname])
   const quickPrompts = useMemo(() => modulePromptChips(moduleName), [moduleName])
@@ -165,6 +167,11 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
         { headers: await getAuthHeaders() }
       )
       const getJson = await getResponse.json()
+      if (getJson?.table_missing) {
+        setStatusTone("info")
+        setStatusMessage("Agent feedback storage is not enabled yet. Guidance still works.")
+        setFeedbackTableMissing(true)
+      }
       if (getResponse.ok && getJson?.session?.id) {
         setSessionId(getJson.session.id)
         return getJson.session.id as string
@@ -191,6 +198,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       return postJson.session.id as string
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start agent"
+      setStatusTone("error")
       setStatusMessage(message)
       return ""
     } finally {
@@ -210,6 +218,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
     setMessages((current) => [...current, userMessage])
     setInput("")
     setBusy(true)
+    setStatusTone("error")
     setStatusMessage("")
 
     try {
@@ -252,6 +261,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
       }
       setMessages((current) => [...current, assistantMessage])
     } catch (error) {
+      setStatusTone("error")
       setStatusMessage(error instanceof Error ? error.message : "Agent could not respond")
     } finally {
       setBusy(false)
@@ -261,7 +271,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
   if (!enabled) return null
 
   async function sendFeedback(message: AgentMessage, rating: "up" | "down") {
-    if (!sessionId) return
+    if (!sessionId || feedbackTableMissing) return
     const messageKey = message.serverMessageId || message.id
     setFeedbackByMessageId((current) => ({ ...current, [messageKey]: rating }))
     try {
@@ -278,10 +288,17 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
         }),
       })
       const json = await response.json()
+      if (json?.table_missing) {
+        setFeedbackTableMissing(true)
+        setStatusTone("info")
+        setStatusMessage("Agent feedback storage is not enabled yet. Guidance still works.")
+        return
+      }
       if (!response.ok) {
         throw new Error(json?.error || "Could not save feedback")
       }
     } catch (error) {
+      setStatusTone("error")
       setStatusMessage(error instanceof Error ? error.message : "Could not save feedback")
     }
   }
@@ -297,15 +314,15 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
             await ensureSession()
           }
         }}
-        className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+        className={`fixed right-4 top-[max(4.75rem,env(safe-area-inset-top))] z-[116] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
           open ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
-        Ask Agent
+        Agent
       </button>
 
       {open ? (
-        <div className="fixed right-4 top-24 z-[74] w-[390px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
+        <div className="fixed right-4 top-[max(7.5rem,env(safe-area-inset-top))] z-[118] max-h-[calc(100dvh-8.25rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Experience Agent</div>
@@ -355,22 +372,24 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
                       <button
                         type="button"
                         onClick={() => void sendFeedback(message, "up")}
+                        disabled={feedbackTableMissing}
                         className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
                           feedbackByMessageId[message.serverMessageId || message.id] === "up"
                             ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                             : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-60`}
                       >
                         👍
                       </button>
                       <button
                         type="button"
                         onClick={() => void sendFeedback(message, "down")}
+                        disabled={feedbackTableMissing}
                         className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
                           feedbackByMessageId[message.serverMessageId || message.id] === "down"
                             ? "border-rose-300 bg-rose-50 text-rose-700"
                             : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-60`}
                       >
                         👎
                       </button>
@@ -420,7 +439,9 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
                 {busy ? "..." : "Send"}
               </button>
             </div>
-            {statusMessage ? <p className="mt-1.5 text-xs text-rose-700">{statusMessage}</p> : null}
+            {statusMessage ? (
+              <p className={`mt-1.5 text-xs ${statusTone === "info" ? "text-sky-700" : "text-rose-700"}`}>{statusMessage}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
