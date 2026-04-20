@@ -25,7 +25,6 @@ const ADMIN_QUICK_LINKS = [
   { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "13. Workspace manager" },
   { sectionKey: "dashboard-help", href: "#dashboard-help", label: "14. Help & to-do" },
 ] as const
-type AdminQuickLink = (typeof ADMIN_QUICK_LINKS)[number]
 
 type OverviewResponse = {
   permissions: {
@@ -330,7 +329,6 @@ export function AdminDashboardClient() {
   const [activeSection, setActiveSection] = useState("dashboard-overview")
   const [showWorkflowMap, setShowWorkflowMap] = useState(false)
   const [showAdvancedTools, setShowAdvancedTools] = useState(false)
-  const [openNavSection, setOpenNavSection] = useState<"core" | "activity" | "control" | "help" | "quickActions">("core")
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     "dashboard-overview": false,
     "dashboard-help": false,
@@ -1730,34 +1728,26 @@ export function AdminDashboardClient() {
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
-  const dashboardRailGroups: Array<{
-    key: "core" | "activity" | "control" | "help"
-    title: string
-    links: AdminQuickLink[]
-  }> = [
+  const dashboardRailGroups = [
     {
-      key: "core",
       title: "Core",
       links: quickLinks.filter((link) =>
         ["dashboard-overview", "openai-usage", "unit-economics", "operating-signals"].includes(link.sectionKey)
       ),
     },
     {
-      key: "activity",
       title: "Activity",
       links: quickLinks.filter((link) =>
         ["acquisition-snapshot", "feature-activity", "api-usage-by-feature", "agent-quality"].includes(link.sectionKey)
       ),
     },
     {
-      key: "control",
       title: "Control",
       links: quickLinks.filter((link) =>
         ["community-moderation", "tester-feedback", "access-control", "admin-notebook", "candidate-workspace-manager"].includes(link.sectionKey)
       ),
     },
     {
-      key: "help",
       title: "Help",
       links: quickLinks.filter((link) => ["dashboard-help"].includes(link.sectionKey)),
     },
@@ -1800,46 +1790,40 @@ export function AdminDashboardClient() {
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Dashboard menu</div>
             <div className="mt-3 space-y-2">
               {dashboardRailGroups.map((group) => (
-                <div key={`admin-rail-${group.title}`} className="rounded-xl border border-[#c7d8ee] bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setOpenNavSection((current) => (current === group.key ? "quickActions" : group.key))}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                  >
-                    <span>{group.title}</span>
-                    <span>{openNavSection === group.key ? "-" : "+"}</span>
-                  </button>
-                  {openNavSection === group.key ? (
-                    <div className="px-2 pb-2">
-                      {group.links.map((link) => (
-                        <button
-                          key={`admin-rail-link-${link.sectionKey}`}
-                          type="button"
-                          onClick={() => openAndScroll(link.sectionKey, link.href)}
-                          className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold transition ${
-                            activeSection === link.sectionKey
-                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
-                              : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
-                          }`}
-                        >
-                          {link.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                <details key={`admin-rail-${group.title}`} open className="rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                    {group.title}
+                  </summary>
+                  <div className="px-2 pb-2">
+                    {group.links.map((link) => (
+                      <button
+                        key={`admin-rail-link-${link.sectionKey}`}
+                        type="button"
+                        onClick={() => openAndScroll(link.sectionKey, link.href)}
+                        className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold transition ${
+                          activeSection === link.sectionKey
+                            ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                            : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                        }`}
+                      >
+                        {link.label}
+                      </button>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
-            <div className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-              <button
-                type="button"
-                onClick={() => setOpenNavSection((current) => (current === "quickActions" ? "core" : "quickActions"))}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+            <details className="mt-2 rounded-xl border border-[#c7d8ee] bg-white" open={showAdvancedTools}>
+              <summary
+                className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                onClick={(event) => {
+                  event.preventDefault()
+                  setShowAdvancedTools((current) => !current)
+                }}
               >
-                <span>Quick actions</span>
-                <span>{openNavSection === "quickActions" ? "-" : "+"}</span>
-              </button>
-              {openNavSection === "quickActions" ? (
+                Advanced tools
+              </summary>
+              {showAdvancedTools ? (
                 <div className="px-2 pb-2">
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     <button
@@ -1858,15 +1842,6 @@ export function AdminDashboardClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowAdvancedTools((current) => !current)}
-                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                        showAdvancedTools ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
-                      }`}
-                    >
-                      {showAdvancedTools ? "Hide tools" : "Show tools"}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setShowWorkflowMap((current) => !current)}
                       className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
                         showWorkflowMap ? "border-sky-300 bg-sky-50 text-sky-800" : "border-neutral-300 bg-white text-neutral-700"
@@ -1875,7 +1850,7 @@ export function AdminDashboardClient() {
                       {showWorkflowMap ? "Map on" : "Map off"}
                     </button>
                   </div>
-                  {showAdvancedTools && showWorkflowMap ? (
+                  {showWorkflowMap ? (
                     <div className="space-y-2">
                       {workflowMapSections.map((section) => (
                         <div key={`admin-rail-map-${section.sectionKey}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
@@ -1892,7 +1867,7 @@ export function AdminDashboardClient() {
                   ) : null}
                 </div>
               ) : null}
-            </div>
+            </details>
           </aside>
 
           <div className="min-w-0">

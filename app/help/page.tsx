@@ -27,17 +27,17 @@ const tourLaunchByPath: Record<string, string> = {
 export default function HelpPage() {
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto max-w-6xl px-5 py-7">
+      <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
-        <section className="rounded-2xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-[#c9d8ef] bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Help</p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight">Guided Help Center</h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Guided Help Center</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[#475569]">
             Guidance is available inside every module via the <span className="font-semibold">Guide me</span> button in the top navigation so users can get step-by-step help while they work.
           </p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
             {moduleItems.map((item) => (
-              <article key={item.path} className="rounded-xl border border-[#c9d8ef] bg-[#f7faff] p-3">
+              <article key={item.path} className="rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
                 <h2 className="text-base font-semibold">{item.context.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-[#475569]">{item.context.purpose}</p>
                 <div className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Suggested flow</div>

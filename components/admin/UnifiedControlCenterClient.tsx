@@ -57,7 +57,6 @@ export function UnifiedControlCenterClient() {
   const [jobs, setJobs] = useState<JobsOverview | null>(null)
   const [marketing, setMarketing] = useState<MarketingOverview | null>(null)
   const [activePanel, setActivePanel] = useState<"operations" | "candidate" | "summary">("operations")
-  const [openNavSection, setOpenNavSection] = useState<"controlSections" | "quickActions">("controlSections")
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -132,11 +131,11 @@ export function UnifiedControlCenterClient() {
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f3f7fd_0%,#f8fafc_45%,#f1f5f9_100%)] text-neutral-900">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         <PlatformModuleNav />
 
         {!session?.user ? (
-          <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-semibold text-[#0f172a]">Control Center</h1>
             <p className="mt-2 text-sm text-neutral-600">
               Sign in first to access unified platform management dashboards.
@@ -147,11 +146,11 @@ export function UnifiedControlCenterClient() {
           </section>
         ) : (
           <>
-            <section className="rounded-3xl border border-[#d8e4f2] bg-[linear-gradient(135deg,#0f172a_0%,#1e3a8a_48%,#0a66c2_100%)] p-4 text-white shadow-lg shadow-sky-200/50">
+            <section className="rounded-[2rem] border border-[#d8e4f2] bg-[linear-gradient(135deg,#0f172a_0%,#1e3a8a_48%,#0a66c2_100%)] p-6 text-white shadow-lg shadow-sky-200/50">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100/90">Unified Control Center</p>
-                  <h1 className="mt-2 text-2xl font-semibold tracking-tight">One dashboard for platform operations</h1>
+                  <h1 className="mt-2 text-3xl font-semibold tracking-tight">One dashboard for platform operations</h1>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-sky-100/90">
                     This consolidates Admin, Operations, and Marketing views so you can monitor risk, growth, and workflow health from one place.
                   </p>
@@ -173,7 +172,7 @@ export function UnifiedControlCenterClient() {
               </section>
             ) : null}
 
-            <section className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard
                 label="Active users"
                 value={formatNumber(admin?.totals.active_users ?? 0)}
@@ -200,21 +199,13 @@ export function UnifiedControlCenterClient() {
               />
             </section>
 
-            <section className="mt-3 grid gap-3 xl:grid-cols-[250px_minmax(0,1fr)]">
+            <section className="mt-5 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
               <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
-                <section className="rounded-xl border border-[#c7d8ee] bg-white">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenNavSection((current) => (current === "controlSections" ? "quickActions" : "controlSections"))
-                    }
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                    aria-expanded={openNavSection === "controlSections"}
-                  >
+                <details open className="rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                     Control sections
-                    <span>{openNavSection === "controlSections" ? "-" : "+"}</span>
-                  </button>
-                  {openNavSection === "controlSections" ? <div className="px-2 pb-2 space-y-1">
+                  </summary>
+                  <div className="px-2 pb-2 space-y-1">
                     <button
                       type="button"
                       onClick={() => setActivePanel("operations")}
@@ -248,21 +239,13 @@ export function UnifiedControlCenterClient() {
                     >
                       Control summary
                     </button>
-                  </div> : null}
-                </section>
-                <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenNavSection((current) => (current === "quickActions" ? "controlSections" : "quickActions"))
-                    }
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                    aria-expanded={openNavSection === "quickActions"}
-                  >
+                  </div>
+                </details>
+                <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                     Quick actions
-                    <span>{openNavSection === "quickActions" ? "-" : "+"}</span>
-                  </button>
-                  {openNavSection === "quickActions" ? <div className="px-2 pb-2 space-y-1.5">
+                  </summary>
+                  <div className="px-2 pb-2 space-y-1.5">
                     <button
                       type="button"
                       onClick={() => void loadData()}
@@ -277,8 +260,8 @@ export function UnifiedControlCenterClient() {
                     <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">
                       Main menu
                     </Link>
-                  </div> : null}
-                </section>
+                  </div>
+                </details>
               </aside>
 
               <div>

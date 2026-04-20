@@ -274,11 +274,9 @@ export function PlatformModuleNav() {
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-[180px]">
-          <Link href="/platform" className="group inline-flex flex-col">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6d8f] group-hover:text-[#415a82]">Personara</p>
-            <p className="text-sm font-semibold text-[var(--brand-navy)] group-hover:text-[var(--brand-blue-deep)]">Identity. Decisions. Intelligence.</p>
-          </Link>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6d8f]">Personara</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-[var(--brand-navy)]">Identity. Decisions. Intelligence.</p>
             {authProviderBadge ? (
               <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 {authProviderBadge} login
@@ -373,11 +371,17 @@ export function PlatformModuleNav() {
                 }
 
                 return (
-                  <div key={item.key} className="relative">
+                  <div
+                    key={item.key}
+                    className="relative"
+                    onMouseEnter={() => setOpenDropdownKey(item.key)}
+                    onMouseLeave={() => setOpenDropdownKey((current) => (current === item.key ? null : current))}
+                  >
                     <button
                       type="button"
                       onClick={() => {
-                        setOpenDropdownKey((current) => (current === item.key ? null : item.key))
+                        setOpenDropdownKey(null)
+                        window.location.assign(item.href)
                       }}
                       className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                         active
@@ -396,13 +400,6 @@ export function PlatformModuleNav() {
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5f7294]">{item.label}</p>
                           <p className="mt-0.5 text-[11px] text-[#556788]">Quick paths to high-value pages.</p>
                         </div>
-                        <Link
-                          href={item.href}
-                          onClick={() => setOpenDropdownKey(null)}
-                          className="mb-1 block rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[var(--brand-navy)] transition hover:border-[#d6e2f7] hover:bg-[#f5f8ff]"
-                        >
-                          Open {item.label}
-                        </Link>
                         {item.items?.map((menuItem) => (
                           <Link
                             key={`${item.key}-${menuItem.href}`}

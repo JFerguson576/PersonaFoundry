@@ -222,8 +222,8 @@ export function CareerHomeClient() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
-      <div className="w-full px-4 py-3 lg:pl-[214px] lg:pr-4">
-        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[214px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-3 pt-16 shadow-sm backdrop-blur lg:block">
+      <div className="w-full px-4 py-4 lg:pl-[220px] lg:pr-4">
+        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[220px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-3 pt-20 shadow-sm backdrop-blur lg:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Candidate control nav</div>
           <div className="mt-1 text-[11px] text-neutral-600">Navigate candidate operations quickly</div>
           <div className="mt-3 space-y-1.5">
@@ -243,8 +243,8 @@ export function CareerHomeClient() {
             ))}
           </div>
         </aside>
-        <section id="career-overview" className="scroll-mt-24 mb-3 overflow-hidden rounded-2xl border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-3 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <section id="career-overview" className="scroll-mt-24 mb-4 overflow-hidden rounded-[1.5rem] border border-[#d9e2ec] bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_38%,#eef2ff_100%)] p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#536471]">Career Intelligence</div>
@@ -278,8 +278,8 @@ export function CareerHomeClient() {
                   </button>
                 ) : null}
               </div>
-              <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-[#0f172a]">Candidate Control</h1>
-              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-[#475569]">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f172a]">Candidate Control</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#475569]">
                 This is the separate Career Intelligence module inside Persona Foundry. It is designed to help users move from raw career material to sharper positioning, stronger applications, better interview performance, and live opportunity matching.
               </p>
               {isNewUserSimulation ? (
@@ -293,10 +293,10 @@ export function CareerHomeClient() {
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               <Link
                 href="/career?view=control"
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-xl border px-4 py-2 text-sm font-medium ${
                   isCandidatePreviewMode || isOwnerPreviewMode
                     ? "border-[#cbd5e1] bg-white text-[#0f172a] hover:bg-[#f8fafc]"
                     : "border-sky-300 bg-sky-50 text-sky-900"
@@ -306,7 +306,7 @@ export function CareerHomeClient() {
               </Link>
               <Link
                 href="/career?view=preview"
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                className={`rounded-xl border px-4 py-2 text-sm font-medium ${
                   isCandidatePreviewMode
                     ? "border-sky-300 bg-sky-50 text-sky-900"
                     : "border-[#cbd5e1] bg-white text-[#0f172a] hover:bg-[#f8fafc]"
@@ -314,16 +314,16 @@ export function CareerHomeClient() {
               >
                 Candidate view preview
               </Link>
-              <Link href="/career-test?mode=dummy" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100">
+              <Link href="/career-test?mode=dummy" className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100">
                 Test as new user
               </Link>
-              <Link href="/admin" className="rounded-lg border border-[#cbd5e1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f172a] hover:bg-[#f8fafc]">
+              <Link href="/admin" className="rounded-xl border border-[#cbd5e1] bg-white px-4 py-2 text-sm font-medium text-[#0f172a] hover:bg-[#f8fafc]">
                 Open admin dashboard
               </Link>
             </div>
           </div>
 
-          <div className={`mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4 ${sectionVisible("career-overview") ? "" : "hidden"}`}>
+          <div className={`mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4 ${sectionVisible("career-overview") ? "" : "hidden"}`}>
             <MetricCard label="Candidate workspaces" value={String(candidates.length)} hint="One workspace per person" />
             <MetricCard label="Profiles generated" value={String(totalProfiles)} hint="Professional narrative packs saved" />
             <MetricCard label="Saved outputs" value={String(totalAssets)} hint="CVs, cover letters, dossiers and more" />
@@ -524,7 +524,7 @@ export function CareerHomeClient() {
           </section>
         )}
 
-        <section id="priority-signals" className={`scroll-mt-24 mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5 ${sectionVisible("priority-signals") ? "" : "hidden"}`}>
+        <section id="priority-signals" className={`scroll-mt-24 mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5 ${sectionVisible("priority-signals") ? "" : "hidden"}`}>
           <UrgencyCard
             title="Overdue follow-ups"
             value={String(overdueFollowUps)}
@@ -558,7 +558,7 @@ export function CareerHomeClient() {
         </section>
 
         {!session?.user ? (
-          <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold">Sign in required</h2>
             <p className="mt-2 text-sm text-neutral-600">
               Sign in on the main Persona Foundry page first, then come back here to use Career Intelligence.
@@ -568,16 +568,16 @@ export function CareerHomeClient() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
-            <section id="setup-workflow" className={`scroll-mt-24 rounded-2xl border border-[#d9e2ec] bg-white p-4 shadow-sm ${sectionVisible("setup-workflow") ? "" : "hidden"}`}>
-              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-6">
+            <section id="setup-workflow" className={`scroll-mt-24 rounded-[2rem] border border-[#d9e2ec] bg-white p-6 shadow-sm ${sectionVisible("setup-workflow") ? "" : "hidden"}`}>
+              <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Career Intelligence workflow</div>
                   <h2 className="mt-2 text-2xl font-semibold text-[#0f172a]">What users should prepare first</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-[#475569]">
                     The strongest results come from strong inputs. The Gallup Strengths report is the engine-room document because it improves voice, positioning, and fit across cover letters, dossiers, and interview answers.
                   </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <GuideCard step="1" title="Current CV" description="Anchor chronology, experience, sector exposure, and scope before any rewriting begins." />
                     <GuideCard step="2" title="Gallup Strengths report" description="Use this to shape the user voice, the strengths story, and the role-fit narrative." />
                     <GuideCard step="3" title="LinkedIn and proof points" description="Bring in LinkedIn, old letters, metrics, recruiter notes, and recent wins." />
@@ -586,9 +586,9 @@ export function CareerHomeClient() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
+                  <div className="rounded-3xl border border-[#dbeafe] bg-[#eff6ff] p-5">
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">Recommended flow</div>
-                    <ol className="mt-3 space-y-2 text-sm leading-5 text-[#1e3a8a]">
+                    <ol className="mt-4 space-y-3 text-sm leading-6 text-[#1e3a8a]">
                       <li>1. Create the candidate workspace.</li>
                       <li>2. Load CV, Gallup Strengths, LinkedIn text, and other proof.</li>
                       <li>3. Generate the career positioning pack.</li>
@@ -598,7 +598,7 @@ export function CareerHomeClient() {
                     </ol>
                   </div>
 
-                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+                  <div className="rounded-3xl border border-[#e2e8f0] bg-[#f8fafc] p-5">
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#64748b]">Why this matters</div>
                     <p className="mt-3 text-sm leading-6 text-[#475569]">
                       The goal is not just to generate content. The goal is to create a Career Intelligence workflow that feels structured, premium, and useful enough to live inside a larger professional platform.
@@ -623,16 +623,16 @@ export function CareerHomeClient() {
               />
             </section>
 
-            <div className="grid gap-4">
+            <div className="grid gap-6">
               <div id="create-workspace" className={`scroll-mt-24 ${sectionVisible("create-workspace") ? "" : "hidden"}`}>
                 <CareerCandidateForm />
               </div>
 
-              <section id="workspace-library" className={`scroll-mt-24 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm ${sectionVisible("workspace-library") ? "" : "hidden"}`}>
+              <section id="workspace-library" className={`scroll-mt-24 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm ${sectionVisible("workspace-library") ? "" : "hidden"}`}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold">Existing workspaces</h2>
-                    <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
+                    <h2 className="text-xl font-semibold">Existing workspaces</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
                       Open a candidate to continue their workflow. Each card shows how far through the process they are and whether background work is still running.
                     </p>
                   </div>
@@ -649,18 +649,18 @@ export function CareerHomeClient() {
                     No Career Intelligence workspaces yet. Create the first candidate workspace to get started.
                   </div>
                 ) : (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-4 space-y-2.5">
                     {candidates.map((candidate) => {
                       const stage = getCandidateStage(candidate)
                       return (
                         <div
                           key={candidate.id}
-                          className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 transition hover:border-neutral-300 hover:bg-white"
+                          className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 transition hover:border-neutral-300 hover:bg-white"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <div className="truncate text-sm font-semibold text-neutral-900">{candidate.full_name || "Untitled candidate"}</div>
+                                <div className="truncate text-base font-semibold text-neutral-900">{candidate.full_name || "Untitled candidate"}</div>
                                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stage.badgeClass}`}>
                                   {stage.label}
                                 </span>
@@ -680,13 +680,13 @@ export function CareerHomeClient() {
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="mt-0.5 text-xs text-neutral-600">
+                              <div className="mt-1 text-sm text-neutral-600">
                                 {[candidate.city || "No city", formatPrimaryGoal(candidate.primary_goal)].join(" | ")}
                               </div>
                               <div className="mt-1.5 max-w-xl">
                                 <ReadinessBar score={candidate.readiness_score} compact />
                               </div>
-                              <div className="mt-1 text-[10px] text-neutral-500">{stage.description}</div>
+                              <div className="mt-1 text-[11px] text-neutral-500">{stage.description}</div>
                             </div>
                             <div className="text-right text-[11px] text-neutral-500">
                               <div>Created {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString() : "Unknown"}</div>
@@ -702,9 +702,13 @@ export function CareerHomeClient() {
                             </div>
                           </div>
 
-                          <p className="mt-1.5 text-[11px] font-medium text-neutral-600">
-                            Ready {candidate.readiness_score}% • Inputs {candidate.document_count} • Profiles {candidate.profile_count} • Outputs {candidate.asset_count} • Roles {candidate.active_application_count}
-                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <WorkspaceStat label="Ready" value={`${candidate.readiness_score}%`} compact />
+                            <WorkspaceStat label="Inputs" value={String(candidate.document_count)} compact />
+                            <WorkspaceStat label="Profiles" value={String(candidate.profile_count)} compact />
+                            <WorkspaceStat label="Outputs" value={String(candidate.asset_count)} compact />
+                            <WorkspaceStat label="Roles" value={String(candidate.active_application_count)} compact />
+                          </div>
                         </div>
                       )
                     })}
@@ -756,10 +760,10 @@ function GuideCard({ step, title, description }: { step: string; title: string; 
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-xl border border-[#d9e2ec] bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
+    <div className="rounded-2xl border border-[#d9e2ec] bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">{label}</div>
-      <div className="mt-0.5 text-xl font-semibold text-[#0f172a]">{value}</div>
-      <div className="mt-0.5 text-xs text-[#475569]">{hint}</div>
+      <div className="mt-1 text-2xl font-semibold text-[#0f172a]">{value}</div>
+      <div className="mt-1 text-sm text-[#475569]">{hint}</div>
     </div>
   )
 }
@@ -770,6 +774,23 @@ function FeaturePanel({ title, description }: { title: string; description: stri
       <h2 className="text-lg font-semibold text-[#0f172a]">{title}</h2>
       <p className="mt-3 text-sm leading-6 text-[#475569]">{description}</p>
     </section>
+  )
+}
+
+function WorkspaceStat({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700">
+        <span className="uppercase tracking-[0.08em] text-neutral-500">{label}</span>
+        <span className="ml-1 text-neutral-900">{value}</span>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-neutral-900">{value}</div>
+    </div>
   )
 }
 
