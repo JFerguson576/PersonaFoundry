@@ -2286,12 +2286,20 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={openWizardFlow}
+                  onClick={() => {
+                    if (firstFiveNextItem) {
+                      openAndScroll(firstFiveNextItem.sectionKey, firstFiveNextItem.href)
+                      return
+                    }
+                    openWizardFlow()
+                  }}
                   className={`rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_0_0_2px_rgba(10,102,194,0.2)] hover:bg-[#0958a8] ${
                     showOnboardingGuide ? "wizard-spotlight" : ""
                   }`}
                 >
-                  Agent guide{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  {firstFiveNextItem
+                    ? `Next step: ${firstFiveNextItem.label}`
+                    : `Setup wizard${showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}`}
                 </button>
                 {showFirstFiveCompact ? (
                   <button
@@ -2305,15 +2313,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
                   {isFirstTimeMinimalMode ? "Open guided setup" : "Expand setup"}
-                </button>
-              ) : null}
-              {firstFiveNextItem ? (
-                <button
-                  type="button"
-                  onClick={() => openAndScroll(firstFiveNextItem.sectionKey, firstFiveNextItem.href)}
-                  className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
-                >
-                  Next action
                 </button>
               ) : null}
             </div>
@@ -2536,7 +2535,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight-soft" : ""
                   }`}
                 >
-                  Agent guide{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  Setup wizard{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 <button
                   type="button"
@@ -2786,7 +2785,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
         {isWizardFocusActive ? (
           <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-            Agent guide mode is active. Secondary panels are hidden so you can finish this step without distractions.
+            Setup wizard mode is active. Secondary panels are hidden so you can finish this step without distractions.
           </div>
         ) : null}
 
@@ -3871,7 +3870,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {sourceWizardFocusMode ? (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#c7dcff] bg-[#eef6ff] px-3 py-2 text-xs text-[#0a4a82]">
                   <span>
-              Agent guide is handling the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
+              Setup wizard is handling the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
                   </span>
                   <button
                     type="button"

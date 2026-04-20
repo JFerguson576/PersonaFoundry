@@ -15,6 +15,68 @@ The long-term direction is to make Career Copilot feel premium, strategic, and v
 
 ### Immediate Next Todo
 
+#### Codex Execution Queue (Prioritized)
+
+This is the active execution queue Codex should use in Operations (`Execution roadmap`), ordered by business impact and risk.
+
+1. P0 - Reduce first-session onboarding drop-off
+- Owner: Product + UX
+- Target: 2 weeks
+- Why first: Activation is the highest-leverage growth metric; if users do not reach first value, all downstream conversion suffers.
+- Codex action focus:
+  - remove duplicate setup prompts and overlapping menu actions
+  - enforce one clear “next action” path per module
+  - instrument completion checkpoints for first session
+
+2. P0 - Enforce margin guardrails per user
+- Owner: Operations + Data
+- Target: 2 weeks
+- Why first: Protects unit economics by ensuring API spend does not silently exceed subscription value.
+- Codex action focus:
+  - compute revenue vs API cost at user level
+  - flag and surface negative-margin accounts
+  - gate or throttle premium automations on guardrail breach
+
+3. P0 - Security + authorization hardening pass
+- Owner: Platform
+- Target: 3 weeks
+- Why first: Enterprise readiness and trust depend on strict access controls and auditable operations.
+- Codex action focus:
+  - route-by-route auth and role enforcement audit
+  - key rotation and incident response runbook
+  - baseline audit logging for privileged actions
+
+4. P1 - Referral + discount attribution engine
+- Owner: Growth
+- Target: 3 weeks
+- Codex action focus:
+  - one-time share codes
+  - invite-to-signup attribution
+  - conversion leaderboard for reward experiments
+
+5. P1 - TeamSync coach outreach automation
+- Owner: Marketing Ops
+- Target: 3 weeks
+- Codex action focus:
+  - queue high-intent TeamSync users
+  - campaign templates + response tracking
+  - booked-call and conversion reporting
+
+6. P1 - Ad campaign manager integration
+- Owner: Marketing Ops
+- Target: 2 weeks
+- Codex action focus:
+  - surface LinkedIn/Google/Meta controls in Operations
+  - show spend + lead quality snapshots in one view
+
+7. P2 - Organization accounts + role matrix
+- Owner: Platform
+- Target: 6 weeks
+
+8. P2 - Enterprise audit and governance reporting
+- Owner: Platform + Compliance
+- Target: 6 weeks
+
 1. TeamSync Step 2 member loading clarity:
 - make loaded members unmistakably visible
 - make the upload action obvious

@@ -4059,6 +4059,13 @@ export function TeamSyncWorkspaceClient() {
                 ) : null}
                 <button
                   type="button"
+                  onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+                  className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                >
+                  {nextAction.cta}
+                </button>
+                <button
+                  type="button"
                   onClick={resetWorkspaceView}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
@@ -4116,6 +4123,13 @@ export function TeamSyncWorkspaceClient() {
                     {savePulse.label}
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+                  className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                >
+                  {nextAction.cta}
+                </button>
                 <button
                   type="button"
                   onClick={resetWorkspaceView}

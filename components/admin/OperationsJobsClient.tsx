@@ -159,6 +159,16 @@ type OperationsEconomicsResponse = {
   }
 }
 
+type CodexBacklogItem = {
+  id: string
+  priority: "P0" | "P1" | "P2"
+  status: "planned" | "in_progress" | "blocked" | "completed"
+  title: string
+  owner: string
+  target: string
+  notes: string
+}
+
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
   if (status === "running") return "border-sky-300 bg-sky-50 text-sky-800"
@@ -170,6 +180,81 @@ function formatDate(value: string | null) {
   if (!value) return "N/A"
   return new Date(value).toLocaleString()
 }
+
+const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
+  {
+    id: "p0-onboarding",
+    priority: "P0",
+    status: "in_progress",
+    title: "Reduce first-session onboarding drop-off",
+    owner: "Product + UX",
+    target: "2 weeks",
+    notes: "Unify setup flow, remove duplicate prompts, and enforce a single path to first value in Career and TeamSync.",
+  },
+  {
+    id: "p0-margin-guardrail",
+    priority: "P0",
+    status: "planned",
+    title: "Enforce margin guardrails per user",
+    owner: "Operations + Data",
+    target: "2 weeks",
+    notes: "Track revenue vs model spend by user and auto-throttle premium automations when account margin is negative.",
+  },
+  {
+    id: "p0-security-audit",
+    priority: "P0",
+    status: "planned",
+    title: "Security + authorization hardening pass",
+    owner: "Platform",
+    target: "3 weeks",
+    notes: "Complete route-by-route auth review, key rotation runbook, audit logs baseline, and incident response checklist.",
+  },
+  {
+    id: "p1-growth-loop",
+    priority: "P1",
+    status: "planned",
+    title: "Referral + discount attribution engine",
+    owner: "Growth",
+    target: "3 weeks",
+    notes: "Issue one-time share codes, track redemptions and conversions, and report top referral contributors.",
+  },
+  {
+    id: "p1-outreach",
+    priority: "P1",
+    status: "planned",
+    title: "TeamSync coach outreach automation",
+    owner: "Marketing Ops",
+    target: "3 weeks",
+    notes: "Queue high-intent TeamSync users, send campaign templates, and track reply/booked call outcomes.",
+  },
+  {
+    id: "p1-ads-console",
+    priority: "P1",
+    status: "planned",
+    title: "Ad campaign manager integration",
+    owner: "Marketing Ops",
+    target: "2 weeks",
+    notes: "Embed LinkedIn/Google/Meta campaign console within Operations and surface spend + lead signals.",
+  },
+  {
+    id: "p2-enterprise-accounts",
+    priority: "P2",
+    status: "planned",
+    title: "Organization accounts + role matrix",
+    owner: "Platform",
+    target: "6 weeks",
+    notes: "Add org workspaces with owner/admin/member roles and enforce access controls across modules.",
+  },
+  {
+    id: "p2-audit",
+    priority: "P2",
+    status: "planned",
+    title: "Enterprise audit and governance reporting",
+    owner: "Platform + Compliance",
+    target: "6 weeks",
+    notes: "Publish exportable audit timelines, policy states, and governance summaries for enterprise buyers.",
+  },
+]
 
 export function OperationsJobsClient() {
   const STALLED_THRESHOLD_MINUTES = 20
@@ -194,6 +279,7 @@ export function OperationsJobsClient() {
   const [candidateMenuOpen, setCandidateMenuOpen] = useState(true)
   const [financialMenuOpen, setFinancialMenuOpen] = useState(true)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(true)
+  const [executionRoadmapMenuOpen, setExecutionRoadmapMenuOpen] = useState(true)
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
   const [activeMarketingView, setActiveMarketingView] = useState<"overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager">("overview")
   const [collapsedPanels, setCollapsedPanels] = useState({
@@ -207,6 +293,7 @@ export function OperationsJobsClient() {
     background: false,
     live: false,
     financials: false,
+    executionBacklog: false,
   })
   const [teamsyncOutreachQueue, setTeamsyncOutreachQueue] = useState<TeamSyncOutreachQueueRow[]>([])
   const [teamsyncOutreachCampaigns, setTeamsyncOutreachCampaigns] = useState<TeamSyncOutreachCampaignRow[]>([])
@@ -267,6 +354,7 @@ export function OperationsJobsClient() {
             background: true,
             live: true,
             financials: true,
+            executionBacklog: false,
           })
         }
         return
@@ -1053,6 +1141,22 @@ export function OperationsJobsClient() {
                 <button
                   type="button"
                   onClick={() =>
+                    setExecutionRoadmapMenuOpen((current) => !current)
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={executionRoadmapMenuOpen}
+                >
+                  Execution roadmap
+                  <span>{executionRoadmapMenuOpen ? "-" : "+"}</span>
+                </button>
+                {executionRoadmapMenuOpen ? <div className="px-2 pb-2">
+                  <button type="button" onClick={() => focusPanel("executionBacklog")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "executionBacklog" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Prioritized Codex backlog</button>
+                </div> : null}
+              </section>
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
                     setQuickActionsMenuOpen((current) => !current)
                   }
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
@@ -1251,6 +1355,63 @@ export function OperationsJobsClient() {
                     No financial data yet.
                   </div>
                 )
+              ) : null}
+            </section>
+            <section id="operations-executionBacklog" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("executionBacklog") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Execution roadmap</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Prioritized Codex action backlog</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("executionBacklog")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.executionBacklog ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.executionBacklog ? (
+                <>
+                  <p className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                    This list converts the enterprise review into an execution sequence. Work P0 top to bottom before expanding P1/P2.
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {CODEX_EXECUTION_BACKLOG.map((item) => (
+                      <article key={item.id} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            item.priority === "P0"
+                              ? "border-rose-300 bg-rose-50 text-rose-700"
+                              : item.priority === "P1"
+                              ? "border-amber-300 bg-amber-50 text-amber-700"
+                              : "border-sky-300 bg-sky-50 text-sky-700"
+                          }`}>
+                            {item.priority}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                              item.status === "in_progress"
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                : item.status === "completed"
+                                ? "border-sky-300 bg-sky-50 text-sky-700"
+                                : item.status === "blocked"
+                                ? "border-rose-300 bg-rose-50 text-rose-700"
+                                : "border-neutral-300 bg-neutral-50 text-neutral-600"
+                            }`}
+                          >
+                            {item.status.replace("_", " ")}
+                          </span>
+                          <h3 className="text-sm font-semibold text-[#142c4f]">{item.title}</h3>
+                        </div>
+                        <p className="mt-1 text-xs text-[#36537d]">{item.notes}</p>
+                        <div className="mt-1.5 text-[11px] text-[#4a6388]">
+                          Owner: <span className="font-semibold">{item.owner}</span> | Target: <span className="font-semibold">{item.target}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </>
               ) : null}
             </section>
             <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("digest") ? "" : "hidden"}`}>
