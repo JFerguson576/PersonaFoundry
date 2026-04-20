@@ -45,6 +45,9 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - route-by-route auth and role enforcement audit
   - key rotation and incident response runbook
   - baseline audit logging for privileged actions
+- First enforcement patch now:
+  - superuser-only write access for marketing policy updates
+  - superuser-only write access for budget recompute operations
 
 4. P1 - Referral + discount attribution engine
 - Owner: Growth

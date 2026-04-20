@@ -65,8 +65,8 @@ export async function POST(request: Request) {
   }
 
   const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
-  if (!capabilities.isAdmin) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+  if (!capabilities.isSuperuser) {
+    return NextResponse.json({ error: "Superuser access required for policy changes" }, { status: 403 })
   }
 
   const admin = createAdminClient()
@@ -148,4 +148,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ policy: saved })
 }
-

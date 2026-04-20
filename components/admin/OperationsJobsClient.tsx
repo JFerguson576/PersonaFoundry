@@ -181,6 +181,10 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString()
 }
 
+function formatUsd(value: number) {
+  return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   {
     id: "p0-onboarding",
@@ -203,7 +207,7 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   {
     id: "p0-security-audit",
     priority: "P0",
-    status: "planned",
+    status: "in_progress",
     title: "Security + authorization hardening pass",
     owner: "Platform",
     target: "3 weeks",
@@ -718,6 +722,36 @@ export function OperationsJobsClient() {
     const liveStalled = overview.live_runs.filter(isStalledRunning).length
     return backgroundStalled + liveStalled
   }, [overview, STALLED_THRESHOLD_MINUTES])
+
+  const financialGuardrail = useMemo(() => {
+    if (!economics) return null
+    const revenue = Number(economics.summary.total_revenue_usd || 0)
+    const spend = Number(economics.summary.total_api_cost_usd || 0)
+    const margin = Number(economics.summary.total_margin_usd || 0)
+    const overBudgetUsers = Number(economics.summary.over_budget_users || 0)
+    const unprofitableUsers = Number(economics.summary.unprofitable_users || 0)
+    const apiCostRatio = revenue > 0 ? spend / revenue : spend > 0 ? 1 : 0
+
+    if (margin < 0 || unprofitableUsers > 0 || apiCostRatio >= 1) {
+      return {
+        toneClass: "border-rose-300 bg-rose-50 text-rose-900",
+        label: "Loss-making",
+        guidance: "Immediate action: throttle high-cost automations and review unprofitable accounts.",
+      }
+    }
+    if (apiCostRatio >= 0.65 || overBudgetUsers > 0) {
+      return {
+        toneClass: "border-amber-300 bg-amber-50 text-amber-900",
+        label: "Watch closely",
+        guidance: "Tighten spend caps and monitor premium runs before margins slip.",
+      }
+    }
+    return {
+      toneClass: "border-emerald-300 bg-emerald-50 text-emerald-900",
+      label: "Healthy",
+      guidance: "Margins are in range. Keep weekly spend monitoring active.",
+    }
+  }, [economics])
 
   const runStalledRecoverySweep = useCallback(async (auto = false) => {
     setIsRecoveringStalled(true)
@@ -1333,19 +1367,25 @@ export function OperationsJobsClient() {
                     <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                       <SnapshotStat
                         label="Customer revenue"
-                        value={`$${Number(economics.summary.total_revenue_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        value={formatUsd(Number(economics.summary.total_revenue_usd || 0))}
                       />
                       <SnapshotStat
                         label="API spend"
-                        value={`$${Number(economics.summary.total_api_cost_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        value={formatUsd(Number(economics.summary.total_api_cost_usd || 0))}
                       />
                       <SnapshotStat
                         label="Margin"
-                        value={`$${Number(economics.summary.total_margin_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        value={formatUsd(Number(economics.summary.total_margin_usd || 0))}
                       />
                       <SnapshotStat label="Over budget users" value={String(economics.summary.over_budget_users || 0)} />
                       <SnapshotStat label="Unprofitable users" value={String(economics.summary.unprofitable_users || 0)} />
                     </div>
+                    {financialGuardrail ? (
+                      <div className={`mt-2 rounded-xl border px-3 py-2 text-xs ${financialGuardrail.toneClass}`}>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em]">Margin guardrail: {financialGuardrail.label}</div>
+                        <div className="mt-1">{financialGuardrail.guidance}</div>
+                      </div>
+                    ) : null}
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
                       Use this panel to keep API and outreach spend below subscription revenue.
                     </div>
