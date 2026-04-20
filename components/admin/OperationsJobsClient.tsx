@@ -911,7 +911,7 @@ export function OperationsJobsClient() {
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Operations menu</div>
               <Link
                 href="/platform#modules"
-                className="mt-2 inline-flex rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                className="mt-2 inline-flex rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
               >
                 Back to platform
               </Link>
@@ -985,16 +985,17 @@ export function OperationsJobsClient() {
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={candidateMenuOpen}
                 >
-                  Candidate engine
+                  Candidate management
                   <span>{candidateMenuOpen ? "-" : "+"}</span>
                 </button>
                 {candidateMenuOpen ? (
                   <div className="px-2 pb-2">
-                    <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate management</button>
+                    <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate control</button>
+                    <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate preview</button>
                     <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Onboarding completion</button>
                     <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
                     <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
-                    <button type="button" onClick={() => focusPanel("live")} className={`mb-2 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
+                    <button type="button" onClick={() => focusPanel("live")} className={`mb-2 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live candidates</button>
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Workspace shortcuts</div>
                     <input
                       value={candidateSearch}
@@ -1028,14 +1029,15 @@ export function OperationsJobsClient() {
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={runHealthMenuOpen}
                 >
-                  System health
+                  Admin
                   <span>{runHealthMenuOpen ? "-" : "+"}</span>
                 </button>
                 {runHealthMenuOpen ? <div className="px-2 pb-2">
+                  <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Admin dashboard</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
                   <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Operations issues</button>
                   <button type="button" onClick={() => { setStatusFilter("failed"); focusPanel("background") }} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "background" && statusFilter === "failed") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>API issues</button>
-                  <button type="button" onClick={() => { setStatusFilter("failed"); focusPanel("live") }} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "live" && statusFilter === "failed") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Operations errors</button>
+                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live candidates</button>
                 </div> : null}
               </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
@@ -1078,8 +1080,8 @@ export function OperationsJobsClient() {
                       void loadTeamSyncOutreach()
                       void loadTesterFeedback()
                     }
-                  }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
-                  <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
+                  }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
+                  <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-xs font-semibold text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
                 </div> : null}
               </section>
             </aside>
@@ -1088,8 +1090,8 @@ export function OperationsJobsClient() {
             <section id="operations-controlCenter" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("controlCenter") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Operations control</div>
-                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Unified module controls in one workspace</h2>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Admin dashboard</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Unified operations and candidate management</h2>
                 </div>
                 <button
                   type="button"
@@ -1122,13 +1124,13 @@ export function OperationsJobsClient() {
                     className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
-                      {overview.permissions.is_superuser ? "Marketing + outreach" : "Live search"}
+                      {overview.permissions.is_superuser ? "Marketing + outreach" : "Live candidates"}
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">
-                      {overview.permissions.is_superuser ? "Marketing workspace" : "Live job runs"}
+                      {overview.permissions.is_superuser ? "Marketing workspace" : "Live candidates"}
                     </div>
                     <div className="mt-1 text-xs text-[#3d567d]">
-                      {overview.permissions.is_superuser ? "Campaign queue, analytics, and follow-up actions." : "Monitor live search activity."}
+                      {overview.permissions.is_superuser ? "Campaign queue, analytics, and follow-up actions." : "Monitor active candidate opportunities."}
                     </div>
                   </button>
                 </div>
@@ -1793,7 +1795,7 @@ export function OperationsJobsClient() {
 
             <section id="operations-live" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("live") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-[#142c4f]">Live search runs</h2>
+                <h2 className="text-lg font-semibold text-[#142c4f]">Live candidates</h2>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(["all", "failed", "running", "queued", "completed"] as const).map((status) => (
                     <button
@@ -1819,7 +1821,7 @@ export function OperationsJobsClient() {
               {!collapsedPanels.live ? (
                 <div className="mt-3 space-y-2">
                 {filteredLiveRuns.length === 0 ? (
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-500">No live runs in this filter.</div>
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-500">No live candidates in this filter.</div>
                 ) : null}
                 {filteredLiveRuns.map((run) => (
                   <div key={run.id} className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
