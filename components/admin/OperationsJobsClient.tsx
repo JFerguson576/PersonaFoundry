@@ -169,6 +169,13 @@ type CodexBacklogItem = {
   notes: string
 }
 
+type SecurityWriteRouteAuditItem = {
+  route: string
+  method: "POST" | "PATCH" | "DELETE"
+  access: "superuser" | "admin"
+  area: "marketing" | "operations" | "users" | "workspace"
+}
+
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
   if (status === "running") return "border-sky-300 bg-sky-50 text-sky-800"
@@ -260,6 +267,31 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   },
 ]
 
+const SECURITY_WRITE_ROUTE_AUDIT: SecurityWriteRouteAuditItem[] = [
+  { route: "/api/admin/marketing/policy", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/budget/recompute", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/alerts", method: "PATCH", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/campaigns", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/campaigns", method: "PATCH", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/coach-outreach", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/coach-outreach", method: "PATCH", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/recommendations", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/recommendations", method: "PATCH", access: "superuser", area: "marketing" },
+  { route: "/api/admin/marketing/cash-ledger", method: "POST", access: "superuser", area: "marketing" },
+  { route: "/api/admin/settings/openai-budget", method: "PATCH", access: "superuser", area: "operations" },
+  { route: "/api/admin/teamsync-outreach", method: "POST", access: "superuser", area: "operations" },
+  { route: "/api/admin/tester-notes/outreach", method: "POST", access: "superuser", area: "operations" },
+  { route: "/api/admin/users/roles", method: "POST", access: "superuser", area: "users" },
+  { route: "/api/admin/users/access", method: "POST", access: "superuser", area: "users" },
+  { route: "/api/admin/economics", method: "PATCH", access: "superuser", area: "operations" },
+  { route: "/api/admin/health-inbox", method: "PATCH", access: "admin", area: "workspace" },
+  { route: "/api/admin/health-inbox", method: "DELETE", access: "admin", area: "workspace" },
+  { route: "/api/admin/jobs/recover-stalled", method: "POST", access: "admin", area: "operations" },
+  { route: "/api/admin/notebook", method: "POST", access: "admin", area: "operations" },
+  { route: "/api/admin/notebook", method: "PATCH", access: "admin", area: "operations" },
+  { route: "/api/admin/tester-notes", method: "PATCH", access: "admin", area: "operations" },
+]
+
 export function OperationsJobsClient() {
   const STALLED_THRESHOLD_MINUTES = 20
   const RECOVERY_LOG_KEY = "personara-operations-recovery-log-v1"
@@ -298,6 +330,7 @@ export function OperationsJobsClient() {
     live: false,
     financials: false,
     executionBacklog: false,
+    securityAudit: false,
   })
   const [teamsyncOutreachQueue, setTeamsyncOutreachQueue] = useState<TeamSyncOutreachQueueRow[]>([])
   const [teamsyncOutreachCampaigns, setTeamsyncOutreachCampaigns] = useState<TeamSyncOutreachCampaignRow[]>([])
@@ -359,6 +392,7 @@ export function OperationsJobsClient() {
             live: true,
             financials: true,
             executionBacklog: false,
+            securityAudit: false,
           })
         }
         return
@@ -752,6 +786,19 @@ export function OperationsJobsClient() {
       guidance: "Margins are in range. Keep weekly spend monitoring active.",
     }
   }, [economics])
+
+  const securityAuditSummary = useMemo(() => {
+    const totalWriteRoutes = SECURITY_WRITE_ROUTE_AUDIT.length
+    const superuserProtected = SECURITY_WRITE_ROUTE_AUDIT.filter((item) => item.access === "superuser")
+    const adminWriteRoutes = SECURITY_WRITE_ROUTE_AUDIT.filter((item) => item.access === "admin")
+    return {
+      totalWriteRoutes,
+      superuserProtectedCount: superuserProtected.length,
+      adminWriteCount: adminWriteRoutes.length,
+      adminWriteRoutes,
+      coveragePct: Math.round((superuserProtected.length / Math.max(totalWriteRoutes, 1)) * 100),
+    }
+  }, [])
 
   const runStalledRecoverySweep = useCallback(async (auto = false) => {
     setIsRecoveringStalled(true)
@@ -1184,7 +1231,8 @@ export function OperationsJobsClient() {
                   <span>{executionRoadmapMenuOpen ? "-" : "+"}</span>
                 </button>
                 {executionRoadmapMenuOpen ? <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("executionBacklog")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "executionBacklog" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Prioritized Codex backlog</button>
+                  <button type="button" onClick={() => focusPanel("executionBacklog")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "executionBacklog" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Prioritized Codex backlog</button>
+                  <button type="button" onClick={() => focusPanel("securityAudit")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "securityAudit" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Security hardening audit</button>
                 </div> : null}
               </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
@@ -1450,6 +1498,62 @@ export function OperationsJobsClient() {
                         </div>
                       </article>
                     ))}
+                  </div>
+                </>
+              ) : null}
+            </section>
+            <section id="operations-securityAudit" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("securityAudit") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Security hardening</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Write-route authorization audit</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("securityAudit")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.securityAudit ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.securityAudit ? (
+                <>
+                  <div className="mt-2 grid gap-2 md:grid-cols-4">
+                    <SnapshotStat label="Write routes audited" value={String(securityAuditSummary.totalWriteRoutes)} />
+                    <SnapshotStat label="Superuser-protected" value={String(securityAuditSummary.superuserProtectedCount)} />
+                    <SnapshotStat label="Admin-write remaining" value={String(securityAuditSummary.adminWriteCount)} />
+                    <SnapshotStat label="Protection coverage" value={`${securityAuditSummary.coveragePct}%`} />
+                  </div>
+                  <div
+                    className={`mt-2 rounded-xl border px-3 py-2 text-xs ${
+                      securityAuditSummary.adminWriteCount > 0
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
+                        : "border-emerald-300 bg-emerald-50 text-emerald-900"
+                    }`}
+                  >
+                    {securityAuditSummary.adminWriteCount > 0
+                      ? `There are ${securityAuditSummary.adminWriteCount} admin-write endpoints still open for operational flexibility. Keep monitoring and promote to superuser as needed.`
+                      : "All tracked write endpoints are superuser protected."}
+                  </div>
+                  <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Remaining admin-write endpoints</div>
+                    {securityAuditSummary.adminWriteRoutes.length === 0 ? (
+                      <div className="mt-1.5 text-xs text-[#36537d]">No admin-write endpoints remain in the tracked list.</div>
+                    ) : (
+                      <div className="mt-1.5 space-y-1.5">
+                        {securityAuditSummary.adminWriteRoutes.map((item) => (
+                          <div key={`${item.method}-${item.route}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2 py-1.5 text-xs text-[#25426c]">
+                            <span className="rounded-full border border-[#b8c9df] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]">
+                              {item.method}
+                            </span>
+                            <span className="font-mono text-[11px]">{item.route}</span>
+                            <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                              {item.area}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               ) : null}

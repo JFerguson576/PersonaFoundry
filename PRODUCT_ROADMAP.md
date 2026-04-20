@@ -53,6 +53,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - superuser-only write access for coach outreach create/update
   - superuser-only write access for recommendations create/update
   - superuser-only write access for cash ledger insertions
+  - operations dashboard panel: security hardening audit (write-route coverage + remaining admin-write endpoints)
 
 4. P1 - Referral + discount attribution engine
 - Owner: Growth
