@@ -48,6 +48,12 @@ const sections: ResourceSection[] = [
         href: "/images/personara-platform-anatomy.png",
         type: "image",
       },
+      {
+        title: "Strengths-Based Intelligence Ecosystem",
+        description: "Updated ecosystem map showing Persona Foundry, TeamSync, and Career Intelligence as one stack.",
+        href: "/images/personara-strengths-ecosystem.png",
+        type: "image",
+      },
     ],
   },
   {
@@ -163,7 +169,7 @@ export default function ResourcesPage() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
+    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
 
@@ -219,17 +225,19 @@ export default function ResourcesPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#64748b]">{section.label}</p>
                   <p className="mt-1 text-sm text-[#475569]">{section.summary}</p>
-                  {section.tourHref ? (
-                    <Link href={section.tourHref} className="mt-2 inline-flex text-xs font-semibold text-[#2a63e5] hover:underline">
-                      Relaunch walkthrough
-                    </Link>
-                  ) : null}
                 </div>
                 <span className="rounded-full border border-[#bfd2ed] bg-[#edf4ff] px-3 py-1 text-xs font-semibold text-[#2a63e5]">
                   Expand
                 </span>
               </summary>
               <div className="border-t border-[#e2ebf5] px-5 py-4">
+                {section.tourHref ? (
+                  <div className="mb-3">
+                    <Link href={section.tourHref} className="personara-explainer-chip">
+                      Relaunch walkthrough
+                    </Link>
+                  </div>
+                ) : null}
                 <div className="grid gap-3 md:grid-cols-2">
                   {section.resources.map((resource) => (
                     <article key={`${section.key}-${resource.href}`} className="rounded-2xl border border-[#c9d8ef] bg-[#f5f9ff] p-4">
@@ -270,6 +278,23 @@ export default function ResourcesPage() {
               alt="Personara platform architecture overview"
               width={1366}
               height={768}
+              className="h-auto w-full"
+            />
+          </div>
+        </section>
+
+        <section className="mt-5 rounded-3xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#64748b]">New ecosystem visual</p>
+          <h2 className="mt-2 text-xl font-semibold text-[#142c4f]">Strengths-based intelligence ecosystem</h2>
+          <p className="mt-2 text-sm text-[#475569]">
+            This visual shows how all three modules connect through one shared intelligence layer.
+          </p>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[#bfd2ed] bg-[#f3f8ff]">
+            <Image
+              src="/images/personara-strengths-ecosystem.png"
+              alt="Personara strengths-based intelligence ecosystem"
+              width={1400}
+              height={800}
               className="h-auto w-full"
             />
           </div>

@@ -745,14 +745,37 @@ export function OperationsJobsClient() {
                   <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
                   <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recovery queue</button>
-                  {overview.permissions.is_superuser ? (
-                    <button type="button" onClick={() => focusPanel("teamsyncOutreach")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "teamsyncOutreach" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>TeamSync outreach</button>
-                  ) : null}
                   <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
                   <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
                   <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
                 </div>
               </details>
+              {overview.permissions.is_superuser ? (
+                <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                    Marketing tools
+                  </summary>
+                  <div className="px-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("teamsyncOutreach")}
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "teamsyncOutreach"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      TeamSync outreach
+                    </button>
+                    <Link
+                      href="/control-center/marketing-engine"
+                      className="block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
+                    >
+                      Marketing engine
+                    </Link>
+                  </div>
+                </details>
+              ) : null}
               <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                   Quick actions

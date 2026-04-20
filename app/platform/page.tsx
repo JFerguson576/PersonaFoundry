@@ -143,7 +143,7 @@ export default function PlatformLandingPage() {
   const isSignedIn = Boolean(session?.user)
 
   return (
-    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
+    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Personara" />

@@ -26,7 +26,7 @@ const tourLaunchByPath: Record<string, string> = {
 
 export default function HelpPage() {
   return (
-    <main className="min-h-screen bg-[#eef3fb] text-[#142c4f]">
+    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <PlatformModuleNav />
         <section className="rounded-3xl border border-[#c9d8ef] bg-white p-6 shadow-sm">

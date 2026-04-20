@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f2f5fb;
-  --foreground: #111f39;
+  --background: #edf3fb;
+  --foreground: #0f213f;
   --surface: #ffffff;
-  --surface-muted: #ecf2fd;
-  --border-soft: #cfd9ea;
-  --brand-navy: #101d36;
-  --brand-blue: #2a63e5;
-  --brand-blue-deep: #1f4fc8;
+  --surface-muted: #eaf2ff;
+  --border-soft: #c7d4ea;
+  --brand-navy: #0f2344;
+  --brand-blue: #2d6cdf;
+  --brand-blue-deep: #1f56c6;
   --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-geist-mono: "Consolas", "Courier New", monospace;
 }
@@ -35,8 +35,10 @@ body {
 
 @media (prefers-color-scheme: light) {
   body {
-    background-image: radial-gradient(circle at 10% -12%, rgba(42, 99, 229, 0.12) 0, transparent 36%),
-      radial-gradient(circle at 86% -8%, rgba(16, 29, 54, 0.08) 0, transparent 30%);
+    background-image:
+      radial-gradient(circle at 8% -16%, rgba(45, 108, 223, 0.18) 0, transparent 34%),
+      radial-gradient(circle at 85% -18%, rgba(15, 35, 68, 0.14) 0, transparent 32%),
+      linear-gradient(180deg, #f4f8fe 0%, #edf3fb 48%, #f2f6fc 100%);
     background-attachment: fixed;
   }
 }

@@ -56,6 +56,7 @@ export function UnifiedControlCenterClient() {
   const [admin, setAdmin] = useState<AdminOverview | null>(null)
   const [jobs, setJobs] = useState<JobsOverview | null>(null)
   const [marketing, setMarketing] = useState<MarketingOverview | null>(null)
+  const [activePanel, setActivePanel] = useState<"operations" | "candidate" | "summary">("operations")
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -198,42 +199,114 @@ export function UnifiedControlCenterClient() {
               />
             </section>
 
-            <section className="mt-5 grid gap-4 lg:grid-cols-3">
-              <DashboardPanel
-                title="Operations Hub"
-                subtitle="Unified left-nav workspace for operations, admin controls, marketing engine, and candidate management."
-                tone="blue"
-                stats={[
-                  { label: "Running jobs", value: formatNumber(runningJobs) },
-                  { label: "Queued jobs", value: formatNumber(queuedJobs) },
-                  { label: "Failed 24h", value: formatNumber(jobs?.summary.failed_24h ?? 0) },
-                ]}
-                ctaHref="/operations"
-                ctaLabel="Open Operations Hub"
-              />
-              <DashboardPanel
-                title="Candidate Management"
-                subtitle="Control center view for workspace readiness, live role flow, and candidate progress signals."
-                tone="teal"
-                stats={[
-                  { label: "Total workspaces", value: formatNumber(admin?.totals.total_candidates ?? 0) },
-                  { label: "Profiles generated", value: formatNumber(admin?.totals.total_saved_profiles ?? 0) },
-                ]}
-                ctaHref="/career?view=control"
-                ctaLabel="Open Candidate Control"
-              />
-              <DashboardPanel
-                title="Control summary"
-                subtitle="Quick pulse card for alerts and spend. Full controls are now handled in Operations Hub."
-                tone="violet"
-                stats={[
-                  { label: "Open alerts", value: formatNumber(alertsSummary.open) },
-                  { label: "Critical alerts", value: formatNumber(alertsSummary.critical) },
-                  { label: "Estimated cost", value: formatMoney(admin?.totals.estimated_cost_usd ?? 0) },
-                ]}
-                ctaHref="/operations"
-                ctaLabel="Go to Operations Hub"
-              />
+            <section className="mt-5 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
+              <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
+                <details open className="rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                    Control sections
+                  </summary>
+                  <div className="px-2 pb-2 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel("operations")}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "operations"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Operations Hub
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel("candidate")}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "candidate"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Candidate Management
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel("summary")}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "summary"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Control summary
+                    </button>
+                  </div>
+                </details>
+                <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                    Quick actions
+                  </summary>
+                  <div className="px-2 pb-2 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void loadData()}
+                      disabled={loading}
+                      className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loading ? "Refreshing..." : "Refresh data"}
+                    </button>
+                    <Link href="/operations" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">
+                      Operations hub
+                    </Link>
+                    <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">
+                      Main menu
+                    </Link>
+                  </div>
+                </details>
+              </aside>
+
+              <div>
+                {activePanel === "operations" ? (
+                  <DashboardPanel
+                    title="Operations Hub"
+                    subtitle="Unified left-nav workspace for operations, admin controls, marketing engine, and candidate management."
+                    tone="blue"
+                    stats={[
+                      { label: "Running jobs", value: formatNumber(runningJobs) },
+                      { label: "Queued jobs", value: formatNumber(queuedJobs) },
+                      { label: "Failed 24h", value: formatNumber(jobs?.summary.failed_24h ?? 0) },
+                    ]}
+                    ctaHref="/operations"
+                    ctaLabel="Open Operations Hub"
+                  />
+                ) : null}
+                {activePanel === "candidate" ? (
+                  <DashboardPanel
+                    title="Candidate Management"
+                    subtitle="Control center view for workspace readiness, live role flow, and candidate progress signals."
+                    tone="teal"
+                    stats={[
+                      { label: "Total workspaces", value: formatNumber(admin?.totals.total_candidates ?? 0) },
+                      { label: "Profiles generated", value: formatNumber(admin?.totals.total_saved_profiles ?? 0) },
+                    ]}
+                    ctaHref="/career?view=control"
+                    ctaLabel="Open Candidate Control"
+                  />
+                ) : null}
+                {activePanel === "summary" ? (
+                  <DashboardPanel
+                    title="Control summary"
+                    subtitle="Quick pulse card for alerts and spend. Full controls are now handled in Operations Hub."
+                    tone="violet"
+                    stats={[
+                      { label: "Open alerts", value: formatNumber(alertsSummary.open) },
+                      { label: "Critical alerts", value: formatNumber(alertsSummary.critical) },
+                      { label: "Estimated cost", value: formatMoney(admin?.totals.estimated_cost_usd ?? 0) },
+                    ]}
+                    ctaHref="/operations"
+                    ctaLabel="Go to Operations Hub"
+                  />
+                ) : null}
+              </div>
             </section>
           </>
         )}

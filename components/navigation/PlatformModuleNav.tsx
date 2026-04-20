@@ -381,7 +381,7 @@ export function PlatformModuleNav() {
                       type="button"
                       onClick={() => {
                         setOpenDropdownKey(null)
-                        window.location.href = item.href
+                        window.location.assign(item.href)
                       }}
                       className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                         active
