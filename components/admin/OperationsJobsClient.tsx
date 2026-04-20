@@ -161,7 +161,9 @@ export function OperationsJobsClient() {
   const [recoveryLogs, setRecoveryLogs] = useState<RecoverySweepLog[]>([])
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
   const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
-  const [openNavSection, setOpenNavSection] = useState<"runHealth" | "marketingTools" | "quickActions">("runHealth")
+  const [runHealthMenuOpen, setRunHealthMenuOpen] = useState(true)
+  const [marketingToolsMenuOpen, setMarketingToolsMenuOpen] = useState(false)
+  const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
     marketing: false,
@@ -748,19 +750,25 @@ export function OperationsJobsClient() {
           <div className="mt-3 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
             <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Operations menu</div>
+              <Link
+                href="/platform#modules"
+                className="mt-2 inline-flex rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+              >
+                Back to platform
+              </Link>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
                   onClick={() =>
-                    setOpenNavSection((current) => (current === "runHealth" ? "quickActions" : "runHealth"))
+                    setRunHealthMenuOpen((current) => !current)
                   }
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                  aria-expanded={openNavSection === "runHealth"}
+                  aria-expanded={runHealthMenuOpen}
                 >
                   Run health
-                    <span>{openNavSection === "runHealth" ? "-" : "+"}</span>
+                    <span>{runHealthMenuOpen ? "-" : "+"}</span>
                 </button>
-                {openNavSection === "runHealth" ? <div className="px-2 pb-2">
+                {runHealthMenuOpen ? <div className="px-2 pb-2">
                   <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Analytics</button>
@@ -775,15 +783,15 @@ export function OperationsJobsClient() {
                   <button
                     type="button"
                     onClick={() =>
-                      setOpenNavSection((current) => (current === "marketingTools" ? "quickActions" : "marketingTools"))
+                      setMarketingToolsMenuOpen((current) => !current)
                     }
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                    aria-expanded={openNavSection === "marketingTools"}
+                    aria-expanded={marketingToolsMenuOpen}
                   >
                     Marketing tools
-                      <span>{openNavSection === "marketingTools" ? "-" : "+"}</span>
+                      <span>{marketingToolsMenuOpen ? "-" : "+"}</span>
                   </button>
-                  {openNavSection === "marketingTools" ? <div className="px-2 pb-2">
+                  {marketingToolsMenuOpen ? <div className="px-2 pb-2">
                     <button
                       type="button"
                       onClick={() => focusPanel("marketing")}
@@ -824,15 +832,15 @@ export function OperationsJobsClient() {
                 <button
                   type="button"
                   onClick={() =>
-                    setOpenNavSection((current) => (current === "quickActions" ? "runHealth" : "quickActions"))
+                    setQuickActionsMenuOpen((current) => !current)
                   }
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                  aria-expanded={openNavSection === "quickActions"}
+                  aria-expanded={quickActionsMenuOpen}
                 >
                   Quick actions
-                    <span>{openNavSection === "quickActions" ? "-" : "+"}</span>
+                    <span>{quickActionsMenuOpen ? "-" : "+"}</span>
                 </button>
-                {openNavSection === "quickActions" ? <div className="px-2 pb-2 space-y-1.5">
+                {quickActionsMenuOpen ? <div className="px-2 pb-2 space-y-1.5">
                   <button type="button" onClick={() => {
                     void loadOverview()
                     void loadCandidateHealth()
@@ -842,7 +850,7 @@ export function OperationsJobsClient() {
                     }
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
-                  <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Main menu</Link>
+                  <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Back to platform</Link>
                 </div> : null}
               </section>
             </aside>

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
 import { getAuthProviderLabel, type AuthProviderLabel } from "@/lib/auth-provider"
@@ -87,7 +87,7 @@ export function PlatformModuleNav() {
       pathname.startsWith("/control-center"),
     [pathname]
   )
-  const showGlobalMarketingNav = !isInternalWorkspace && !isModulePage
+  const showGlobalMarketingNav = !isInternalWorkspace
   const showSectionReturnMenu = isSignedIn && isModulePage
 
   useEffect(() => {
@@ -116,6 +116,19 @@ export function PlatformModuleNav() {
       window.removeEventListener("keydown", closeOnEscape)
     }
   }, [])
+
+  useEffect(() => {
+    if (!showReferralModal) return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowReferralModal(false)
+      }
+    }
+
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [showReferralModal])
 
   useEffect(() => {
     function onScroll() {
@@ -302,7 +315,7 @@ export function PlatformModuleNav() {
           </div>
         </div>
         <div ref={dropdownWrapRef} className="flex flex-wrap items-center gap-2">
-          {showSectionReturnMenu ? (
+          {showSectionReturnMenu && !showGlobalMarketingNav ? (
             <div className="relative">
               <button
                 type="button"
@@ -444,8 +457,14 @@ export function PlatformModuleNav() {
         </div>
       </div>
       {showReferralModal ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4 py-6">
-          <div className="w-full max-w-lg rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-10 sm:py-14"
+          onClick={() => setShowReferralModal(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl"
+            onClick={(event: ReactMouseEvent<HTMLDivElement>) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-[#0f172a]">Refer someone to Personara</h3>
