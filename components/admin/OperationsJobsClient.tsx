@@ -131,6 +131,22 @@ type TeamSyncOutreachCampaignRow = {
   created_at: string
 }
 
+type TesterFeedbackOutreachCampaignRow = {
+  id: string
+  sent_by_email: string | null
+  audience_status: string
+  audience_module: string | null
+  recipient_count: number
+  subject: string
+  message: string
+  created_at: string
+}
+
+type TesterFeedbackNoteRow = {
+  id: string
+  status: "open" | "in_review" | "resolved"
+}
+
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
   if (status === "running") return "border-sky-300 bg-sky-50 text-sky-800"
@@ -160,13 +176,14 @@ export function OperationsJobsClient() {
   const [isRecoveringStalled, setIsRecoveringStalled] = useState(false)
   const [recoveryLogs, setRecoveryLogs] = useState<RecoverySweepLog[]>([])
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
-  const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
+  const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("controlCenter")
   const [runHealthMenuOpen, setRunHealthMenuOpen] = useState(true)
   const [marketingToolsMenuOpen, setMarketingToolsMenuOpen] = useState(false)
-  const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
+  const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(true)
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
     marketing: false,
+    testerFeedback: false,
     digest: false,
     recovery: false,
     teamsyncOutreach: false,
@@ -187,6 +204,16 @@ export function OperationsJobsClient() {
   )
   const [teamsyncSupportName, setTeamsyncSupportName] = useState("Personara Support")
   const [teamsyncCalendlyUrl, setTeamsyncCalendlyUrl] = useState("")
+  const [testerFeedbackNotes, setTesterFeedbackNotes] = useState<TesterFeedbackNoteRow[]>([])
+  const [testerFeedbackCampaigns, setTesterFeedbackCampaigns] = useState<TesterFeedbackOutreachCampaignRow[]>([])
+  const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
+  const [sendingTesterFeedbackOutreach, setSendingTesterFeedbackOutreach] = useState(false)
+  const [testerAudienceStatus, setTesterAudienceStatus] = useState<"all" | "open" | "in_review" | "resolved">("open")
+  const [testerAudienceModule, setTesterAudienceModule] = useState("all")
+  const [testerOutreachSubject, setTesterOutreachSubject] = useState("Personara tester follow-up")
+  const [testerOutreachMessage, setTesterOutreachMessage] = useState(
+    "I noticed you have been testing Personara.ai. Thank you.\n\nIf you have 15 minutes this week, I would love to learn what worked well and what should improve.\n\nPlease reply with a suitable time and we will align to your schedule."
+  )
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -213,6 +240,7 @@ export function OperationsJobsClient() {
           setCollapsedPanels({
             controlCenter: false,
             marketing: true,
+            testerFeedback: true,
             digest: false,
             recovery: true,
             teamsyncOutreach: true,
@@ -319,6 +347,69 @@ export function OperationsJobsClient() {
     }
   }, [])
 
+  const loadTesterFeedback = useCallback(async () => {
+    setLoadingTesterFeedback(true)
+    try {
+      const [notesResponse, campaignsResponse] = await Promise.all([
+        fetch("/api/admin/tester-notes", {
+          cache: "no-store",
+          headers: await getAuthHeaders(),
+        }),
+        fetch("/api/admin/tester-notes/outreach", {
+          cache: "no-store",
+          headers: await getAuthHeaders(),
+        }),
+      ])
+
+      const notesJson = await notesResponse.json()
+      const campaignsJson = await campaignsResponse.json()
+
+      if (!notesResponse.ok) {
+        throw new Error(notesJson.error || "Failed to load tester notes")
+      }
+      if (!campaignsResponse.ok) {
+        throw new Error(campaignsJson.error || "Failed to load tester outreach campaigns")
+      }
+
+      setTesterFeedbackNotes((notesJson.notes ?? []) as TesterFeedbackNoteRow[])
+      setTesterFeedbackCampaigns((campaignsJson.campaigns ?? []) as TesterFeedbackOutreachCampaignRow[])
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load tester feedback")
+    } finally {
+      setLoadingTesterFeedback(false)
+    }
+  }, [])
+
+  const sendTesterFeedbackOutreach = useCallback(async () => {
+    setSendingTesterFeedbackOutreach(true)
+    setMessage("")
+    try {
+      const response = await fetch("/api/admin/tester-notes/outreach", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audience_status: testerAudienceStatus,
+          audience_module: testerAudienceModule === "all" ? "" : testerAudienceModule,
+          subject: testerOutreachSubject,
+          message: testerOutreachMessage,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Could not send tester outreach")
+      }
+      setMessage(`Tester outreach sent to ${json.recipients_sent ?? 0} users.`)
+      await loadTesterFeedback()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not send tester outreach")
+    } finally {
+      setSendingTesterFeedbackOutreach(false)
+    }
+  }, [loadTesterFeedback, testerAudienceModule, testerAudienceStatus, testerOutreachMessage, testerOutreachSubject])
+
   useEffect(() => {
     async function load() {
       const {
@@ -344,7 +435,8 @@ export function OperationsJobsClient() {
   useEffect(() => {
     if (!overview?.permissions.is_superuser) return
     void loadTeamSyncOutreach()
-  }, [overview?.permissions.is_superuser, loadTeamSyncOutreach])
+    void loadTesterFeedback()
+  }, [overview?.permissions.is_superuser, loadTeamSyncOutreach, loadTesterFeedback])
 
   const filteredBackground = useMemo(() => {
     if (!overview) return []
@@ -475,6 +567,18 @@ export function OperationsJobsClient() {
     const campaigns = teamsyncOutreachCampaigns.length
     return { queued, contacted, responded, campaigns }
   }, [teamsyncOutreachCampaigns, teamsyncOutreachQueue])
+
+  const testerSignals = useMemo(() => {
+    const open = testerFeedbackNotes.filter((row) => row.status === "open").length
+    const inReview = testerFeedbackNotes.filter((row) => row.status === "in_review").length
+    const resolved = testerFeedbackNotes.filter((row) => row.status === "resolved").length
+    return {
+      open,
+      inReview,
+      resolved,
+      campaigns: testerFeedbackCampaigns.length,
+    }
+  }, [testerFeedbackCampaigns.length, testerFeedbackNotes])
 
   const stalledRunningCount = useMemo(() => {
     if (!overview) return 0
@@ -725,6 +829,19 @@ export function OperationsJobsClient() {
     [activePanel]
   )
 
+  const quickCandidateShortcuts = useMemo(
+    () =>
+      candidateHealth
+        .filter((row) => row?.id)
+        .slice(0, 8)
+        .map((row) => ({
+          id: row.id,
+          label: row.full_name?.trim() || "Untitled candidate",
+          detail: row.city || row.primary_goal || "No city",
+        })),
+    [candidateHealth]
+  )
+
   return (
     <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
@@ -771,7 +888,6 @@ export function OperationsJobsClient() {
                 {runHealthMenuOpen ? <div className="px-2 pb-2">
                   <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
-                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Analytics</button>
                   <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recovery queue</button>
                   <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
                   <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
@@ -805,9 +921,9 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("digest")}
+                      onClick={() => focusPanel("marketing")}
                       className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "digest"
+                        activePanel === "marketing"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
@@ -825,6 +941,23 @@ export function OperationsJobsClient() {
                     >
                       TeamSync outreach
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("testerFeedback")}
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "testerFeedback"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Tester outreach
+                    </button>
+                    <Link
+                      href="/control-center/marketing-engine"
+                      className="mt-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
+                    >
+                      Marketing console
+                    </Link>
                   </div> : null}
                 </section>
               ) : null}
@@ -847,10 +980,34 @@ export function OperationsJobsClient() {
                     void loadHealthInboxState()
                     if (overview.permissions.is_superuser) {
                       void loadTeamSyncOutreach()
+                      void loadTesterFeedback()
                     }
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
                   <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Back to platform</Link>
+                  <div className="pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Module actions</div>
+                  <Link href="/platform" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open platform</Link>
+                  <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open marketing engine</Link>
+                  <Link href="/career?view=control" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open candidate control</Link>
+                  <Link href="/career?view=preview" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open candidate preview</Link>
+                  <Link href="/admin" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open admin dashboard</Link>
+                  <Link href="/operations" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open operations hub</Link>
+                  <Link href="/persona-foundry" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open persona foundry</Link>
+                  <Link href="/teamsync" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open TeamSync</Link>
+                  {quickCandidateShortcuts.length > 0 ? (
+                    <>
+                      <div className="pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Candidate shortcuts</div>
+                      {quickCandidateShortcuts.map((candidate) => (
+                        <Link
+                          key={`quick-candidate-${candidate.id}`}
+                          href={`/career/${candidate.id}`}
+                          className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                        >
+                          {candidate.label}
+                        </Link>
+                      ))}
+                    </>
+                  ) : null}
                 </div> : null}
               </section>
             </aside>
@@ -948,7 +1105,7 @@ export function OperationsJobsClient() {
                       href="/control-center/marketing-engine"
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Deep controls</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Marketing console</div>
                       <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Open marketing engine</div>
                     </Link>
                   </div>
@@ -1225,6 +1382,128 @@ export function OperationsJobsClient() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+
+            {overview.permissions.is_superuser ? (
+              <section
+                id="operations-testerFeedback"
+                className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("testerFeedback") ? "" : "hidden"}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-[#142c4f]">Tester outreach</h2>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => togglePanel("testerFeedback")}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {collapsedPanels.testerFeedback ? "Expand" : "Collapse"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadTesterFeedback()}
+                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {loadingTesterFeedback ? "Refreshing..." : "Refresh"}
+                    </button>
+                  </div>
+                </div>
+                {!collapsedPanels.testerFeedback ? (
+                  <>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <SnapshotStat label="Open notes" value={String(testerSignals.open)} />
+                      <SnapshotStat label="In review" value={String(testerSignals.inReview)} />
+                      <SnapshotStat label="Resolved" value={String(testerSignals.resolved)} />
+                      <SnapshotStat label="Outreach campaigns" value={String(testerSignals.campaigns)} />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-[#d0dff2] bg-[#f7fbff] p-3">
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Audience status
+                          <select
+                            value={testerAudienceStatus}
+                            onChange={(event) => setTesterAudienceStatus(event.target.value as "all" | "open" | "in_review" | "resolved")}
+                            className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          >
+                            <option value="all">All</option>
+                            <option value="open">Open</option>
+                            <option value="in_review">In review</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        </label>
+                        <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Module
+                          <select
+                            value={testerAudienceModule}
+                            onChange={(event) => setTesterAudienceModule(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                          >
+                            <option value="all">All modules</option>
+                            <option value="career-intelligence">Career Intelligence</option>
+                            <option value="persona-foundry">Persona Foundry</option>
+                            <option value="teamsync">TeamSync</option>
+                            <option value="platform">Platform</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                        Subject
+                        <input
+                          value={testerOutreachSubject}
+                          onChange={(event) => setTesterOutreachSubject(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-1.5 text-sm font-medium text-[#163159]"
+                        />
+                      </label>
+                      <label className="mt-2 block text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                        Message
+                        <textarea
+                          value={testerOutreachMessage}
+                          onChange={(event) => setTesterOutreachMessage(event.target.value)}
+                          className="mt-1 min-h-[110px] w-full rounded-lg border border-[#c2d3ea] bg-white px-2.5 py-2 text-sm font-medium text-[#163159]"
+                        />
+                      </label>
+                      <div className="mt-2 flex flex-wrap justify-end gap-2">
+                        <Link
+                          href="/admin#tester-feedback"
+                          className="rounded-full border border-[#cbd8eb] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                        >
+                          Open tester dashboard
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void sendTesterFeedbackOutreach()}
+                          disabled={sendingTesterFeedbackOutreach}
+                          className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#08529a] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {sendingTesterFeedbackOutreach ? "Sending..." : "Send outreach"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Recent outreach campaigns</div>
+                      {testerFeedbackCampaigns.length === 0 ? (
+                        <p className="mt-2 text-sm text-neutral-500">No tester outreach campaigns yet.</p>
+                      ) : (
+                        <div className="mt-2 space-y-1.5">
+                          {testerFeedbackCampaigns.slice(0, 12).map((campaign) => (
+                            <div key={campaign.id} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                <div className="text-sm font-semibold text-neutral-900">{campaign.subject}</div>
+                                <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                                  {campaign.recipient_count} recipients
+                                </span>
+                              </div>
+                              <div className="mt-0.5 text-xs text-neutral-600">
+                                {campaign.audience_status} | {campaign.audience_module || "all modules"} | {new Date(campaign.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : null}
