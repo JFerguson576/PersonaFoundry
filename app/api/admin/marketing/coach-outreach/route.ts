@@ -19,15 +19,23 @@ function text(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-async function checkAdmin(request: Request) {
+async function checkAdmin(request: Request, options?: { requireSuperuser?: boolean }) {
   const { user, errorMessage } = await getRequestAuth(request)
   if (!user) {
     return { error: NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 }), user: null, admin: null }
   }
 
   const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
-  if (!capabilities.isAdmin) {
-    return { error: NextResponse.json({ error: "Admin access required" }, { status: 403 }), user: null, admin: null }
+  const requireSuperuser = options?.requireSuperuser === true
+  if (requireSuperuser ? !capabilities.isSuperuser : !capabilities.isAdmin) {
+    return {
+      error: NextResponse.json(
+        { error: requireSuperuser ? "Superuser access required" : "Admin access required" },
+        { status: 403 }
+      ),
+      user: null,
+      admin: null,
+    }
   }
 
   const admin = createAdminClient()
@@ -74,7 +82,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await checkAdmin(request)
+  const auth = await checkAdmin(request, { requireSuperuser: true })
   if (auth.error) return auth.error
 
   let payload: CoachLeadPayload = {}
@@ -125,7 +133,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await checkAdmin(request)
+  const auth = await checkAdmin(request, { requireSuperuser: true })
   if (auth.error) return auth.error
 
   let payload: CoachLeadPayload = {}
@@ -168,4 +176,3 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ lead: data })
 }
-

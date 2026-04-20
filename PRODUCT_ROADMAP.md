@@ -48,6 +48,11 @@ This is the active execution queue Codex should use in Operations (`Execution ro
 - First enforcement patch now:
   - superuser-only write access for marketing policy updates
   - superuser-only write access for budget recompute operations
+  - superuser-only write access for marketing alerts updates
+  - superuser-only write access for campaign create/update
+  - superuser-only write access for coach outreach create/update
+  - superuser-only write access for recommendations create/update
+  - superuser-only write access for cash ledger insertions
 
 4. P1 - Referral + discount attribution engine
 - Owner: Growth
