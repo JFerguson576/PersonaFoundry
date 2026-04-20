@@ -292,9 +292,9 @@ export function PlatformModuleNav() {
             <p className="text-sm font-semibold text-[var(--brand-navy)] group-hover:text-[var(--brand-blue-deep)]">Identity. Decisions. Intelligence.</p>
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            {authProviderBadge ? (
+            {isSignedIn ? (
               <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                {authProviderBadge} login
+                {authProviderBadge ? `Signed in with ${authProviderBadge}` : "Signed in"}
               </span>
             ) : null}
             {isSignedIn ? (
@@ -348,7 +348,6 @@ export function PlatformModuleNav() {
               ) : null}
             </div>
           ) : null}
-          {isSignedIn ? <ExperienceAgentWidget enabled /> : null}
           {showGlobalMarketingNav
             ? navItems.map((item) => {
                 const active = isActive(pathname, item.href)
@@ -447,16 +446,21 @@ export function PlatformModuleNav() {
               Share
             </button>
           ) : null}
-          {isSignedIn ? <TesterNotesWidget enabled /> : null}
+          {isSignedIn ? (
+            <div className="flex items-center gap-2">
+              <TesterNotesWidget enabled />
+              <ExperienceAgentWidget enabled inline />
+            </div>
+          ) : null}
         </div>
       </div>
       {showReferralModal ? (
         <div
-          className="fixed inset-0 z-[260] flex items-center justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
+          className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
           onClick={() => setShowReferralModal(false)}
         >
           <div
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl"
+            className="mt-6 max-h-[calc(100dvh-4rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl"
             onClick={(event: ReactMouseEvent<HTMLDivElement>) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">

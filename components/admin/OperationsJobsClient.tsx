@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js"
 import { AdminTourCompletionPanel } from "@/components/admin/AdminTourCompletionPanel"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { getAuthHeaders } from "@/lib/career-client"
+import { scrollToElementWithOffset } from "@/lib/scroll"
 import { supabase } from "@/lib/supabase"
 
 type JobStatus = "queued" | "running" | "failed" | "completed" | string
@@ -193,7 +194,8 @@ export function OperationsJobsClient() {
   const [candidateMenuOpen, setCandidateMenuOpen] = useState(true)
   const [financialMenuOpen, setFinancialMenuOpen] = useState(true)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(true)
-  const [candidateSearch, setCandidateSearch] = useState("")
+  const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
+  const [activeMarketingView, setActiveMarketingView] = useState<"overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager">("overview")
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
     marketing: false,
@@ -856,7 +858,7 @@ export function OperationsJobsClient() {
       const target = document.getElementById(`operations-${panel}`)
       if (target) {
         window.setTimeout(() => {
-          target.scrollIntoView({ behavior: "smooth", block: "start" })
+          scrollToElementWithOffset(target)
         }, 80)
       }
     }
@@ -866,24 +868,7 @@ export function OperationsJobsClient() {
     (panel: keyof typeof collapsedPanels) => activePanel === panel,
     [activePanel]
   )
-
-  const quickCandidateShortcuts = useMemo(
-    () =>
-      candidateHealth
-        .filter((row) => row?.id)
-        .filter((row) => {
-          const term = candidateSearch.trim().toLowerCase()
-          if (!term) return true
-          return `${row.full_name || ""} ${row.city || ""} ${row.primary_goal || ""}`.toLowerCase().includes(term)
-        })
-        .slice(0, 50)
-        .map((row) => ({
-          id: row.id,
-          label: row.full_name?.trim() || "Untitled candidate",
-          detail: row.city || row.primary_goal || "No city",
-        })),
-    [candidateHealth, candidateSearch]
-  )
+  const campaignManagerUrl = process.env.NEXT_PUBLIC_AD_CAMPAIGN_MANAGER_URL?.trim() || ""
 
   return (
     <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
@@ -932,9 +917,12 @@ export function OperationsJobsClient() {
                   {marketingToolsMenuOpen ? <div className="px-2 pb-2">
                     <button
                       type="button"
-                      onClick={() => focusPanel("marketing")}
+                      onClick={() => {
+                        setActiveMarketingView("overview")
+                        focusPanel("marketing")
+                      }}
                       className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "marketing"
+                        activePanel === "marketing" && activeMarketingView === "overview"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
@@ -943,9 +931,12 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("teamsyncOutreach")}
+                      onClick={() => {
+                        setActiveMarketingView("teamsync_outreach")
+                        focusPanel("teamsyncOutreach")
+                      }}
                       className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "teamsyncOutreach"
+                        activePanel === "teamsyncOutreach" || (activePanel === "marketing" && activeMarketingView === "teamsync_outreach")
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
@@ -954,9 +945,12 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("testerFeedback")}
+                      onClick={() => {
+                        setActiveMarketingView("tester_outreach")
+                        focusPanel("testerFeedback")
+                      }}
                       className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "testerFeedback"
+                        activePanel === "testerFeedback" || (activePanel === "marketing" && activeMarketingView === "tester_outreach")
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
@@ -965,14 +959,32 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("financials")}
-                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "financials"
+                      onClick={() => {
+                        setActiveMarketingView("analytics")
+                        setActiveFinancialView("marketing")
+                        focusPanel("financials")
+                      }}
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "financials" && activeFinancialView === "marketing"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
                     >
                       Marketing analytics
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMarketingView("campaign_manager")
+                        focusPanel("marketing")
+                      }}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "marketing" && activeMarketingView === "campaign_manager"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Ad campaign manager
                     </button>
                   </div> : null}
                 </section>
@@ -992,31 +1004,11 @@ export function OperationsJobsClient() {
                 {candidateMenuOpen ? (
                   <div className="px-2 pb-2">
                     <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate control</button>
+                    <button type="button" onClick={() => focusPanel("live")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate preview</button>
                     <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Onboarding completion</button>
                     <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
                     <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
-                    <button type="button" onClick={() => focusPanel("live")} className={`mb-2 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live candidates</button>
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Workspace shortcuts</div>
-                    <input
-                      value={candidateSearch}
-                      onChange={(event) => setCandidateSearch(event.target.value)}
-                      className="mb-2 w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-xs text-[#163159]"
-                      placeholder="Search candidates..."
-                    />
-                    <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
-                      {quickCandidateShortcuts.length > 0 ? quickCandidateShortcuts.map((candidate) => (
-                        <Link
-                          key={`quick-candidate-${candidate.id}`}
-                          href={`/career/${candidate.id}`}
-                          className="block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
-                        >
-                          <div className="truncate">{candidate.label}</div>
-                          <div className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-[#5f769a]">{candidate.detail}</div>
-                        </Link>
-                      )) : (
-                        <div className="rounded-lg border border-[#d8e4f2] bg-[#f7fbff] px-2.5 py-1.5 text-xs text-[#5f769a]">No candidates match this search.</div>
-                      )}
-                    </div>
+                    <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live candidates</button>
                   </div>
                 ) : null}
               </section>
@@ -1040,18 +1032,6 @@ export function OperationsJobsClient() {
                 </div> : null}
               </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                <div className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
-                  Go to modules
-                </div>
-                <div className="px-2 pb-2">
-                  <Link href="/admin" className="mb-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]">Admin dashboard</Link>
-                  <Link href="/career?view=control" className="mb-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]">Candidate control</Link>
-                  <Link href="/career?view=preview" className="mb-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]">Candidate preview</Link>
-                  <Link href="/persona-foundry" className="mb-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]">Persona Foundry</Link>
-                  <Link href="/teamsync" className="block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]">TeamSync</Link>
-                </div>
-              </section>
-              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
                   onClick={() =>
@@ -1064,9 +1044,9 @@ export function OperationsJobsClient() {
                   <span>{financialMenuOpen ? "-" : "+"}</span>
                 </button>
                 {financialMenuOpen ? <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("financials")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>API spend</button>
-                  <button type="button" onClick={() => focusPanel("financials")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Marketing spend summary</button>
-                  <button type="button" onClick={() => focusPanel("financials")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Customer revenue analytics</button>
+                  <button type="button" onClick={() => { setActiveFinancialView("api"); focusPanel("financials") }} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "financials" && activeFinancialView === "api") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>API spend</button>
+                  <button type="button" onClick={() => { setActiveFinancialView("marketing"); focusPanel("financials") }} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "financials" && activeFinancialView === "marketing") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Marketing spend summary</button>
+                  <button type="button" onClick={() => { setActiveFinancialView("revenue"); focusPanel("financials") }} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "financials" && activeFinancialView === "revenue") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Customer revenue analytics</button>
                 </div> : null}
               </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
@@ -1092,7 +1072,7 @@ export function OperationsJobsClient() {
                       void loadTesterFeedback()
                     }
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
-                  <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-xs font-semibold text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
+                  <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-xs font-semibold text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled jobs"}</button>
                 </div> : null}
               </section>
             </aside>
@@ -1180,7 +1160,11 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("financials")}
+                      onClick={() => {
+                        setActiveMarketingView("analytics")
+                        setActiveFinancialView("marketing")
+                        focusPanel("financials")
+                      }}
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Analytics</div>
@@ -1188,13 +1172,34 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("marketing")}
+                      onClick={() => {
+                        setActiveMarketingView("campaign_manager")
+                        focusPanel("marketing")
+                      }}
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Marketing console</div>
-                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Policy + campaign controls</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Campaign manager</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">LinkedIn, Google, and Meta spend console</div>
                     </button>
                   </div>
+                  {activeMarketingView === "campaign_manager" ? (
+                    campaignManagerUrl ? (
+                      <div className="mt-2 overflow-hidden rounded-xl border border-[#cbd8eb] bg-white">
+                        <div className="border-b border-[#e2eaf6] px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                          Ad campaign manager
+                        </div>
+                        <iframe
+                          src={campaignManagerUrl}
+                          title="Ad campaign manager"
+                          className="h-[560px] w-full bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                        Set <code>NEXT_PUBLIC_AD_CAMPAIGN_MANAGER_URL</code> to load your ad spend console inside Operations.
+                      </div>
+                    )
+                  ) : null}
                 </>
               ) : null}
             </section>

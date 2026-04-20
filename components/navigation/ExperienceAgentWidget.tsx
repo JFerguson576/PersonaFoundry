@@ -133,7 +133,7 @@ function jumpToAction(href: string) {
   }
 }
 
-export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean }) {
+export function ExperienceAgentWidget({ enabled = true, inline = true }: { enabled?: boolean; inline?: boolean }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
@@ -329,7 +329,7 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
   }
 
   return (
-    <>
+    <div className={inline ? "relative" : ""}>
       <button
         type="button"
         onClick={async () => {
@@ -339,15 +339,21 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
             await ensureSession()
           }
         }}
-        className={`fixed right-4 top-[max(3.75rem,env(safe-area-inset-top))] z-[220] inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
           open ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-        }`}
+        } ${inline ? "" : "fixed right-4 top-[max(3.75rem,env(safe-area-inset-top))] z-[220]"}`}
       >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M8 10h8M8 14h5" />
+          <path d="M21 12a8.5 8.5 0 0 1-8.5 8.5A8.47 8.47 0 0 1 8 19.3L3 21l1.7-5A8.47 8.47 0 0 1 3.5 12 8.5 8.5 0 0 1 12 3.5 8.5 8.5 0 0 1 21 12Z" />
+        </svg>
         Ask Agent
       </button>
 
       {open ? (
-        <div className="fixed right-4 top-[max(6rem,env(safe-area-inset-top))] z-[222] max-h-[calc(100dvh-6.5rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl">
+        <div
+          className={`${inline ? "absolute right-0 top-10 z-[222]" : "fixed right-4 top-[max(6rem,env(safe-area-inset-top))] z-[222]"} max-h-[calc(100dvh-6.5rem)] w-[390px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#d8e4f2] bg-white shadow-xl`}
+        >
           <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Ask Agent</div>
@@ -474,6 +480,6 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   )
 }

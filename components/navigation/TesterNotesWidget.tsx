@@ -141,7 +141,7 @@ export function TesterNotesWidget({ enabled = true }: { enabled?: boolean }) {
         }`}
         title="Share bug reports and ideas with context"
       >
-        Feedback
+        Tester Feedback
       </button>
 
       {open ? (
