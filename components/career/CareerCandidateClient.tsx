@@ -447,18 +447,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     setOpenSections(openSectionsFor(activeStep))
   }, [activeStep, openSectionsFor])
 
-  useEffect(() => {
-    setExpandedLeftSections({
-      workflow: activeStep === "workflow",
-      source: activeStep === "source",
-      positioning: activeStep === "positioning",
-      documents: activeStep === "documents",
-      company: activeStep === "company",
-      interview: activeStep === "interview",
-      jobs: activeStep === "jobs",
-    })
-  }, [activeStep])
-
   if (!session?.user) {
     return (
       <main className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -2202,23 +2190,37 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       return
     }
 
-    const payload = [
-      `Module: Career Intelligence`,
-      `Candidate: ${candidate.full_name || candidate.id}`,
-      `Candidate ID: ${candidate.id}`,
-      `Current step: ${activeSectionLabel} / ${activeSubsectionLabel}`,
-      `Issue type: ${issueType}`,
-      `Contact: ${issueContactEmail || "Not provided"}`,
-      `Details: ${trimmedDetail}`,
-    ].join("\n")
-
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(payload)
+      const response = await fetch("/api/tester-notes", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          note_type: "bug",
+          severity: "medium",
+          message: `${issueType}: ${trimmedDetail}`,
+          module: "career-intelligence",
+          route_path: typeof window !== "undefined" ? window.location.pathname : "/career",
+          full_url: typeof window !== "undefined" ? window.location.href : null,
+          section_anchor: activeWorkflowLink?.href ?? null,
+          metadata: {
+            issue_type: issueType,
+            contact_email: issueContactEmail || null,
+            candidate_id: candidate.id,
+            candidate_name: candidate.full_name || null,
+            current_step: `${activeSectionLabel} / ${activeSubsectionLabel}`,
+          },
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || "Could not submit issue.")
       }
-      showToast({ tone: "success", message: "Issue report copied. Paste it into support chat or email." })
+      showToast({ tone: "success", message: "Issue sent. Thanks, our team can now review this report." })
     } catch {
-      showToast({ tone: "info", message: "Issue captured. Copy failed on this browser, but your notes are kept." })
+      showToast({ tone: "error", message: "Could not send issue report right now. Please try again." })
     }
 
     setIsReportIssueOpen(false)
@@ -5990,7 +5992,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 showOnboardingGuide ? "wizard-spotlight-soft" : ""
               }`}
             >
-              Agent guide
+              Guided setup
             </button>
             {!isWizardFocusActive ? (
               <button
@@ -6013,7 +6015,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                 }`}
               >
-                {isGuidedMode ? "Guide on" : "Guide off"}
+                {isGuidedMode ? "Hints on" : "Hints off"}
               </button>
             ) : null}
             <button
@@ -6028,7 +6030,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               onClick={() => setShowCompletedLeftSteps((current) => !current)}
               className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
             >
-              {showCompletedLeftSteps ? "Hide done" : "Show done"}
+              {showCompletedLeftSteps ? "Hide completed" : "Show completed"}
             </button>
           </div>
           <div className="mt-3 space-y-1.5">
@@ -6037,20 +6039,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <button
                   type="button"
                   onClick={() => {
-                    const isCurrentlyOpen = Boolean(expandedLeftSections[link.sectionKey])
-                    setExpandedLeftSections({
-                      workflow: false,
-                      source: false,
-                      positioning: false,
-                      documents: false,
-                      company: false,
-                      interview: false,
-                      jobs: false,
-                      [link.sectionKey]: !isCurrentlyOpen,
+                    setExpandedLeftSections((current) => {
+                      const nextOpen = !Boolean(current[link.sectionKey])
+                      if (nextOpen) {
+                        openAndScroll(link.sectionKey, link.href)
+                      }
+                      return {
+                        ...current,
+                        [link.sectionKey]: nextOpen,
+                      }
                     })
-                    if (!isCurrentlyOpen) {
-                      openAndScroll(link.sectionKey, link.href)
-                    }
                   }}
                   className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold transition ${
                     link.isActive
@@ -6372,7 +6370,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 onClick={() => void submitIssueReport()}
                 className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
               >
-                Copy report
+                Send
               </button>
             </div>
           </div>

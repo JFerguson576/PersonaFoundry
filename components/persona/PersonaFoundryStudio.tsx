@@ -2187,21 +2187,35 @@ export default function Home() {
       return
     }
 
-    const payload = [
-      'Module: Persona Foundry',
-      `Current step: ${activePersonaLink.label.replace(/^\d+\.\s*/, '')}`,
-      `Issue type: ${issueType}`,
-      `Contact: ${issueContactEmail || 'Not provided'}`,
-      `Details: ${trimmedDetail}`,
-    ].join('\n')
-
     try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(payload)
+      const response = await fetch('/api/tester-notes', {
+        method: 'POST',
+        headers: {
+          ...(await getAuthHeaders()),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          note_type: 'bug',
+          severity: 'medium',
+          message: `${issueType}: ${trimmedDetail}`,
+          module: 'persona-foundry',
+          route_path: typeof window !== 'undefined' ? window.location.pathname : '/persona-foundry',
+          full_url: typeof window !== 'undefined' ? window.location.href : null,
+          section_anchor: activePersonaLink?.href ?? null,
+          metadata: {
+            issue_type: issueType,
+            contact_email: issueContactEmail || null,
+            current_step: activePersonaLink.label.replace(/^\d+\.\s*/, ''),
+          },
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || 'Could not submit issue.')
       }
-      flashMessage('Issue report copied. Paste it into support chat or email.')
+      flashMessage('Issue sent. Thanks, our team can now review this report.')
     } catch {
-      flashMessage('Issue captured. Clipboard copy failed in this browser.')
+      flashMessage('Could not send issue report right now. Please try again.')
     }
 
     setIsReportIssueOpen(false)
@@ -3890,7 +3904,7 @@ export default function Home() {
                 onClick={() => void submitIssueReport()}
                 className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
               >
-                Copy report
+                Send
               </button>
             </div>
           </div>

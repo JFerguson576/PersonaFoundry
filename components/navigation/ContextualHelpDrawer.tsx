@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { resolveHelpModule } from "@/lib/help-context"
+import { scrollToElementWithOffset } from "@/lib/scroll"
 
 type SectionHint = {
   id: string
@@ -122,7 +123,7 @@ export function ContextualHelpDrawer() {
                       onClick={() => {
                         const target = document.getElementById(section.id)
                         if (target) {
-                          target.scrollIntoView({ behavior: "smooth", block: "start" })
+                          scrollToElementWithOffset(target)
                         }
                         setOpen(false)
                       }}

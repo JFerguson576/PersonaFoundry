@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { usePathname } from "next/navigation"
 import { getAuthHeaders } from "@/lib/career-client"
+import { scrollToElementWithOffset } from "@/lib/scroll"
 
 type AgentMessage = {
   id: string
@@ -126,7 +127,7 @@ function jumpToAction(href: string) {
   const id = href.replace(/^#/, "")
   const target = document.getElementById(id)
   if (target) {
-    target.scrollIntoView({ behavior: "smooth", block: "start" })
+    scrollToElementWithOffset(target)
   } else {
     window.location.hash = href
   }
@@ -218,8 +219,8 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
     }
   }
 
-  async function sendMessage() {
-    const trimmed = input.trim()
+  async function sendMessage(overrideMessage?: string) {
+    const trimmed = (overrideMessage ?? input).trim()
     if (!trimmed || busy) return
 
     const userMessage: AgentMessage = {
@@ -431,7 +432,11 @@ export function ExperienceAgentWidget({ enabled = true }: { enabled?: boolean })
                 <button
                   key={`agent-prompt-${prompt}`}
                   type="button"
-                  onClick={() => setInput(prompt)}
+                  onClick={() => {
+                    if (busy || loadingSession) return
+                    setInput(prompt)
+                    void sendMessage(prompt)
+                  }}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   {prompt}

@@ -439,11 +439,6 @@ export function PlatformModuleNav() {
               onClick={() => {
                 setReferralMessage("")
                 setOpenDropdownKey(null)
-                const inlineSharePanel = document.getElementById("career-share-panel")
-                if (inlineSharePanel) {
-                  inlineSharePanel.scrollIntoView({ behavior: "smooth", block: "start" })
-                  return
-                }
                 setShowReferralModal(true)
               }}
               className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
@@ -457,7 +452,7 @@ export function PlatformModuleNav() {
       </div>
       {showReferralModal ? (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
+          className="fixed inset-0 z-[260] flex items-center justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
           onClick={() => setShowReferralModal(false)}
         >
           <div

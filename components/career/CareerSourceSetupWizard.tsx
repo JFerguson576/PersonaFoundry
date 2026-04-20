@@ -347,9 +347,9 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
               disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
               className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
             >
-              Do this later
+              Skip for now
             </button>
-            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Done for now</button>
+            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Mark complete</button>
           </div>
         </div>
       </div>
@@ -364,7 +364,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             onClick={() => setShowAdvancedTypeSelector((current) => !current)}
             className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
           >
-            {showAdvancedTypeSelector ? "Hide advanced options" : "Choose a different content type"}
+            {showAdvancedTypeSelector ? "Hide extra input types" : "More input types"}
           </button>
         </div>
         {showAdvancedTypeSelector ? (

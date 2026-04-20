@@ -12,6 +12,7 @@ import { AdaptiveProductTour } from "@/components/navigation/AdaptiveProductTour
 import { ModuleExplainerPanel } from "@/components/navigation/ModuleExplainerPanel"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import { teamsyncExecutivePromptLibrary } from "@/lib/teamsync-executive-prompts"
+import { scrollToSelectorWithOffset } from "@/lib/scroll"
 
 type TeamMember = {
   id: string
@@ -2544,10 +2545,7 @@ export function TeamSyncWorkspaceClient() {
       setIsMenuRolledUp(true)
     }
     if (typeof window === "undefined") return
-    const target = document.querySelector(href)
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
+    scrollToSelectorWithOffset(href)
   }
 
   function resetWorkspaceView() {
@@ -2582,10 +2580,7 @@ export function TeamSyncWorkspaceClient() {
     setInsightsPanelsOpen(true)
     if (typeof window !== "undefined") {
       window.setTimeout(() => {
-        const target = document.querySelector("#teamsync-conversation-simulator")
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
+        scrollToSelectorWithOffset("#teamsync-conversation-simulator")
       }, 120)
     }
     setMessage(`Conversation prep loaded for ${fallbackTarget.name}.`)
@@ -2627,12 +2622,7 @@ export function TeamSyncWorkspaceClient() {
     }
 
     if (action === "open_checklist") {
-      if (typeof window !== "undefined") {
-        const target = document.querySelector("#teamsync-action-checklist")
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
-      }
+      scrollToSelectorWithOffset("#teamsync-action-checklist")
       setMessage("Opened action checklist.")
       return
     }
@@ -3809,21 +3799,35 @@ export function TeamSyncWorkspaceClient() {
       return
     }
 
-    const payload = [
-      "Module: TeamSync",
-      `Current step: ${activeStepNavItem.label}`,
-      `Issue type: ${issueType}`,
-      `Contact: ${issueContactEmail || "Not provided"}`,
-      `Details: ${trimmedDetail}`,
-    ].join("\n")
-
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(payload)
+      const response = await fetch("/api/tester-notes", {
+        method: "POST",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          note_type: "bug",
+          severity: "medium",
+          message: `${issueType}: ${trimmedDetail}`,
+          module: "teamsync",
+          route_path: typeof window !== "undefined" ? window.location.pathname : "/teamsync",
+          full_url: typeof window !== "undefined" ? window.location.href : null,
+          section_anchor: activeStepNavItem.href,
+          metadata: {
+            issue_type: issueType,
+            active_step: activeStepNavItem.label,
+            contact_email: issueContactEmail || null,
+          },
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json?.error || "Could not submit issue.")
       }
-      setMessage("Issue report copied. Paste it into support chat or email.")
+      setMessage("Issue sent. Thanks, our team can now review this report.")
     } catch {
-      setMessage("Issue captured. Clipboard copy failed in this browser.")
+      setMessage("Could not send issue report right now. Please try again.")
     }
 
     setIsReportIssueOpen(false)
@@ -6383,7 +6387,7 @@ export function TeamSyncWorkspaceClient() {
                 onClick={() => void submitIssueReport()}
                 className="rounded-full bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
               >
-                Copy report
+                Send
               </button>
             </div>
           </div>

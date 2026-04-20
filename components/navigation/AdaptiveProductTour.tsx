@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { scrollToElementWithOffset } from "@/lib/scroll"
 
 type TourModule = "career" | "persona" | "teamsync"
 
@@ -281,7 +282,7 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
     const rect = target.getBoundingClientRect()
     const isVisible = rect.top >= 96 && rect.bottom <= window.innerHeight - 96
     if (isVisible) return
-    target.scrollIntoView({ behavior: "smooth", block: "center" })
+    scrollToElementWithOffset(target, { offsetPx: 128 })
   }, [isOpen, stepIndex, steps])
 
   function startTour() {
@@ -324,9 +325,12 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
   const top = targetRect ? Math.max(82, targetRect.top - 12) : 96
   const left = targetRect ? Math.min(Math.max(16, targetRect.left), viewport.width - 380) : 16
   const panelWidthEstimate = 340
-  const panelHeightEstimate = 360
-  let panelTop = 110
+  const panelHeightEstimate = 430
+  let panelTop = Math.max(86, viewport.height - panelHeightEstimate - 16)
   let panelLeft = Math.max(16, viewport.width - panelWidthEstimate - 18)
+
+  const rectsOverlap = (a: { left: number; top: number; width: number; height: number }, b: DOMRect) =>
+    a.left < b.right && a.left + a.width > b.left && a.top < b.bottom && a.top + a.height > b.top
 
   if (targetRect) {
     const rightSideFits = targetRect.right + panelWidthEstimate + 20 <= viewport.width
@@ -340,21 +344,26 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
       panelLeft = Math.min(Math.max(16, targetRect.left), viewport.width - panelWidthEstimate - 16)
     }
 
-    panelTop = Math.min(
-      Math.max(90, targetRect.top),
-      viewport.height - panelHeightEstimate - 16
+    panelTop = Math.min(Math.max(90, targetRect.top), viewport.height - panelHeightEstimate - 16)
+
+    const candidatePlacements = [
+      { left: panelLeft, top: panelTop },
+      { left: Math.max(16, viewport.width - panelWidthEstimate - 16), top: Math.max(86, viewport.height - panelHeightEstimate - 16) },
+      { left: Math.max(16, viewport.width - panelWidthEstimate - 16), top: 90 },
+      { left: 16, top: Math.max(86, viewport.height - panelHeightEstimate - 16) },
+      { left: 16, top: 90 },
+    ]
+
+    const firstSafePlacement = candidatePlacements.find((placement) =>
+      !rectsOverlap(
+        { left: placement.left, top: placement.top, width: panelWidthEstimate, height: panelHeightEstimate },
+        targetRect
+      )
     )
 
-    const overlapsTarget =
-      panelLeft < targetRect.right &&
-      panelLeft + panelWidthEstimate > targetRect.left &&
-      panelTop < targetRect.bottom &&
-      panelTop + panelHeightEstimate > targetRect.top
-
-    if (overlapsTarget) {
-      panelTop = targetRect.bottom + panelHeightEstimate + 20 > viewport.height
-        ? Math.max(90, targetRect.top - panelHeightEstimate - 12)
-        : Math.min(viewport.height - panelHeightEstimate - 16, targetRect.bottom + 12)
+    if (firstSafePlacement) {
+      panelLeft = firstSafePlacement.left
+      panelTop = firstSafePlacement.top
     }
   }
 
