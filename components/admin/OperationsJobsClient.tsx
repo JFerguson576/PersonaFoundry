@@ -147,6 +147,17 @@ type TesterFeedbackNoteRow = {
   status: "open" | "in_review" | "resolved"
 }
 
+type OperationsEconomicsResponse = {
+  month_label: string
+  summary: {
+    total_revenue_usd: number
+    total_api_cost_usd: number
+    total_margin_usd: number
+    unprofitable_users: number
+    over_budget_users: number
+  }
+}
+
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
   if (status === "running") return "border-sky-300 bg-sky-50 text-sky-800"
@@ -176,11 +187,11 @@ export function OperationsJobsClient() {
   const [isRecoveringStalled, setIsRecoveringStalled] = useState(false)
   const [recoveryLogs, setRecoveryLogs] = useState<RecoverySweepLog[]>([])
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
-  const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("controlCenter")
+  const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
   const [runHealthMenuOpen, setRunHealthMenuOpen] = useState(true)
   const [marketingToolsMenuOpen, setMarketingToolsMenuOpen] = useState(false)
-  const [navigationMenuOpen, setNavigationMenuOpen] = useState(true)
   const [candidateMenuOpen, setCandidateMenuOpen] = useState(true)
+  const [financialMenuOpen, setFinancialMenuOpen] = useState(true)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(true)
   const [candidateSearch, setCandidateSearch] = useState("")
   const [collapsedPanels, setCollapsedPanels] = useState({
@@ -193,6 +204,7 @@ export function OperationsJobsClient() {
     healthInbox: false,
     background: false,
     live: false,
+    financials: false,
   })
   const [teamsyncOutreachQueue, setTeamsyncOutreachQueue] = useState<TeamSyncOutreachQueueRow[]>([])
   const [teamsyncOutreachCampaigns, setTeamsyncOutreachCampaigns] = useState<TeamSyncOutreachCampaignRow[]>([])
@@ -209,6 +221,8 @@ export function OperationsJobsClient() {
   const [teamsyncCalendlyUrl, setTeamsyncCalendlyUrl] = useState("")
   const [testerFeedbackNotes, setTesterFeedbackNotes] = useState<TesterFeedbackNoteRow[]>([])
   const [testerFeedbackCampaigns, setTesterFeedbackCampaigns] = useState<TesterFeedbackOutreachCampaignRow[]>([])
+  const [economics, setEconomics] = useState<OperationsEconomicsResponse | null>(null)
+  const [loadingEconomics, setLoadingEconomics] = useState(false)
   const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
   const [sendingTesterFeedbackOutreach, setSendingTesterFeedbackOutreach] = useState(false)
   const [testerAudienceStatus, setTesterAudienceStatus] = useState<"all" | "open" | "in_review" | "resolved">("open")
@@ -383,6 +397,25 @@ export function OperationsJobsClient() {
     }
   }, [])
 
+  const loadEconomics = useCallback(async () => {
+    setLoadingEconomics(true)
+    try {
+      const response = await fetch("/api/admin/economics", {
+        cache: "no-store",
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load financial summary")
+      }
+      setEconomics(json as OperationsEconomicsResponse)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load financial summary")
+    } finally {
+      setLoadingEconomics(false)
+    }
+  }, [])
+
   const sendTesterFeedbackOutreach = useCallback(async () => {
     setSendingTesterFeedbackOutreach(true)
     setMessage("")
@@ -423,6 +456,7 @@ export function OperationsJobsClient() {
         await loadOverview()
         await loadCandidateHealth()
         await loadHealthInboxState()
+        await loadEconomics()
       }
     }
 
@@ -433,7 +467,7 @@ export function OperationsJobsClient() {
       setSession(nextSession)
     })
     return () => subscription.unsubscribe()
-  }, [loadCandidateHealth, loadHealthInboxState, loadOverview])
+  }, [loadCandidateHealth, loadEconomics, loadHealthInboxState, loadOverview])
 
   useEffect(() => {
     if (!overview?.permissions.is_superuser) return
@@ -881,27 +915,6 @@ export function OperationsJobsClient() {
               >
                 Back to platform
               </Link>
-              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRunHealthMenuOpen((current) => !current)
-                  }
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                  aria-expanded={runHealthMenuOpen}
-                >
-                  Run health
-                    <span>{runHealthMenuOpen ? "-" : "+"}</span>
-                </button>
-                {runHealthMenuOpen ? <div className="px-2 pb-2">
-                  <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
-                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
-                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recovery queue</button>
-                  <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
-                  <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
-                  <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
-                </div> : null}
-              </section>
               {overview.permissions.is_superuser ? (
                 <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                   <button
@@ -912,8 +925,8 @@ export function OperationsJobsClient() {
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                     aria-expanded={marketingToolsMenuOpen}
                   >
-                    Marketing tools
-                      <span>{marketingToolsMenuOpen ? "-" : "+"}</span>
+                    Marketing engine
+                    <span>{marketingToolsMenuOpen ? "-" : "+"}</span>
                   </button>
                   {marketingToolsMenuOpen ? <div className="px-2 pb-2">
                     <button
@@ -930,53 +943,39 @@ export function OperationsJobsClient() {
                     <button
                       type="button"
                       onClick={() => focusPanel("teamsyncOutreach")}
-                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
                         activePanel === "teamsyncOutreach"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
                     >
-                      TeamSync outreach
+                      Outreach queue
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("testerFeedback")}
+                      onClick={() => focusPanel("marketing")}
                       className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "testerFeedback"
+                        activePanel === "marketing"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
                       }`}
                     >
-                      Tester outreach
+                      Marketing control panel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("financials")}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "financials"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Marketing analytics
                     </button>
                   </div> : null}
                 </section>
               ) : null}
-              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setNavigationMenuOpen((current) => !current)
-                  }
-                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
-                  aria-expanded={navigationMenuOpen}
-                >
-                  Navigation
-                  <span>{navigationMenuOpen ? "-" : "+"}</span>
-                </button>
-                {navigationMenuOpen ? (
-                  <div className="space-y-1.5 px-2 pb-2">
-                    <Link href="/control-center" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Control center</Link>
-                    <Link href="/admin" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Admin dashboard</Link>
-                    <Link href="/career?view=control" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Candidate control</Link>
-                    <Link href="/career?view=preview" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Candidate preview</Link>
-                    <Link href="/persona-foundry" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Persona Foundry</Link>
-                    <Link href="/teamsync" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">TeamSync</Link>
-                    <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Marketing engine</Link>
-                    <Link href="/platform" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open platform</Link>
-                  </div>
-                ) : null}
-              </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
@@ -986,11 +985,17 @@ export function OperationsJobsClient() {
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={candidateMenuOpen}
                 >
-                  Candidates
+                  Candidate engine
                   <span>{candidateMenuOpen ? "-" : "+"}</span>
                 </button>
                 {candidateMenuOpen ? (
                   <div className="px-2 pb-2">
+                    <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate management</button>
+                    <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Onboarding completion</button>
+                    <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
+                    <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
+                    <button type="button" onClick={() => focusPanel("live")} className={`mb-2 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Workspace shortcuts</div>
                     <input
                       value={candidateSearch}
                       onChange={(event) => setCandidateSearch(event.target.value)}
@@ -1018,6 +1023,43 @@ export function OperationsJobsClient() {
                 <button
                   type="button"
                   onClick={() =>
+                    setRunHealthMenuOpen((current) => !current)
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={runHealthMenuOpen}
+                >
+                  System health
+                  <span>{runHealthMenuOpen ? "-" : "+"}</span>
+                </button>
+                {runHealthMenuOpen ? <div className="px-2 pb-2">
+                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
+                  <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Operations issues</button>
+                  <button type="button" onClick={() => { setStatusFilter("failed"); focusPanel("background") }} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "background" && statusFilter === "failed") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>API issues</button>
+                  <button type="button" onClick={() => { setStatusFilter("failed"); focusPanel("live") }} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${(activePanel === "live" && statusFilter === "failed") ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Operations errors</button>
+                </div> : null}
+              </section>
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFinancialMenuOpen((current) => !current)
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={financialMenuOpen}
+                >
+                  Financials
+                  <span>{financialMenuOpen ? "-" : "+"}</span>
+                </button>
+                {financialMenuOpen ? <div className="px-2 pb-2">
+                  <button type="button" onClick={() => focusPanel("financials")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>API spend</button>
+                  <button type="button" onClick={() => focusPanel("financials")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Marketing spend summary</button>
+                  <button type="button" onClick={() => focusPanel("financials")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "financials" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Customer revenue analytics</button>
+                </div> : null}
+              </section>
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
                     setQuickActionsMenuOpen((current) => !current)
                   }
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
@@ -1031,6 +1073,7 @@ export function OperationsJobsClient() {
                     void loadOverview()
                     void loadCandidateHealth()
                     void loadHealthInboxState()
+                    void loadEconomics()
                     if (overview.permissions.is_superuser) {
                       void loadTeamSyncOutreach()
                       void loadTesterFeedback()
@@ -1124,22 +1167,72 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("digest")}
+                      onClick={() => focusPanel("financials")}
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Analytics</div>
-                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Ops + marketing snapshot</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Marketing analytics</div>
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("teamsyncOutreach")}
+                      onClick={() => focusPanel("marketing")}
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Marketing console</div>
-                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Coach outreach controls</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Policy + campaign controls</div>
                     </button>
                   </div>
                 </>
+              ) : null}
+            </section>
+            <section id="operations-financials" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("financials") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Financials</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">
+                    API + revenue summary{economics?.month_label ? ` | ${economics.month_label}` : ""}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("financials")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.financials ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.financials ? (
+                loadingEconomics ? (
+                  <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
+                    Loading financial snapshot...
+                  </div>
+                ) : economics ? (
+                  <>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                      <SnapshotStat
+                        label="Customer revenue"
+                        value={`$${Number(economics.summary.total_revenue_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      />
+                      <SnapshotStat
+                        label="API spend"
+                        value={`$${Number(economics.summary.total_api_cost_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      />
+                      <SnapshotStat
+                        label="Margin"
+                        value={`$${Number(economics.summary.total_margin_usd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      />
+                      <SnapshotStat label="Over budget users" value={String(economics.summary.over_budget_users || 0)} />
+                      <SnapshotStat label="Unprofitable users" value={String(economics.summary.unprofitable_users || 0)} />
+                    </div>
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                      Use this panel to keep API and outreach spend below subscription revenue.
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
+                    No financial data yet.
+                  </div>
+                )
               ) : null}
             </section>
             <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("digest") ? "" : "hidden"}`}>
