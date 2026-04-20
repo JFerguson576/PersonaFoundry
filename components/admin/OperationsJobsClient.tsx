@@ -264,6 +264,7 @@ export function OperationsJobsClient() {
             healthInbox: true,
             background: true,
             live: true,
+            financials: true,
           })
         }
         return
