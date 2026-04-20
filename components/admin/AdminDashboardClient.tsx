@@ -25,6 +25,7 @@ const ADMIN_QUICK_LINKS = [
   { sectionKey: "candidate-workspace-manager", href: "#candidate-workspace-manager", label: "13. Workspace manager" },
   { sectionKey: "dashboard-help", href: "#dashboard-help", label: "14. Help & to-do" },
 ] as const
+type AdminQuickLink = (typeof ADMIN_QUICK_LINKS)[number]
 
 type OverviewResponse = {
   permissions: {
@@ -1728,26 +1729,34 @@ export function AdminDashboardClient() {
     ...link,
     items: sectionSubmenuLinks[link.sectionKey] ?? [],
   }))
-  const dashboardRailGroups = [
+  const dashboardRailGroups: Array<{
+    key: "core" | "activity" | "control" | "help"
+    title: string
+    links: AdminQuickLink[]
+  }> = [
     {
+      key: "core",
       title: "Core",
       links: quickLinks.filter((link) =>
         ["dashboard-overview", "openai-usage", "unit-economics", "operating-signals"].includes(link.sectionKey)
       ),
     },
     {
+      key: "activity",
       title: "Activity",
       links: quickLinks.filter((link) =>
         ["acquisition-snapshot", "feature-activity", "api-usage-by-feature", "agent-quality"].includes(link.sectionKey)
       ),
     },
     {
+      key: "control",
       title: "Control",
       links: quickLinks.filter((link) =>
         ["community-moderation", "tester-feedback", "access-control", "admin-notebook", "candidate-workspace-manager"].includes(link.sectionKey)
       ),
     },
     {
+      key: "help",
       title: "Help",
       links: quickLinks.filter((link) => ["dashboard-help"].includes(link.sectionKey)),
     },
