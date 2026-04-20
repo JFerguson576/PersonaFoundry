@@ -25,14 +25,20 @@ function withSecurityHeaders(response: NextResponse) {
 }
 
 export function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname === "/") {
-    return withSecurityHeaders(NextResponse.redirect(new URL("/platform", request.url)))
-  }
+  try {
+    if (request.nextUrl.pathname === "/") {
+      const destination = request.nextUrl.clone()
+      destination.pathname = "/platform"
+      destination.search = ""
+      return withSecurityHeaders(NextResponse.redirect(destination))
+    }
 
-  return withSecurityHeaders(NextResponse.next())
+    return withSecurityHeaders(NextResponse.next())
+  } catch {
+    return withSecurityHeaders(NextResponse.next())
+  }
 }
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }
-
