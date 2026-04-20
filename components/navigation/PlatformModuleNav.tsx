@@ -348,21 +348,7 @@ export function PlatformModuleNav() {
               ) : null}
             </div>
           ) : null}
-          {isSignedIn && !isInternalWorkspace ? <ExperienceAgentWidget enabled /> : null}
-          {isSignedIn && !isInternalWorkspace && roleBadge === "Superuser" ? <TesterNotesWidget enabled /> : null}
-          {isSignedIn && isModulePage ? (
-            <button
-              type="button"
-              onClick={() => {
-                setReferralMessage("")
-                setShowReferralModal(true)
-              }}
-              className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
-              title="Refer a friend or business partner"
-            >
-              Refer
-            </button>
-          ) : null}
+          {isSignedIn ? <ExperienceAgentWidget enabled /> : null}
           {showGlobalMarketingNav
             ? navItems.map((item) => {
                 const active = isActive(pathname, item.href)
@@ -409,13 +395,6 @@ export function PlatformModuleNav() {
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5f7294]">{item.label}</p>
                           <p className="mt-0.5 text-[11px] text-[#556788]">Quick paths to high-value pages.</p>
                         </div>
-                        <Link
-                          href={item.href}
-                          onClick={() => setOpenDropdownKey(null)}
-                          className="mb-1 block rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[var(--brand-navy)] transition hover:border-[#d6e2f7] hover:bg-[#f5f8ff]"
-                        >
-                          Open {item.label}
-                        </Link>
                         {item.items?.map((menuItem) => (
                           <Link
                             key={`${item.key}-${menuItem.href}`}
@@ -454,20 +433,40 @@ export function PlatformModuleNav() {
               Operations
             </Link>
           ) : null}
+          {isSignedIn && isModulePage ? (
+            <button
+              type="button"
+              onClick={() => {
+                setReferralMessage("")
+                setOpenDropdownKey(null)
+                const inlineSharePanel = document.getElementById("career-share-panel")
+                if (inlineSharePanel) {
+                  inlineSharePanel.scrollIntoView({ behavior: "smooth", block: "start" })
+                  return
+                }
+                setShowReferralModal(true)
+              }}
+              className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              title="Share Personara with a friend or business partner"
+            >
+              Share
+            </button>
+          ) : null}
+          {isSignedIn ? <TesterNotesWidget enabled /> : null}
         </div>
       </div>
       {showReferralModal ? (
         <div
-          className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-10 sm:py-14"
+          className="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
           onClick={() => setShowReferralModal(false)}
         >
           <div
-            className="w-full max-w-lg rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#d8e4f2] bg-white p-6 shadow-xl"
             onClick={(event: ReactMouseEvent<HTMLDivElement>) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-[#0f172a]">Refer someone to Personara</h3>
+                <h3 className="text-lg font-semibold text-[#0f172a]">Share Personara</h3>
                 <p className="mt-1 text-sm text-neutral-600">Send a quick invite to a friend, colleague, or business partner.</p>
               </div>
               <button

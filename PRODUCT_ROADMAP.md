@@ -467,3 +467,16 @@ When `personara.ai` is purchased and we are ready to go live:
 
 4. Verification pass:
 - Confirm homepage, module routes, login flow, contact form, and email links all resolve on production domain.
+
+## New TODO Queue (2026-04-20)
+
+1. Operations economics upgrade:
+- add Codex API cost telemetry to Operations dashboard (daily + monthly)
+- include Codex cost line item inside revenue/expense calculator
+- show margin impact after OpenAI + Codex model spend
+
+2. Share + referral growth engine:
+- generate one-time discount/referral code when user clicks `Share`
+- persist share records by user (`codes_created`, `codes_redeemed`, `signups_from_shares`)
+- add attribution dashboard panel for high-volume sharers
+- define optional rewards policy for top referral contributors

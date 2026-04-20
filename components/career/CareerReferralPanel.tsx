@@ -82,10 +82,10 @@ export function CareerReferralPanel() {
   }
 
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <section id="career-share-panel" className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-neutral-900">Refer a friend or business partner</h3>
+          <h3 className="text-lg font-semibold text-neutral-900">Share with a friend or business partner</h3>
           <p className="mt-1 text-sm text-neutral-600">Invite people directly into Personara Career Intelligence with a personal note.</p>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-right">
