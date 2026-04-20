@@ -323,13 +323,40 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
 
   const top = targetRect ? Math.max(82, targetRect.top - 12) : 96
   const left = targetRect ? Math.min(Math.max(16, targetRect.left), viewport.width - 380) : 16
+  const panelWidthEstimate = 340
   const panelHeightEstimate = 360
-  const panelTop = targetRect
-    ? targetRect.bottom + panelHeightEstimate + 20 > viewport.height
-      ? Math.max(90, targetRect.top - panelHeightEstimate - 14)
-      : Math.min(viewport.height - 220, Math.max(90, targetRect.bottom + 12))
-    : 120
-  const panelLeft = targetRect ? Math.min(Math.max(16, targetRect.left), viewport.width - 360) : 16
+  let panelTop = 110
+  let panelLeft = Math.max(16, viewport.width - panelWidthEstimate - 18)
+
+  if (targetRect) {
+    const rightSideFits = targetRect.right + panelWidthEstimate + 20 <= viewport.width
+    const leftSideFits = targetRect.left - panelWidthEstimate - 20 >= 0
+
+    if (rightSideFits) {
+      panelLeft = targetRect.right + 12
+    } else if (leftSideFits) {
+      panelLeft = targetRect.left - panelWidthEstimate - 12
+    } else {
+      panelLeft = Math.min(Math.max(16, targetRect.left), viewport.width - panelWidthEstimate - 16)
+    }
+
+    panelTop = Math.min(
+      Math.max(90, targetRect.top),
+      viewport.height - panelHeightEstimate - 16
+    )
+
+    const overlapsTarget =
+      panelLeft < targetRect.right &&
+      panelLeft + panelWidthEstimate > targetRect.left &&
+      panelTop < targetRect.bottom &&
+      panelTop + panelHeightEstimate > targetRect.top
+
+    if (overlapsTarget) {
+      panelTop = targetRect.bottom + panelHeightEstimate + 20 > viewport.height
+        ? Math.max(90, targetRect.top - panelHeightEstimate - 12)
+        : Math.min(viewport.height - panelHeightEstimate - 16, targetRect.bottom + 12)
+    }
+  }
 
   return (
     <>

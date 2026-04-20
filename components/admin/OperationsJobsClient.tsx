@@ -161,8 +161,10 @@ export function OperationsJobsClient() {
   const [recoveryLogs, setRecoveryLogs] = useState<RecoverySweepLog[]>([])
   const [showRecoveryHistory, setShowRecoveryHistory] = useState(false)
   const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
+  const [openNavSection, setOpenNavSection] = useState<"runHealth" | "marketingTools" | "quickActions">("runHealth")
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
+    marketing: false,
     digest: false,
     recovery: false,
     teamsyncOutreach: false,
@@ -208,6 +210,7 @@ export function OperationsJobsClient() {
         if (window.matchMedia("(max-width: 767px)").matches) {
           setCollapsedPanels({
             controlCenter: false,
+            marketing: true,
             digest: false,
             recovery: true,
             teamsyncOutreach: true,
@@ -463,6 +466,14 @@ export function OperationsJobsClient() {
     }
   }, [candidateHealthInbox, overview])
 
+  const marketingSignals = useMemo(() => {
+    const queued = teamsyncOutreachQueue.filter((row) => row.status === "queued").length
+    const contacted = teamsyncOutreachQueue.filter((row) => row.status === "contacted").length
+    const responded = teamsyncOutreachQueue.filter((row) => row.status === "responded").length
+    const campaigns = teamsyncOutreachCampaigns.length
+    return { queued, contacted, responded, campaigns }
+  }, [teamsyncOutreachCampaigns, teamsyncOutreachQueue])
+
   const stalledRunningCount = useMemo(() => {
     if (!overview) return 0
     const cutoff = Date.now() - STALLED_THRESHOLD_MINUTES * 60 * 1000
@@ -714,7 +725,7 @@ export function OperationsJobsClient() {
 
   return (
     <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
         <PlatformModuleNav />
         {!session?.user ? (
           <section className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -737,29 +748,68 @@ export function OperationsJobsClient() {
           <div className="mt-3 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
             <aside className="h-fit rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#f6faff_0%,#eaf2ff_100%)] p-3 shadow-[0_18px_36px_-28px_rgba(26,54,93,0.45)] xl:sticky xl:top-3">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2f4a73]">Operations menu</div>
-              <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenNavSection((current) => (current === "runHealth" ? "quickActions" : "runHealth"))
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={openNavSection === "runHealth"}
+                >
                   Run health
-                </summary>
-                <div className="px-2 pb-2">
+                    <span>{openNavSection === "runHealth" ? "-" : "+"}</span>
+                </button>
+                {openNavSection === "runHealth" ? <div className="px-2 pb-2">
                   <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Control modules</button>
                   <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Ops summary</button>
+                  <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Analytics</button>
                   <button type="button" onClick={() => focusPanel("recovery")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "recovery" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Recovery queue</button>
                   <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
                   <button type="button" onClick={() => focusPanel("background")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "background" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Background jobs</button>
                   <button type="button" onClick={() => focusPanel("live")} className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Live job runs</button>
-                </div>
-              </details>
+                </div> : null}
+              </section>
               {overview.permissions.is_superuser ? (
-                <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                  <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+                <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenNavSection((current) => (current === "marketingTools" ? "quickActions" : "marketingTools"))
+                    }
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                    aria-expanded={openNavSection === "marketingTools"}
+                  >
                     Marketing tools
-                  </summary>
-                  <div className="px-2 pb-2">
+                      <span>{openNavSection === "marketingTools" ? "-" : "+"}</span>
+                  </button>
+                  {openNavSection === "marketingTools" ? <div className="px-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("marketing")}
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "marketing"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Marketing overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("digest")}
+                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "digest"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Analytics snapshot
+                    </button>
                     <button
                       type="button"
                       onClick={() => focusPanel("teamsyncOutreach")}
-                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
                         activePanel === "teamsyncOutreach"
                           ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
                           : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
@@ -767,20 +817,22 @@ export function OperationsJobsClient() {
                     >
                       TeamSync outreach
                     </button>
-                    <Link
-                      href="/control-center/marketing-engine"
-                      className="block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
-                    >
-                      Marketing engine
-                    </Link>
-                  </div>
-                </details>
+                  </div> : null}
+                </section>
               ) : null}
-              <details open className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenNavSection((current) => (current === "quickActions" ? "runHealth" : "quickActions"))
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={openNavSection === "quickActions"}
+                >
                   Quick actions
-                </summary>
-                <div className="px-2 pb-2 space-y-1.5">
+                    <span>{openNavSection === "quickActions" ? "-" : "+"}</span>
+                </button>
+                {openNavSection === "quickActions" ? <div className="px-2 pb-2 space-y-1.5">
                   <button type="button" onClick={() => {
                     void loadOverview()
                     void loadCandidateHealth()
@@ -791,12 +843,12 @@ export function OperationsJobsClient() {
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
                   <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Main menu</Link>
-                </div>
-              </details>
+                </div> : null}
+              </section>
             </aside>
 
             <div>
-            <section id="operations-controlCenter" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("controlCenter") ? "" : "hidden"}`}>
+            <section id="operations-controlCenter" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("controlCenter") ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Operations control</div>
@@ -829,20 +881,70 @@ export function OperationsJobsClient() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => focusPanel(overview.permissions.is_superuser ? "teamsyncOutreach" : "live")}
+                    onClick={() => focusPanel(overview.permissions.is_superuser ? "marketing" : "live")}
                     className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                       {overview.permissions.is_superuser ? "Marketing + outreach" : "Live search"}
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">
-                      {overview.permissions.is_superuser ? "TeamSync outreach" : "Live job runs"}
+                      {overview.permissions.is_superuser ? "Marketing workspace" : "Live job runs"}
                     </div>
                     <div className="mt-1 text-xs text-[#3d567d]">
-                      {overview.permissions.is_superuser ? "Campaign queue and follow-up actions." : "Monitor live search activity."}
+                      {overview.permissions.is_superuser ? "Campaign queue, analytics, and follow-up actions." : "Monitor live search activity."}
                     </div>
                   </button>
                 </div>
+              ) : null}
+            </section>
+            <section id="operations-marketing" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("marketing") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Marketing workspace</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Campaign and outreach controls in Operations</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("marketing")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.marketing ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.marketing ? (
+                <>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                    <SnapshotStat label="Queued outreach" value={String(marketingSignals.queued)} />
+                    <SnapshotStat label="Contacted" value={String(marketingSignals.contacted)} />
+                    <SnapshotStat label="Responded" value={String(marketingSignals.responded)} />
+                    <SnapshotStat label="Campaign logs" value={String(marketingSignals.campaigns)} />
+                  </div>
+                  <div className="mt-2 grid gap-2 md:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("teamsyncOutreach")}
+                      className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Outreach queue</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">TeamSync outreach</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("digest")}
+                      className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Analytics</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Ops + marketing snapshot</div>
+                    </button>
+                    <Link
+                      href="/control-center/marketing-engine"
+                      className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Deep controls</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Open marketing engine</div>
+                    </Link>
+                  </div>
+                </>
               ) : null}
             </section>
             <section id="operations-digest" className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("digest") ? "" : "hidden"}`}>
