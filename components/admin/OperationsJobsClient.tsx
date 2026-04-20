@@ -179,7 +179,10 @@ export function OperationsJobsClient() {
   const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("controlCenter")
   const [runHealthMenuOpen, setRunHealthMenuOpen] = useState(true)
   const [marketingToolsMenuOpen, setMarketingToolsMenuOpen] = useState(false)
+  const [navigationMenuOpen, setNavigationMenuOpen] = useState(true)
+  const [candidateMenuOpen, setCandidateMenuOpen] = useState(true)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(true)
+  const [candidateSearch, setCandidateSearch] = useState("")
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
     marketing: false,
@@ -833,13 +836,18 @@ export function OperationsJobsClient() {
     () =>
       candidateHealth
         .filter((row) => row?.id)
-        .slice(0, 8)
+        .filter((row) => {
+          const term = candidateSearch.trim().toLowerCase()
+          if (!term) return true
+          return `${row.full_name || ""} ${row.city || ""} ${row.primary_goal || ""}`.toLowerCase().includes(term)
+        })
+        .slice(0, 50)
         .map((row) => ({
           id: row.id,
           label: row.full_name?.trim() || "Untitled candidate",
           detail: row.city || row.primary_goal || "No city",
         })),
-    [candidateHealth]
+    [candidateHealth, candidateSearch]
   )
 
   return (
@@ -921,17 +929,6 @@ export function OperationsJobsClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => focusPanel("marketing")}
-                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "marketing"
-                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
-                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
-                      }`}
-                    >
-                      Analytics snapshot
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => focusPanel("teamsyncOutreach")}
                       className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
                         activePanel === "teamsyncOutreach"
@@ -952,15 +949,71 @@ export function OperationsJobsClient() {
                     >
                       Tester outreach
                     </button>
-                    <Link
-                      href="/control-center/marketing-engine"
-                      className="mt-1 block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
-                    >
-                      Marketing console
-                    </Link>
                   </div> : null}
                 </section>
               ) : null}
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNavigationMenuOpen((current) => !current)
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={navigationMenuOpen}
+                >
+                  Navigation
+                  <span>{navigationMenuOpen ? "-" : "+"}</span>
+                </button>
+                {navigationMenuOpen ? (
+                  <div className="space-y-1.5 px-2 pb-2">
+                    <Link href="/control-center" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Control center</Link>
+                    <Link href="/admin" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Admin dashboard</Link>
+                    <Link href="/career?view=control" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Candidate control</Link>
+                    <Link href="/career?view=preview" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Candidate preview</Link>
+                    <Link href="/persona-foundry" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Persona Foundry</Link>
+                    <Link href="/teamsync" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">TeamSync</Link>
+                    <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Marketing engine</Link>
+                    <Link href="/platform" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open platform</Link>
+                  </div>
+                ) : null}
+              </section>
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCandidateMenuOpen((current) => !current)
+                  }
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={candidateMenuOpen}
+                >
+                  Candidates
+                  <span>{candidateMenuOpen ? "-" : "+"}</span>
+                </button>
+                {candidateMenuOpen ? (
+                  <div className="px-2 pb-2">
+                    <input
+                      value={candidateSearch}
+                      onChange={(event) => setCandidateSearch(event.target.value)}
+                      className="mb-2 w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-xs text-[#163159]"
+                      placeholder="Search candidates..."
+                    />
+                    <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
+                      {quickCandidateShortcuts.length > 0 ? quickCandidateShortcuts.map((candidate) => (
+                        <Link
+                          key={`quick-candidate-${candidate.id}`}
+                          href={`/career/${candidate.id}`}
+                          className="block w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
+                        >
+                          <div className="truncate">{candidate.label}</div>
+                          <div className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-[#5f769a]">{candidate.detail}</div>
+                        </Link>
+                      )) : (
+                        <div className="rounded-lg border border-[#d8e4f2] bg-[#f7fbff] px-2.5 py-1.5 text-xs text-[#5f769a]">No candidates match this search.</div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
@@ -984,30 +1037,6 @@ export function OperationsJobsClient() {
                     }
                   }} className="w-full rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">{isRefreshing ? "Refreshing..." : "Refresh data"}</button>
                   <button type="button" onClick={() => void runStalledRecoverySweep(false)} disabled={isRecoveringStalled} className="w-full rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60">{isRecoveringStalled ? "Recovering..." : "Recover stalled"}</button>
-                  <Link href="/platform#modules" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Back to platform</Link>
-                  <div className="pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Module actions</div>
-                  <Link href="/platform" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open platform</Link>
-                  <Link href="/control-center/marketing-engine" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open marketing engine</Link>
-                  <Link href="/career?view=control" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open candidate control</Link>
-                  <Link href="/career?view=preview" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open candidate preview</Link>
-                  <Link href="/admin" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open admin dashboard</Link>
-                  <Link href="/operations" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open operations hub</Link>
-                  <Link href="/persona-foundry" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open persona foundry</Link>
-                  <Link href="/teamsync" className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]">Open TeamSync</Link>
-                  {quickCandidateShortcuts.length > 0 ? (
-                    <>
-                      <div className="pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">Candidate shortcuts</div>
-                      {quickCandidateShortcuts.map((candidate) => (
-                        <Link
-                          key={`quick-candidate-${candidate.id}`}
-                          href={`/career/${candidate.id}`}
-                          className="block w-full rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
-                        >
-                          {candidate.label}
-                        </Link>
-                      ))}
-                    </>
-                  ) : null}
                 </div> : null}
               </section>
             </aside>
@@ -1101,13 +1130,14 @@ export function OperationsJobsClient() {
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Analytics</div>
                       <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Ops + marketing snapshot</div>
                     </button>
-                    <Link
-                      href="/control-center/marketing-engine"
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("teamsyncOutreach")}
                       className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Marketing console</div>
-                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Open marketing engine</div>
-                    </Link>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">Coach outreach controls</div>
+                    </button>
                   </div>
                 </>
               ) : null}
