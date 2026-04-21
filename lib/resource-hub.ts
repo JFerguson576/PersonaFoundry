@@ -106,6 +106,15 @@ export const resourceItems: ResourceItem[] = [
     sectionKey: "persona",
   },
   {
+    id: "roxy-about-pack",
+    title: "Personara About Pack (Roxy Ferguson)",
+    description: "Long-form mission story, homepage version, and leadership bio copy.",
+    href: "/docs/personara-codex-about-pack-roxy-ferguson.docx",
+    thumbnailHref: "/images/roxy-ferguson-about.jpg",
+    type: "doc",
+    sectionKey: "persona",
+  },
+  {
     id: "analyst-intelligence-explainer-v2",
     title: "Analyst Intelligence Explainer (v2)",
     description: "Interpret simulation signals and actions.",
