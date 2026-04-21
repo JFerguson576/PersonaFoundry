@@ -55,7 +55,7 @@ export default function AboutPage() {
           <aside className="rounded-2xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Leadership profile</p>
             <div className="mt-3 overflow-hidden rounded-xl border border-[#cfdaea] bg-[#f8fbff]">
-              <Image src="/images/roxy-ferguson-about.jpg" alt="Roxy Ferguson" width={900} height={900} className="h-52 w-full object-cover" />
+              <Image src="/images/roxy-ferguson-about.jpg" alt="Roxy Ferguson" width={900} height={900} className="h-auto w-full object-contain" />
             </div>
             <h2 className="mt-3 text-xl font-semibold tracking-tight text-[#142c4f]">Roxy Ferguson</h2>
             <p className="text-sm font-medium text-[#365b8f]">Communications and Outreach Lead</p>
