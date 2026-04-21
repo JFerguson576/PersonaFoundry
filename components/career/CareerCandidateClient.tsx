@@ -3979,14 +3979,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </>
               ) : null}
               <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <p className="mt-2 max-w-2xl text-sm leading-5 text-neutral-600">
-                      Add your core inputs first: CV, Gallup Strengths, LinkedIn profile, and proof points.
-                    </p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Loaded sources</div>
-                  <div className="mt-1 text-2xl font-semibold">{documents.length}</div>
+                <div className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700">
+                  Core inputs first: CV, Gallup Strengths, LinkedIn, and supporting proof.
+                  <span className="ml-2 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                    {documents.length} loaded
+                  </span>
                 </div>
               </div>
 
@@ -6144,21 +6141,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         <div className="mt-0.5 text-[10px] text-neutral-600">
           {completionCount}/{preparationSteps.length} steps done
         </div>
-        {!isWizardFocusActive ? (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            <button
-              type="button"
-              onClick={() => openAndScroll(activePrimaryAction.sectionKey, activePrimaryAction.href)}
-              className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
-            >
-              Next action
-            </button>
-          </div>
-        ) : null}
         <div className="mt-1.5">
           <details className="group rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-              Options
+              Quick settings
               <span className="text-[9px] text-neutral-500 group-open:hidden">Expand</span>
               <span className="hidden text-[9px] text-neutral-500 group-open:inline">Collapse</span>
             </summary>
@@ -6172,7 +6158,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     : "bg-[#e8f3ff] text-[#0a66c2] hover:bg-[#dcecff]"
                 }`}
               >
-                Guided setup
+                Setup guide
               </button>
               {!hideWorkspaceGuideToggle ? (
                 <button
@@ -6720,6 +6706,7 @@ function formatAssetType(assetType: string | null | undefined) {
 
 function cleanWorkflowLabel(label: string) {
   return label
+    .replace(/^[✓✔]\s*/, "")
     .replace(/^\[[^\]]+\]\s*/, "")
     .replace(/^\d+\.\s*/, "")
     .trim()
