@@ -5,6 +5,7 @@ export type ResourceItem = {
   title: string
   description: string
   href: string
+  thumbnailHref?: string
   type: ResourceAssetType
   sectionKey: "career" | "persona" | "teamsync" | "visual"
 }
@@ -47,6 +48,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Candidate Journey Explainer (v2)",
     description: "End-to-end onboarding and execution guide.",
     href: "/docs/personara-candidate-explainer-v2.docx",
+    thumbnailHref: "/images/career-intelligence-blueprint-diagram.png",
     type: "doc",
     sectionKey: "career",
   },
@@ -55,7 +57,25 @@ export const resourceItems: ResourceItem[] = [
     title: "Career Intelligence Explainer",
     description: "Core operating model for candidate outcomes.",
     href: "/docs/personara-ai-career-intelligence-explainer.docx",
+    thumbnailHref: "/images/career-intelligence-blueprint-diagram.png",
     type: "doc",
+    sectionKey: "career",
+  },
+  {
+    id: "career-intelligence-blueprint-pdf",
+    title: "Career Intelligence Blueprint",
+    description: "Full blueprint PDF for the Career Intelligence architecture and flow.",
+    href: "/docs/career-intelligence-blueprint.pdf",
+    thumbnailHref: "/images/career-intelligence-blueprint-diagram.png",
+    type: "pdf",
+    sectionKey: "career",
+  },
+  {
+    id: "career-intelligence-blueprint-diagram",
+    title: "Career Intelligence Blueprint Diagram",
+    description: "High-level structural diagram for Career Intelligence from inputs to outputs.",
+    href: "/images/career-intelligence-blueprint-diagram.png",
+    type: "image",
     sectionKey: "career",
   },
   {
@@ -63,6 +83,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Gallup Strengths Explainer",
     description: "How strengths data improves quality and positioning.",
     href: "/docs/personara-ai-gallup-strengths-explainer.docx",
+    thumbnailHref: "/images/career-intelligence-blueprint-diagram.png",
     type: "doc",
     sectionKey: "career",
   },
@@ -71,6 +92,7 @@ export const resourceItems: ResourceItem[] = [
     title: "User Experience Explainer (v2)",
     description: "Why custom AI personalities improve consistency and speed.",
     href: "/docs/personara-user-explainer-v2.docx",
+    thumbnailHref: "/images/personara-platform-anatomy.png",
     type: "doc",
     sectionKey: "persona",
   },
@@ -79,6 +101,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Platform Proposition",
     description: "Strategic framing for identity-driven AI operations.",
     href: "/docs/personara-ai-platform-proposition.docx",
+    thumbnailHref: "/images/personara-platform-anatomy.png",
     type: "doc",
     sectionKey: "persona",
   },
@@ -87,6 +110,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Analyst Intelligence Explainer (v2)",
     description: "Interpret simulation signals and actions.",
     href: "/docs/personara-analyst-explainer-v2.docx",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
     type: "doc",
     sectionKey: "teamsync",
   },
@@ -95,6 +119,7 @@ export const resourceItems: ResourceItem[] = [
     title: "TeamSync Explainer",
     description: "How TeamSync models communication and decision dynamics.",
     href: "/docs/personara-ai-teamsync-explainer.docx",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
     type: "doc",
     sectionKey: "teamsync",
   },
@@ -103,6 +128,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Executive Intelligence Deck",
     description: "Board-ready premium simulation deck.",
     href: "/docs/teamsync-executive-intelligence-deck.pdf",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
     type: "pdf",
     sectionKey: "teamsync",
   },
@@ -111,6 +137,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Executive Intelligence Brief",
     description: "Leadership use-case and rollout brief.",
     href: "/docs/teamsync-executive-intelligence.pdf",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
     type: "pdf",
     sectionKey: "teamsync",
   },

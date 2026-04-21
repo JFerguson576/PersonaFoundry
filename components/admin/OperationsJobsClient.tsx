@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { AdminTourCompletionPanel } from "@/components/admin/AdminTourCompletionPanel"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
+import type { SecurityWriteRouteAuditItem } from "@/lib/admin-security-audit"
 import { getAuthHeaders } from "@/lib/career-client"
 import { scrollToElementWithOffset } from "@/lib/scroll"
 import { supabase } from "@/lib/supabase"
@@ -157,6 +158,39 @@ type OperationsEconomicsResponse = {
     unprofitable_users: number
     over_budget_users: number
   }
+  users: {
+    user_id: string
+    user_email: string | null
+    user_name: string
+    plan_code: string
+    billing_status: string
+    monthly_subscription_usd: number
+    monthly_api_budget_usd: number | null
+    monthly_api_cost_usd: number
+    monthly_api_requests: number
+    monthly_tokens: number
+    monthly_margin_usd: number
+    budget_status: "over_budget" | "watch" | "within" | "unbounded" | string
+    profitability: "positive" | "negative" | string
+    notes: string | null
+    last_activity_at: string | null
+  }[]
+}
+
+type EconomicsDraft = {
+  subscription: string
+  budget: string
+  notes: string
+}
+
+type SecurityAuditResponse = {
+  routes: SecurityWriteRouteAuditItem[]
+  summary: {
+    total_write_routes: number
+    superuser_protected_count: number
+    admin_write_count: number
+    coverage_pct: number
+  }
 }
 
 type CodexBacklogItem = {
@@ -169,12 +203,6 @@ type CodexBacklogItem = {
   notes: string
 }
 
-type SecurityWriteRouteAuditItem = {
-  route: string
-  method: "POST" | "PATCH" | "DELETE"
-  access: "superuser" | "admin"
-  area: "marketing" | "operations" | "users" | "workspace"
-}
 
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
@@ -267,31 +295,6 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   },
 ]
 
-const SECURITY_WRITE_ROUTE_AUDIT: SecurityWriteRouteAuditItem[] = [
-  { route: "/api/admin/marketing/policy", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/budget/recompute", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/alerts", method: "PATCH", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/campaigns", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/campaigns", method: "PATCH", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/coach-outreach", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/coach-outreach", method: "PATCH", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/recommendations", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/recommendations", method: "PATCH", access: "superuser", area: "marketing" },
-  { route: "/api/admin/marketing/cash-ledger", method: "POST", access: "superuser", area: "marketing" },
-  { route: "/api/admin/settings/openai-budget", method: "PATCH", access: "superuser", area: "operations" },
-  { route: "/api/admin/teamsync-outreach", method: "POST", access: "superuser", area: "operations" },
-  { route: "/api/admin/tester-notes/outreach", method: "POST", access: "superuser", area: "operations" },
-  { route: "/api/admin/users/roles", method: "POST", access: "superuser", area: "users" },
-  { route: "/api/admin/users/access", method: "POST", access: "superuser", area: "users" },
-  { route: "/api/admin/economics", method: "PATCH", access: "superuser", area: "operations" },
-  { route: "/api/admin/health-inbox", method: "PATCH", access: "admin", area: "workspace" },
-  { route: "/api/admin/health-inbox", method: "DELETE", access: "admin", area: "workspace" },
-  { route: "/api/admin/jobs/recover-stalled", method: "POST", access: "admin", area: "operations" },
-  { route: "/api/admin/notebook", method: "POST", access: "admin", area: "operations" },
-  { route: "/api/admin/notebook", method: "PATCH", access: "admin", area: "operations" },
-  { route: "/api/admin/tester-notes", method: "PATCH", access: "admin", area: "operations" },
-]
-
 export function OperationsJobsClient() {
   const STALLED_THRESHOLD_MINUTES = 20
   const RECOVERY_LOG_KEY = "personara-operations-recovery-log-v1"
@@ -348,7 +351,11 @@ export function OperationsJobsClient() {
   const [testerFeedbackNotes, setTesterFeedbackNotes] = useState<TesterFeedbackNoteRow[]>([])
   const [testerFeedbackCampaigns, setTesterFeedbackCampaigns] = useState<TesterFeedbackOutreachCampaignRow[]>([])
   const [economics, setEconomics] = useState<OperationsEconomicsResponse | null>(null)
+  const [securityAudit, setSecurityAudit] = useState<SecurityAuditResponse | null>(null)
+  const [loadingSecurityAudit, setLoadingSecurityAudit] = useState(false)
   const [loadingEconomics, setLoadingEconomics] = useState(false)
+  const [economicsDrafts, setEconomicsDrafts] = useState<Record<string, EconomicsDraft>>({})
+  const [savingEconomicsUserId, setSavingEconomicsUserId] = useState("")
   const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
   const [sendingTesterFeedbackOutreach, setSendingTesterFeedbackOutreach] = useState(false)
   const [testerAudienceStatus, setTesterAudienceStatus] = useState<"all" | "open" | "in_review" | "resolved">("open")
@@ -545,6 +552,25 @@ export function OperationsJobsClient() {
     }
   }, [])
 
+  const loadSecurityAudit = useCallback(async () => {
+    setLoadingSecurityAudit(true)
+    try {
+      const response = await fetch("/api/admin/security-audit", {
+        cache: "no-store",
+        headers: await getAuthHeaders(),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load security audit")
+      }
+      setSecurityAudit(json as SecurityAuditResponse)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load security audit")
+    } finally {
+      setLoadingSecurityAudit(false)
+    }
+  }, [])
+
   const sendTesterFeedbackOutreach = useCallback(async () => {
     setSendingTesterFeedbackOutreach(true)
     setMessage("")
@@ -586,6 +612,7 @@ export function OperationsJobsClient() {
         await loadCandidateHealth()
         await loadHealthInboxState()
         await loadEconomics()
+        await loadSecurityAudit()
       }
     }
 
@@ -596,13 +623,29 @@ export function OperationsJobsClient() {
       setSession(nextSession)
     })
     return () => subscription.unsubscribe()
-  }, [loadCandidateHealth, loadEconomics, loadHealthInboxState, loadOverview])
+  }, [loadCandidateHealth, loadEconomics, loadHealthInboxState, loadOverview, loadSecurityAudit])
 
   useEffect(() => {
     if (!overview?.permissions.is_superuser) return
     void loadTeamSyncOutreach()
     void loadTesterFeedback()
   }, [overview?.permissions.is_superuser, loadTeamSyncOutreach, loadTesterFeedback])
+
+  useEffect(() => {
+    if (!economics?.users?.length) return
+    setEconomicsDrafts((current) => {
+      const next = { ...current }
+      for (const row of economics.users) {
+        if (next[row.user_id]) continue
+        next[row.user_id] = {
+          subscription: String(row.monthly_subscription_usd ?? 0),
+          budget: row.monthly_api_budget_usd === null ? "" : String(row.monthly_api_budget_usd),
+          notes: row.notes ?? "",
+        }
+      }
+      return next
+    })
+  }, [economics])
 
   const filteredBackground = useMemo(() => {
     if (!overview) return []
@@ -788,17 +831,80 @@ export function OperationsJobsClient() {
   }, [economics])
 
   const securityAuditSummary = useMemo(() => {
-    const totalWriteRoutes = SECURITY_WRITE_ROUTE_AUDIT.length
-    const superuserProtected = SECURITY_WRITE_ROUTE_AUDIT.filter((item) => item.access === "superuser")
-    const adminWriteRoutes = SECURITY_WRITE_ROUTE_AUDIT.filter((item) => item.access === "admin")
+    const routes = securityAudit?.routes ?? []
+    const summary = securityAudit?.summary
+    const adminWriteRoutes = routes.filter((item) => item.access === "admin")
+    const superuserProtectedCount = summary?.superuser_protected_count ?? routes.filter((item) => item.access === "superuser").length
+    const totalWriteRoutes = summary?.total_write_routes ?? routes.length
+
     return {
       totalWriteRoutes,
-      superuserProtectedCount: superuserProtected.length,
-      adminWriteCount: adminWriteRoutes.length,
+      superuserProtectedCount,
+      adminWriteCount: summary?.admin_write_count ?? adminWriteRoutes.length,
       adminWriteRoutes,
-      coveragePct: Math.round((superuserProtected.length / Math.max(totalWriteRoutes, 1)) * 100),
+      coveragePct:
+        summary?.coverage_pct ?? Math.round((superuserProtectedCount / Math.max(totalWriteRoutes, 1)) * 100),
     }
-  }, [])
+  }, [securityAudit])
+
+  const economicsRows = useMemo(() => economics?.users ?? [], [economics])
+  const negativeMarginRows = useMemo(
+    () => economicsRows.filter((row) => row.profitability === "negative"),
+    [economicsRows]
+  )
+  const overBudgetRows = useMemo(
+    () => economicsRows.filter((row) => row.budget_status === "over_budget"),
+    [economicsRows]
+  )
+  const watchBudgetRows = useMemo(
+    () => economicsRows.filter((row) => row.budget_status === "watch"),
+    [economicsRows]
+  )
+
+  async function saveEconomicsDraft(userId: string) {
+    if (!overview?.permissions.is_superuser) return
+    const draft = economicsDrafts[userId]
+    if (!draft) return
+
+    setSavingEconomicsUserId(userId)
+    setMessage("")
+    try {
+      const subscription = Number(draft.subscription)
+      if (!Number.isFinite(subscription) || subscription < 0) {
+        throw new Error("Monthly subscription must be a valid number.")
+      }
+
+      const budgetRaw = draft.budget.trim()
+      const budget = budgetRaw.length === 0 ? null : Number(budgetRaw)
+      if (budget !== null && (!Number.isFinite(budget) || budget < 0)) {
+        throw new Error("Monthly API budget must be blank or a valid positive number.")
+      }
+
+      const response = await fetch("/api/admin/economics", {
+        method: "PATCH",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          monthly_subscription_usd: subscription,
+          monthly_api_budget_usd: budget,
+          notes: draft.notes || null,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) {
+        throw new Error(json.error || "Could not save user economics settings")
+      }
+      setMessage("User financial settings updated.")
+      await loadEconomics()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save user financial settings")
+    } finally {
+      setSavingEconomicsUserId("")
+    }
+  }
 
   const runStalledRecoverySweep = useCallback(async (auto = false) => {
     setIsRecoveringStalled(true)
@@ -1253,6 +1359,7 @@ export function OperationsJobsClient() {
                     void loadCandidateHealth()
                     void loadHealthInboxState()
                     void loadEconomics()
+                    void loadSecurityAudit()
                     if (overview.permissions.is_superuser) {
                       void loadTeamSyncOutreach()
                       void loadTesterFeedback()
@@ -1437,6 +1544,147 @@ export function OperationsJobsClient() {
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
                       Use this panel to keep API and outreach spend below subscription revenue.
                     </div>
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialView("api")}
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialView === "api"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          API spend
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialView("marketing")}
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialView === "marketing"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          Marketing spend
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialView("revenue")}
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialView === "revenue"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          Revenue + margin
+                        </button>
+                      </div>
+                      {activeFinancialView === "api" ? (
+                        <div className="mt-2 text-xs text-[#36537d]">
+                          <p>Users currently over API budget: <span className="font-semibold">{overBudgetRows.length}</span></p>
+                          <p className="mt-1">Users in watch range (80%+ budget): <span className="font-semibold">{watchBudgetRows.length}</span></p>
+                        </div>
+                      ) : null}
+                      {activeFinancialView === "marketing" ? (
+                        <div className="mt-2 text-xs text-[#36537d]">
+                          <p>TeamSync outreach queued: <span className="font-semibold">{marketingSignals.queued}</span></p>
+                          <p className="mt-1">Campaign logs this cycle: <span className="font-semibold">{marketingSignals.campaigns}</span></p>
+                        </div>
+                      ) : null}
+                      {activeFinancialView === "revenue" ? (
+                        <div className="mt-2 text-xs text-[#36537d]">
+                          <p>Users with negative margin: <span className="font-semibold">{negativeMarginRows.length}</span></p>
+                          <p className="mt-1">Total margin this month: <span className="font-semibold">{formatUsd(Number(economics.summary.total_margin_usd || 0))}</span></p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 space-y-1.5">
+                      {economicsRows.slice(0, 20).map((row) => {
+                        const draft = economicsDrafts[row.user_id] ?? {
+                          subscription: String(row.monthly_subscription_usd ?? 0),
+                          budget: row.monthly_api_budget_usd === null ? "" : String(row.monthly_api_budget_usd),
+                          notes: row.notes ?? "",
+                        }
+                        const statusTone =
+                          row.profitability === "negative"
+                            ? "border-rose-300 bg-rose-50 text-rose-800"
+                            : row.budget_status === "over_budget"
+                              ? "border-amber-300 bg-amber-50 text-amber-800"
+                              : "border-emerald-300 bg-emerald-50 text-emerald-800"
+                        return (
+                          <div key={row.user_id} className="rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-[#142c4f]">{row.user_name}</div>
+                                <div className="text-[11px] text-[#4a6388]">{row.user_email || row.user_id}</div>
+                              </div>
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${statusTone}`}>
+                                {row.profitability === "negative" ? "Negative margin" : row.budget_status.replace("_", " ")}
+                              </span>
+                            </div>
+                            <div className="mt-1.5 grid gap-1.5 md:grid-cols-3">
+                              <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                                Subscription (USD/mo)
+                                <input
+                                  value={draft.subscription}
+                                  onChange={(event) =>
+                                    setEconomicsDrafts((current) => ({
+                                      ...current,
+                                      [row.user_id]: { ...draft, subscription: event.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs font-medium text-[#163159]"
+                                />
+                              </label>
+                              <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                                API budget (USD/mo)
+                                <input
+                                  value={draft.budget}
+                                  onChange={(event) =>
+                                    setEconomicsDrafts((current) => ({
+                                      ...current,
+                                      [row.user_id]: { ...draft, budget: event.target.value },
+                                    }))
+                                  }
+                                  placeholder="blank = unbounded"
+                                  className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs font-medium text-[#163159]"
+                                />
+                              </label>
+                              <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                                Notes
+                                <input
+                                  value={draft.notes}
+                                  onChange={(event) =>
+                                    setEconomicsDrafts((current) => ({
+                                      ...current,
+                                      [row.user_id]: { ...draft, notes: event.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs font-medium text-[#163159]"
+                                />
+                              </label>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#4a6388]">
+                              <span>
+                                Cost: <span className="font-semibold">{formatUsd(row.monthly_api_cost_usd)}</span> | Margin:{" "}
+                                <span className="font-semibold">{formatUsd(row.monthly_margin_usd)}</span>
+                              </span>
+                              {overview.permissions.is_superuser ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void saveEconomicsDraft(row.user_id)}
+                                  disabled={savingEconomicsUserId === row.user_id}
+                                  className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {savingEconomicsUserId === row.user_id ? "Saving..." : "Save guardrail"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </>
                 ) : (
                   <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
@@ -1518,43 +1766,55 @@ export function OperationsJobsClient() {
               </div>
               {!collapsedPanels.securityAudit ? (
                 <>
-                  <div className="mt-2 grid gap-2 md:grid-cols-4">
-                    <SnapshotStat label="Write routes audited" value={String(securityAuditSummary.totalWriteRoutes)} />
-                    <SnapshotStat label="Superuser-protected" value={String(securityAuditSummary.superuserProtectedCount)} />
-                    <SnapshotStat label="Admin-write remaining" value={String(securityAuditSummary.adminWriteCount)} />
-                    <SnapshotStat label="Protection coverage" value={`${securityAuditSummary.coveragePct}%`} />
-                  </div>
-                  <div
-                    className={`mt-2 rounded-xl border px-3 py-2 text-xs ${
-                      securityAuditSummary.adminWriteCount > 0
-                        ? "border-amber-300 bg-amber-50 text-amber-900"
-                        : "border-emerald-300 bg-emerald-50 text-emerald-900"
-                    }`}
-                  >
-                    {securityAuditSummary.adminWriteCount > 0
-                      ? `There are ${securityAuditSummary.adminWriteCount} admin-write endpoints still open for operational flexibility. Keep monitoring and promote to superuser as needed.`
-                      : "All tracked write endpoints are superuser protected."}
-                  </div>
-                  <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Remaining admin-write endpoints</div>
-                    {securityAuditSummary.adminWriteRoutes.length === 0 ? (
-                      <div className="mt-1.5 text-xs text-[#36537d]">No admin-write endpoints remain in the tracked list.</div>
-                    ) : (
-                      <div className="mt-1.5 space-y-1.5">
-                        {securityAuditSummary.adminWriteRoutes.map((item) => (
-                          <div key={`${item.method}-${item.route}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2 py-1.5 text-xs text-[#25426c]">
-                            <span className="rounded-full border border-[#b8c9df] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]">
-                              {item.method}
-                            </span>
-                            <span className="font-mono text-[11px]">{item.route}</span>
-                            <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
-                              {item.area}
-                            </span>
-                          </div>
-                        ))}
+                  {loadingSecurityAudit ? (
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
+                      Loading security audit...
+                    </div>
+                  ) : securityAudit ? (
+                    <>
+                      <div className="mt-2 grid gap-2 md:grid-cols-4">
+                        <SnapshotStat label="Write routes audited" value={String(securityAuditSummary.totalWriteRoutes)} />
+                        <SnapshotStat label="Superuser-protected" value={String(securityAuditSummary.superuserProtectedCount)} />
+                        <SnapshotStat label="Admin-write remaining" value={String(securityAuditSummary.adminWriteCount)} />
+                        <SnapshotStat label="Protection coverage" value={`${securityAuditSummary.coveragePct}%`} />
                       </div>
-                    )}
-                  </div>
+                      <div
+                        className={`mt-2 rounded-xl border px-3 py-2 text-xs ${
+                          securityAuditSummary.adminWriteCount > 0
+                            ? "border-amber-300 bg-amber-50 text-amber-900"
+                            : "border-emerald-300 bg-emerald-50 text-emerald-900"
+                        }`}
+                      >
+                        {securityAuditSummary.adminWriteCount > 0
+                          ? `There are ${securityAuditSummary.adminWriteCount} admin-write endpoints still open for operational flexibility. Keep monitoring and promote to superuser as needed.`
+                          : "All tracked write endpoints are superuser protected."}
+                      </div>
+                      <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Remaining admin-write endpoints</div>
+                        {securityAuditSummary.adminWriteRoutes.length === 0 ? (
+                          <div className="mt-1.5 text-xs text-[#36537d]">No admin-write endpoints remain in the tracked list.</div>
+                        ) : (
+                          <div className="mt-1.5 space-y-1.5">
+                            {securityAuditSummary.adminWriteRoutes.map((item) => (
+                              <div key={`${item.method}-${item.route}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2 py-1.5 text-xs text-[#25426c]">
+                                <span className="rounded-full border border-[#b8c9df] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]">
+                                  {item.method}
+                                </span>
+                                <span className="font-mono text-[11px]">{item.route}</span>
+                                <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                                  {item.area}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
+                      Security audit data is unavailable right now.
+                    </div>
+                  )}
                 </>
               ) : null}
             </section>

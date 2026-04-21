@@ -18,26 +18,23 @@ function ResourceTile({
   title,
   description,
   href,
+  thumbnailHref,
   type,
 }: {
   id: string
   title: string
   description: string
   href: string
+  thumbnailHref?: string
   type: "doc" | "pdf" | "image"
 }) {
   const fileHref = safeSitePath(href)
+  const previewHref = thumbnailHref ? safeSitePath(thumbnailHref) : fileHref
 
   return (
     <article className="rounded-xl border border-[#d7e3f4] bg-white p-3 shadow-[0_10px_22px_-18px_rgba(15,30,70,0.35)]">
       <div className="relative overflow-hidden rounded-lg border border-[#d5e2f6] bg-[linear-gradient(145deg,#f8fbff_0%,#eef4ff_100%)]">
-        {type === "image" ? (
-          <Image src={fileHref} alt={title} width={1200} height={760} className="h-28 w-full object-cover" />
-        ) : (
-          <div className="flex h-28 items-center justify-center text-xs font-semibold uppercase tracking-[0.14em] text-[#55709a]">
-            {formatResourceType(type)} preview
-          </div>
-        )}
+        <Image src={previewHref} alt={`${title} preview`} width={1200} height={760} className="h-28 w-full object-cover" />
       </div>
       <div className="mt-2.5 flex items-start justify-between gap-2">
         <div>
