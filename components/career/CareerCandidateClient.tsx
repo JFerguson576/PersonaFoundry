@@ -28,6 +28,7 @@ import { CareerSourceDocumentEditor } from "@/components/career/CareerSourceDocu
 import { CareerStrategicDocumentGenerator } from "@/components/career/CareerStrategicDocumentGenerator"
 import { CareerTargetCompanyWorkflow } from "@/components/career/CareerTargetCompanyWorkflow"
 import { AdaptiveProductTour } from "@/components/navigation/AdaptiveProductTour"
+import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import {
   CAREER_WORKSPACE_NAVIGATE_EVENT,
@@ -172,6 +173,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [savingOpportunityKey, setSavingOpportunityKey] = useState<string | null>(null)
   const [quickSavedApplicationIds, setQuickSavedApplicationIds] = useState<string[]>([])
   const [openGuideHintId, setOpenGuideHintId] = useState<string | null>(null)
+  const [isWorkflowGuideExpanded, setIsWorkflowGuideExpanded] = useState(false)
   const [isGuidedMode, setIsGuidedMode] = useState(() => {
     if (typeof window === "undefined") return true
     const stored = window.localStorage.getItem(`career-guided-mode-${candidateId}`)
@@ -186,6 +188,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [isSavedWorkExpanded, setIsSavedWorkExpanded] = useState(false)
   const [isFindSavedWorkExpanded, setIsFindSavedWorkExpanded] = useState(false)
   const [showSourceSecondaryPanels, setShowSourceSecondaryPanels] = useState(false)
+  const [showDocumentSecondaryPanels, setShowDocumentSecondaryPanels] = useState(false)
+  const [showJobsSecondaryPanels, setShowJobsSecondaryPanels] = useState(false)
   const [isMyFilesDrawerOpen, setIsMyFilesDrawerOpen] = useState(false)
   const [isReportIssueOpen, setIsReportIssueOpen] = useState(false)
   const [issueType, setIssueType] = useState("Workflow confusion")
@@ -1260,6 +1264,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   })
   const strengthOrderedNextSteps = prioritizedPreparationSteps.filter((step) => !step.done).slice(0, 3)
   const nextUndoneStep = strengthOrderedNextSteps[0] ?? null
+  const workflowPrimaryAction =
+    nextUndoneStep ??
+    simpleWorkflowSteps.find((step) => !step.ready) ??
+    simpleWorkflowSteps[0] ??
+    null
 
   const completionCount = preparationSteps.filter((step) => step.done).length
   const workflowModes = [
@@ -2308,6 +2317,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 Main modules
               </Link>
+              <ExperienceAgentWidget enabled inline />
             </div>
           </div>
         </div>
@@ -2970,113 +2980,150 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Quick start</div>
-                  <div className="text-[11px] text-sky-800">Hover, focus, or tap ? for details</div>
+              <div className="rounded-2xl border border-[#0a66c2]/30 bg-[#eef5ff] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a66c2]">Do this now</div>
+                    <div className="mt-0.5 text-sm font-semibold text-[#0f172a]">
+                      {workflowPrimaryAction ? workflowPrimaryAction.title : "Everything essential is complete"}
+                    </div>
+                    <p className="mt-1 text-xs text-neutral-700">
+                      {workflowPrimaryAction ? workflowPrimaryAction.description : "Move to document refinement or live role execution."}
+                    </p>
+                  </div>
+                  {workflowPrimaryAction ? (
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll(workflowPrimaryAction.sectionKey, workflowPrimaryAction.href)}
+                      className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                    >
+                      {workflowPrimaryAction.actionLabel || "Open step"}
+                    </button>
+                  ) : null}
                 </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {simpleWorkflowSteps.map((step) => (
-                    <div key={`simple-${step.id}`} data-guide-hint-root="true" className="group relative rounded-xl border border-sky-200 bg-white px-3 py-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          title={step.description}
-                          onClick={() => openAndScroll(step.sectionKey, step.href)}
-                          className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                        >
-                          <div className="truncate text-sm font-semibold text-neutral-900">{step.title}</div>
-                        </button>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${step.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
-                            {step.ready ? "Ready" : "Next"}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsWorkflowGuideExpanded((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {isWorkflowGuideExpanded ? "Hide detailed guide" : "Show detailed guide"}
+                </button>
+              </div>
+
+              {isWorkflowGuideExpanded ? (
+                <>
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Quick start</div>
+                      <div className="text-[11px] text-sky-800">Hover, focus, or tap ? for details</div>
+                    </div>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {simpleWorkflowSteps.map((step) => (
+                        <div key={`simple-${step.id}`} data-guide-hint-root="true" className="group relative rounded-xl border border-sky-200 bg-white px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              title={step.description}
+                              onClick={() => openAndScroll(step.sectionKey, step.href)}
+                              className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                            >
+                              <div className="truncate text-sm font-semibold text-neutral-900">{step.title}</div>
+                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${step.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
+                                {step.ready ? "Ready" : "Next"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setOpenGuideHintId((current) => (current === `simple-${step.id}` ? null : `simple-${step.id}`))}
+                                className="rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-100"
+                                aria-label={`Show help for ${step.title}`}
+                              >
+                                ?
+                              </button>
+                            </div>
+                          </div>
+                          <div
+                            className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-sky-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
+                              openGuideHintId === `simple-${step.id}` ? "block" : "hidden group-hover:block group-focus-within:block"
+                            }`}
+                          >
+                            {step.description}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                        Personalized next actions
+                      </div>
+                      <div className="text-[11px] text-indigo-900">Style: {strengthWorkflowLabel}</div>
+                    </div>
+                    {strengthOrderedNextSteps.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {strengthOrderedNextSteps.map((step, index) => (
+                          <button
+                            key={`strength-priority-${step.id}`}
+                            type="button"
+                            onClick={() => openAndScroll(step.sectionKey, step.href)}
+                            className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-900 hover:bg-indigo-100"
+                          >
+                            {index + 1}. {step.title}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-indigo-900">Great momentum. Current priority steps are complete.</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Preparation checklist</div>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      {preparationSteps.map((step, index) => (
+                        <div key={step.title} data-guide-hint-root="true" className="group relative flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${step.done ? "bg-emerald-600 text-white" : "bg-neutral-200 text-neutral-700"}`}>
+                            {step.done ? "OK" : index + 1}
                           </span>
                           <button
                             type="button"
-                            onClick={() => setOpenGuideHintId((current) => (current === `simple-${step.id}` ? null : `simple-${step.id}`))}
-                            className="rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-100"
+                            title={step.description}
+                            onClick={() => openAndScroll(step.sectionKey, step.href)}
+                            className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                          >
+                            {step.title}
+                          </button>
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{step.actionLabel}</span>
+                          <button
+                            type="button"
+                            onClick={() => setOpenGuideHintId((current) => (current === `prep-${index}` ? null : `prep-${index}`))}
+                            className="rounded-full border border-neutral-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
                             aria-label={`Show help for ${step.title}`}
                           >
                             ?
                           </button>
+                          <span
+                            className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
+                              openGuideHintId === `prep-${index}` ? "block" : "hidden group-hover:block group-focus-within:block"
+                            }`}
+                          >
+                            {step.description}
+                          </span>
                         </div>
-                      </div>
-                      <div
-                        className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-sky-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
-                          openGuideHintId === `simple-${step.id}` ? "block" : "hidden group-hover:block group-focus-within:block"
-                        }`}
-                      >
-                        {step.description}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
-                    Personalized next actions
+                    <p className="mt-2 text-xs text-neutral-600">
+                      Gallup Strengths is the core input that most improves positioning, letters, and interview answers.
+                    </p>
                   </div>
-                  <div className="text-[11px] text-indigo-900">Style: {strengthWorkflowLabel}</div>
-                </div>
-                {strengthOrderedNextSteps.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {strengthOrderedNextSteps.map((step, index) => (
-                      <button
-                        key={`strength-priority-${step.id}`}
-                        type="button"
-                        onClick={() => openAndScroll(step.sectionKey, step.href)}
-                        className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-900 hover:bg-indigo-100"
-                      >
-                        {index + 1}. {step.title}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-indigo-900">Great momentum. Current priority steps are complete.</p>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-neutral-200 bg-white p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Preparation checklist</div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  {preparationSteps.map((step, index) => (
-                    <div key={step.title} data-guide-hint-root="true" className="group relative flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${step.done ? "bg-emerald-600 text-white" : "bg-neutral-200 text-neutral-700"}`}>
-                        {step.done ? "OK" : index + 1}
-                      </span>
-                      <button
-                        type="button"
-                        title={step.description}
-                        onClick={() => openAndScroll(step.sectionKey, step.href)}
-                        className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                      >
-                        {step.title}
-                      </button>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{step.actionLabel}</span>
-                      <button
-                        type="button"
-                        onClick={() => setOpenGuideHintId((current) => (current === `prep-${index}` ? null : `prep-${index}`))}
-                        className="rounded-full border border-neutral-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
-                        aria-label={`Show help for ${step.title}`}
-                      >
-                        ?
-                      </button>
-                      <span
-                        className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
-                          openGuideHintId === `prep-${index}` ? "block" : "hidden group-hover:block group-focus-within:block"
-                        }`}
-                      >
-                        {step.description}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-neutral-600">
-                  Gallup Strengths is the core input that most improves positioning, letters, and interview answers.
-                </p>
-              </div>
+                </>
+              ) : null}
 
             </div>
           ) : null}
@@ -4510,6 +4557,21 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <CareerStrategicDocumentGenerator candidateId={candidate.id} assetType="job_hit_list" />
               </div>
 
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#b9d8c8] bg-[#ecf9f1] px-3 py-2 text-[11px] text-[#166534]">
+                <span>
+                  Secondary document panels are hidden to keep this workspace focused. Open when you want to review history or edit older versions.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDocumentSecondaryPanels((current) => !current)}
+                  className="rounded-full border border-[#2f855a] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#166534] hover:bg-[#f3fff8]"
+                >
+                  {showDocumentSecondaryPanels ? "Hide secondary panels" : "Show secondary panels"}
+                </button>
+              </div>
+
+              {showDocumentSecondaryPanels ? (
+              <>
               <div className="mt-4">
                 <section id="current-application-documents" className="rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
               <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
@@ -4655,6 +4717,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   ))}
                 </HistoryArchiveSection>
               </div>
+              </>
+              ) : null}
                 </div>
               ) : null}
             </section>
@@ -5297,6 +5361,21 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 />
               </div>
 
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#cfcfe9] bg-[#f7f7ff] px-3 py-2 text-[11px] text-[#3730a3]">
+                <span>
+                  Advanced job analysis panels are hidden by default so you can focus on live search first.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowJobsSecondaryPanels((current) => !current)}
+                  className="rounded-full border border-[#4f46e5] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3730a3] hover:bg-[#f3f2ff]"
+                >
+                  {showJobsSecondaryPanels ? "Hide advanced panels" : "Show advanced panels"}
+                </button>
+              </div>
+
+              {showJobsSecondaryPanels ? (
+              <>
               <details className="mt-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5" open={!isFirstTimeMinimalMode}>
                 <summary className="cursor-pointer list-none">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -5986,6 +6065,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   ))}
                 </HistoryArchiveSection>
               </div>
+              </>
+              ) : null}
                 </div>
               ) : null}
             </section>
