@@ -1820,7 +1820,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
   } as const
   const stepContentCompactClass =
-    "mt-1.5 space-y-2.5 [&_.rounded-3xl]:rounded-2xl [&_.rounded-3xl]:p-3 sm:[&_.rounded-3xl]:p-4 [&_.rounded-2xl]:p-2.5 sm:[&_.rounded-2xl]:p-3 [&_h2]:text-base [&_h3]:text-[0.95rem] [&_p]:leading-5"
+    "mt-1 space-y-2 [&_.rounded-3xl]:rounded-2xl [&_.rounded-3xl]:p-3 [&_.rounded-2xl]:p-2.5 [&_h2]:text-base [&_h3]:text-[0.95rem] [&_p]:leading-5"
   const urgentSectionKey =
     priorityItems[0]?.sectionKey ||
     todayBoardItems[0]?.sectionKey ||
@@ -2265,7 +2265,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`w-full px-4 py-4 md:px-6 lg:pl-[248px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`candidate-compact-workspace w-full px-4 py-4 md:px-6 lg:pl-[248px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
@@ -2318,7 +2318,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 Main modules
               </Link>
-              <ExperienceAgentWidget enabled inline />
+              <ExperienceAgentWidget enabled inline={false} />
             </div>
           </div>
         </div>
@@ -6124,34 +6124,43 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </button>
             ) : null}
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {!hideWorkspaceGuideToggle ? (
-              <button
-                type="button"
-                onClick={() => setGuidedModeEnabled(!isGuidedMode)}
-                className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                  isGuidedMode
-                    ? "border-[#0a66c2] bg-[#0a66c2] text-white"
-                    : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                }`}
-              >
-                {isGuidedMode ? "Tips on" : "Tips off"}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={resetWorkspaceView}
-              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCompletedLeftSteps((current) => !current)}
-              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-            >
-              {showCompletedLeftSteps ? "Hide done" : "Show done"}
-            </button>
+          <div className="mt-2">
+            <details className="group rounded-xl border border-neutral-200 bg-white px-2.5 py-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                View options
+                <span className="text-[10px] text-neutral-500 group-open:hidden">Expand</span>
+                <span className="hidden text-[10px] text-neutral-500 group-open:inline">Collapse</span>
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {!hideWorkspaceGuideToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                      isGuidedMode
+                        ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                    }`}
+                  >
+                    {isGuidedMode ? "Tips on" : "Tips off"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={resetWorkspaceView}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCompletedLeftSteps((current) => !current)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {showCompletedLeftSteps ? "Hide done" : "Show done"}
+                </button>
+              </div>
+            </details>
           </div>
           <div className="mt-3 space-y-1.5">
             {visibleLeftWorkflowLinks.map((link) => (
