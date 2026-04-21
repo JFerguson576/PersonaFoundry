@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { AdminTourCompletionPanel } from "@/components/admin/AdminTourCompletionPanel"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
-import type { SecurityWriteRouteAuditItem } from "@/lib/admin-security-audit"
 import { getAuthHeaders } from "@/lib/career-client"
 import { scrollToElementWithOffset } from "@/lib/scroll"
 import { supabase } from "@/lib/supabase"
@@ -131,6 +130,13 @@ type TeamSyncOutreachCampaignRow = {
   sent_count: number
   status: string
   created_at: string
+}
+
+type SecurityWriteRouteAuditItem = {
+  route: string
+  method: "POST" | "PATCH" | "DELETE"
+  access: "superuser" | "admin"
+  area: "marketing" | "operations" | "users" | "workspace"
 }
 
 type TesterFeedbackOutreachCampaignRow = {
