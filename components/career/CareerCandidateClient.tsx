@@ -169,6 +169,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [showAdvancedTools, setShowAdvancedTools] = useState(false)
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false)
   const [showPriorityDetails, setShowPriorityDetails] = useState(false)
+  const [isTodayAtGlanceExpanded, setIsTodayAtGlanceExpanded] = useState(false)
   const [showRecentFilesDetails, setShowRecentFilesDetails] = useState(false)
   const [savingOpportunityKey, setSavingOpportunityKey] = useState<string | null>(null)
   const [quickSavedApplicationIds, setQuickSavedApplicationIds] = useState<string[]>([])
@@ -226,7 +227,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     jobs: false,
   })
   const [expandedLeftSections, setExpandedLeftSections] = useState<Record<string, boolean>>({
-    workflow: true,
+    workflow: false,
     source: false,
     positioning: false,
     documents: false,
@@ -340,6 +341,31 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }
   }, [openSectionsFor])
 
+  const revealLeftSection = useCallback((sectionKey: string, shouldExpand = true) => {
+    setExpandedLeftSections((current) => {
+      const next = { ...current }
+      const activeKey = sectionKey as keyof typeof next
+      ;(Object.keys(next) as Array<keyof typeof next>).forEach((key) => {
+        next[key] = key === activeKey ? shouldExpand : false
+      })
+      return next
+    })
+  }, [])
+
+  const activateLeftNavigation = useCallback((sectionKey: string, href: string) => {
+    const isSameTarget = activeStep === sectionKey && activeAnchor === href
+    const sectionKeyTyped = sectionKey as keyof typeof expandedLeftSections
+    const isExpanded = Boolean(expandedLeftSections[sectionKeyTyped])
+
+    if (isSameTarget && isExpanded) {
+      revealLeftSection(sectionKey, false)
+      return
+    }
+
+    revealLeftSection(sectionKey, true)
+    openAndScroll(sectionKey, href)
+  }, [activeAnchor, activeStep, expandedLeftSections, openAndScroll, revealLeftSection])
+
   useEffect(() => {
     void Promise.resolve().then(loadWorkspace)
 
@@ -451,6 +477,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   useEffect(() => {
     setOpenSections(openSectionsFor(activeStep))
   }, [activeStep, openSectionsFor])
+
+  useEffect(() => {
+    revealLeftSection(activeStep)
+  }, [activeStep, revealLeftSection])
 
   useEffect(() => {
     if (!workspace || didAutoRouteOnboarding) return
@@ -1297,7 +1327,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     quickLinks.find((link) => link.sectionKey === activeStep) ??
     menuQuickLinks[0] ??
     quickLinks[0]
-  const activeWorkflowStepLabel = (activeWorkflowLink?.label || "1. Start").replace(/^\d+\.\s*/, "")
+  const activeWorkflowStepLabel = cleanWorkflowLabel(activeWorkflowLink?.label || "1. Start")
   const sectionSubmenuLinks: Record<string, Array<{ label: string; sectionKey: string; href: string }>> = {
     workflow: [
       { label: "Step guide", sectionKey: "workflow", href: "#workflow-guide" },
@@ -1335,7 +1365,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     ],
   }
   const activeSectionSubmenuLinks = sectionSubmenuLinks[activeStep] ?? []
-  const activeSectionLabel = quickLinks.find((link) => link.sectionKey === activeStep)?.label?.replace(/^\d+\.\s*/, "") || "Start here"
+  const activeSectionRawLabel = quickLinks.find((link) => link.sectionKey === activeStep)?.label || "Start here"
+  const activeSectionLabel = cleanWorkflowLabel(activeSectionRawLabel)
   const activeSubsectionLabel =
     activeSectionSubmenuLinks.find((item) => item.href === activeAnchor)?.label ||
     activeSectionSubmenuLinks[0]?.label ||
@@ -1345,7 +1376,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const canGoNextStep = activeStepIndex < quickLinks.length - 1
   const showWorkflowSecondary = (!isFocusMode || showAdvancedTools) && !isGuidedMode
   const hideWorkspaceMenuInFocus = isFocusMode && activeStep !== "workflow"
-  const showFirstFiveCompact = (isMenuRolledUp && isFocusMode && firstFiveCompleteCount >= 3) || isFirstTimeMinimalMode
+  const showFirstFiveCompact = !showAdvancedTools
+  const hideFirstFivePanel = firstFiveCompleteCount >= 5 && !showAdvancedTools && !showOnboardingGuide
   const showTargetRoleDetails = !isMenuRolledUp || !isFocusMode || showAdvancedTools
   const sourceRemainingCount = sourceChecklist.filter((item) => !item.ready).length
   const sourceWizardFocusMode = openSections.source && sourceRemainingCount > 0 && !showAdvancedTools
@@ -1849,6 +1881,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const visibleLeftWorkflowLinks = showCompletedLeftSteps
     ? workflowLinkStatuses
     : workflowLinkStatuses.filter((link) => !link.complete || link.isActive)
+  const hasLiveExecutionActivity = activeBackgroundJobs.length + activeLiveJobRuns.length > 0
+  const isWorkflowComplete = preparationSteps.length > 0 && completionCount >= preparationSteps.length
+  const shouldShowTodayAtGlance =
+    !isWorkflowComplete || priorityItems.length > 0 || hasLiveExecutionActivity || isTodayAtGlanceExpanded
   const contextRailItems = [
     {
       label: "Needs attention",
@@ -1861,7 +1897,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     {
       label: "Running now",
       value: String(activeBackgroundJobs.length + activeLiveJobRuns.length),
-      tone: activeBackgroundJobs.length + activeLiveJobRuns.length > 0 ? "text-sky-700" : "text-neutral-700",
+      tone: hasLiveExecutionActivity ? "text-sky-700" : "text-neutral-700",
       actionLabel: "Open background activity",
       sectionKey: "workflow",
       href: "#workflow-guide",
@@ -2265,7 +2301,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`candidate-compact-workspace w-full px-4 py-4 md:px-6 lg:pl-[248px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`candidate-compact-workspace w-full px-4 py-4 md:px-6 lg:pl-[224px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
@@ -2297,18 +2333,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                 ) : null}
               </div>
-              <p className="mt-0.5 hidden line-clamp-1 max-w-3xl text-[11px] leading-4 text-neutral-600 md:block">{personalizedWelcomeMessage}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-neutral-600">
-                <span className="font-semibold uppercase tracking-[0.08em] text-neutral-500">Workspace details</span>
-                <span>
-                  <span className="font-semibold text-neutral-700">Location:</span>{" "}
-                  {candidate.city || "Not set"}
-                </span>
-                <span className="text-neutral-400">|</span>
-                <span>
-                  <span className="font-semibold text-neutral-700">Target role:</span>{" "}
-                  {candidate.primary_goal ? candidate.primary_goal.replaceAll("_", " ") : "Not set"}
-                </span>
+              <p className="mt-0.5 hidden line-clamp-1 max-w-3xl text-[11px] leading-4 text-neutral-600 md:block">
+                {hasTargetRole
+                  ? "Use the left workflow to refine assets, run live search, and keep momentum."
+                  : personalizedWelcomeMessage}
+              </p>
+              <div className="mt-1 text-[11px] text-neutral-600">
+                <span className="font-semibold text-neutral-700">Location:</span> {candidate.city || "Not set"}
+                <span className="mx-1.5 text-neutral-400">•</span>
+                <span className="font-semibold text-neutral-700">Target role:</span>{" "}
+                {candidate.primary_goal ? candidate.primary_goal.replaceAll("_", " ") : "Not set"}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -2323,11 +2357,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
         </div>
 
-        {!isWizardFocusActive ? (
+        {!isWizardFocusActive && !hideFirstFivePanel ? (
         <section className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">First 5 minutes</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Setup progress</div>
               <p className="text-xs text-neutral-600">
                 {firstFiveCompleteCount}/5 complete
                 {firstFiveNextItem ? ` | Next: ${firstFiveNextItem.label}` : " | Core setup complete"}
@@ -2355,14 +2389,12 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   <button
                     type="button"
                   onClick={() => {
+                    setShowAdvancedTools(true)
                     setIsMenuRolledUp(false)
-                    if (isFirstTimeMinimalMode) {
-                      openAndScroll("source", "#source-material")
-                    }
                   }}
                   className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                 >
-                  {isFirstTimeMinimalMode ? "Open guided setup" : "Expand setup"}
+                  View checklist
                 </button>
               ) : null}
             </div>
@@ -2945,7 +2977,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             className="flex w-full items-start justify-between gap-3 text-left"
           >
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Career Intelligence guide</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Guide</div>
               <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#0f172a]">What to prepare next</h2>
               <div className="mt-1 text-[11px] text-neutral-500">You are here: {sectionBreadcrumbByKey.workflow}</div>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -2961,47 +2993,40 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </button>
 
           {openSections.workflow ? (
-            <div className="mt-3 space-y-3">
-              <div className="grid gap-2 md:grid-cols-3">
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Progress</div>
-                  <div className="mt-0.5 text-lg font-semibold">{completionCount}/{preparationSteps.length}</div>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Market readiness</div>
-                  <div className="mt-0.5 text-lg font-semibold">{readinessScores.overall}%</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openAndScroll("documents", "#saved-library")}
-                  className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left transition hover:bg-emerald-100"
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">File location</div>
-                  <div className="mt-0.5 text-sm font-semibold text-emerald-950">Open saved library</div>
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-[#0a66c2]/30 bg-[#eef5ff] p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a66c2]">Do this now</div>
-                    <div className="mt-0.5 text-sm font-semibold text-[#0f172a]">
-                      {workflowPrimaryAction ? workflowPrimaryAction.title : "Everything essential is complete"}
-                    </div>
-                    <p className="mt-1 text-xs text-neutral-700">
-                      {workflowPrimaryAction ? workflowPrimaryAction.description : "Move to document refinement or live role execution."}
-                    </p>
+            <div className="mt-3 space-y-2.5">
+              <div className="rounded-2xl border border-[#0a66c2]/20 bg-white px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                      Progress {completionCount}/{preparationSteps.length}
+                    </span>
+                    <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                      Readiness {readinessScores.overall}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#saved-library")}
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Saved library
+                    </button>
                   </div>
                   {workflowPrimaryAction ? (
                     <button
                       type="button"
                       onClick={() => openAndScroll(workflowPrimaryAction.sectionKey, workflowPrimaryAction.href)}
-                      className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                      className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
                     >
                       {workflowPrimaryAction.actionLabel || "Open step"}
                     </button>
                   ) : null}
                 </div>
+                <p className="mt-1.5 text-xs text-neutral-700">
+                  <span className="font-semibold text-[#0f172a]">Do this now:</span>{" "}
+                  {isWorkflowComplete && !hasLiveExecutionActivity
+                    ? "Core setup is complete. Stay in momentum with saved files, follow-ups, and live role execution."
+                    : workflowPrimaryAction?.description || "Move to document refinement or live role execution."}
+                </p>
               </div>
 
               <div className="flex justify-end">
@@ -3430,78 +3455,93 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
           <div className="space-y-7">
             <div className="grid gap-7 xl:grid-cols-[1.05fr_0.95fr]">
-            <section className={`rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5 ${activeStep === "workflow" ? "" : "hidden"}`}>
+            <section className={`rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm md:p-4 ${activeStep === "workflow" && (!isGuidedMode || showAdvancedTools) && shouldShowTodayAtGlance ? "" : "hidden"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-base font-semibold">Today at a glance</h2>
-                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                  {priorityItems.length} priority items
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Needs attention</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">{priorityItems.length}</div>
-                </div>
-                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Running now</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">{activeBackgroundJobs.length + activeLiveJobRuns.length}</div>
-                </div>
-                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 sm:col-span-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Next best action</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">
-                    {nextUndoneStep?.actionLabel || "Continue refining your saved documents and role strategy."}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                    {priorityItems.length} priority items
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTodayAtGlanceExpanded((current) => !current)}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {isTodayAtGlanceExpanded ? "Collapse" : "Expand"}
+                  </button>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                <div className="min-w-0 flex-1 text-sm text-neutral-800">
+                  <span className="font-semibold">Next best action:</span>{" "}
+                  {nextUndoneStep?.actionLabel || "Continue refining your saved documents and role strategy."}
+                </div>
                 {priorityItems[0] ? (
                   <button
                     type="button"
                     onClick={() => openAndScroll(priorityItems[0].sectionKey, priorityItems[0].href)}
-                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
                   >
                     Open top priority
                   </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => openAndScroll("workflow", "#workflow-guide")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  Open guide
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAndScroll("documents", "#saved-library")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  Open saved files
-                </button>
-                {priorityItems.length > 0 ? (
+                ) : (
                   <button
                     type="button"
-                    onClick={() => setShowPriorityDetails((current) => !current)}
+                    onClick={() => openAndScroll("workflow", "#workflow-guide")}
                     className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                   >
-                    {showPriorityDetails ? "Hide details" : "Show details"}
+                    Open guide
                   </button>
-                ) : null}
+                )}
               </div>
-              {priorityItems.length === 0 ? (
-                <p className="mt-3 text-xs text-neutral-600">Nothing urgent right now. Keep moving through the steps.</p>
-              ) : showPriorityDetails ? (
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {priorityItems.map((item) => (
-                    <PriorityCard
-                      key={item.id}
-                      title={item.title}
-                      description={item.description}
-                      tone={item.tone}
-                      actionLabel={item.actionLabel}
-                      onClick={() => openAndScroll(item.sectionKey, item.href)}
-                    />
-                  ))}
-                </div>
+              {isTodayAtGlanceExpanded ? (
+                <>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Needs attention</div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900">{priorityItems.length}</div>
+                    </div>
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Running now</div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900">{hasLiveExecutionActivity ? activeBackgroundJobs.length + activeLiveJobRuns.length : 0}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#saved-library")}
+                      className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left hover:bg-neutral-50 sm:col-span-2"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Saved outputs</div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900">Open saved files</div>
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {priorityItems.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowPriorityDetails((current) => !current)}
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                      >
+                        {showPriorityDetails ? "Hide details" : "Show details"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {priorityItems.length === 0 ? (
+                    <p className="mt-3 text-xs text-neutral-600">Nothing urgent right now. Keep moving through the steps.</p>
+                  ) : showPriorityDetails ? (
+                    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {priorityItems.map((item) => (
+                        <PriorityCard
+                          key={item.id}
+                          title={item.title}
+                          description={item.description}
+                          tone={item.tone}
+                          actionLabel={item.actionLabel}
+                          onClick={() => openAndScroll(item.sectionKey, item.href)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </section>
 
@@ -6096,140 +6136,115 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       </div>
       <aside
         id="career-left-nav"
-        className={`fixed left-0 top-0 z-40 hidden h-screen w-[248px] border-r border-[#d8e4f2] bg-white/95 px-3 pb-4 pt-24 shadow-sm backdrop-blur lg:block ${
+        className={`fixed left-0 top-0 z-40 hidden h-screen w-[224px] border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-24 shadow-sm backdrop-blur lg:block ${
           isWizardFocusActive ? "ring-2 ring-[#0a66c2]/20" : ""
         }`}
       >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Workflow navigator</div>
-          <div className="mt-1 text-[11px] text-neutral-600">
-            {completionCount}/{preparationSteps.length} steps done
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Workflow</div>
+        <div className="mt-0.5 text-[10px] text-neutral-600">
+          {completionCount}/{preparationSteps.length} steps done
+        </div>
+        {!isWizardFocusActive ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
             <button
               type="button"
-              onClick={openWizardFlow}
-              className={`rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182] ${
-                showOnboardingGuide ? "wizard-spotlight-soft" : ""
-              }`}
+              onClick={() => openAndScroll(activePrimaryAction.sectionKey, activePrimaryAction.href)}
+              className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
             >
-              Setup helper
+              Next action
             </button>
-            {!isWizardFocusActive ? (
+          </div>
+        ) : null}
+        <div className="mt-1.5">
+          <details className="group rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+              Options
+              <span className="text-[9px] text-neutral-500 group-open:hidden">Expand</span>
+              <span className="hidden text-[9px] text-neutral-500 group-open:inline">Collapse</span>
+            </summary>
+            <div className="mt-1.5 flex flex-wrap gap-1">
               <button
                 type="button"
-                onClick={() => openAndScroll(activePrimaryAction.sectionKey, activePrimaryAction.href)}
-                className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                onClick={openWizardFlow}
+                className={`rounded-full border border-[#0a66c2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                  showOnboardingGuide
+                    ? "wizard-spotlight-soft bg-[#0a66c2] text-white hover:bg-[#004182]"
+                    : "bg-[#e8f3ff] text-[#0a66c2] hover:bg-[#dcecff]"
+                }`}
               >
-                Next action
+                Guided setup
               </button>
-            ) : null}
-          </div>
-          <div className="mt-2">
-            <details className="group rounded-xl border border-neutral-200 bg-white px-2.5 py-2">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                View options
-                <span className="text-[10px] text-neutral-500 group-open:hidden">Expand</span>
-                <span className="hidden text-[10px] text-neutral-500 group-open:inline">Collapse</span>
-              </summary>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {!hideWorkspaceGuideToggle ? (
-                  <button
-                    type="button"
-                    onClick={() => setGuidedModeEnabled(!isGuidedMode)}
-                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                      isGuidedMode
-                        ? "border-[#0a66c2] bg-[#0a66c2] text-white"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                    }`}
-                  >
-                    {isGuidedMode ? "Tips on" : "Tips off"}
-                  </button>
-                ) : null}
+              {!hideWorkspaceGuideToggle ? (
                 <button
                   type="button"
-                  onClick={resetWorkspaceView}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                  className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                    isGuidedMode
+                      ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                  }`}
                 >
-                  Reset
+                  {isGuidedMode ? "Hints on" : "Hints off"}
                 </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={resetWorkspaceView}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCompletedLeftSteps((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showCompletedLeftSteps ? "Hide done" : "Show done"}
+              </button>
+            </div>
+          </details>
+        </div>
+        <div className="mt-2.5 space-y-1">
+          {visibleLeftWorkflowLinks.map((link) => (
+            <div key={`left-step-${link.href}`} className="rounded-lg border border-neutral-200 bg-white">
                 <button
                   type="button"
-                  onClick={() => setShowCompletedLeftSteps((current) => !current)}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {showCompletedLeftSteps ? "Hide done" : "Show done"}
-                </button>
-              </div>
-            </details>
-          </div>
-          <div className="mt-3 space-y-1.5">
-            {visibleLeftWorkflowLinks.map((link) => (
-              <div key={`left-step-${link.href}`} className="rounded-xl border border-neutral-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExpandedLeftSections((current) => {
-                      const nextOpen = !Boolean(current[link.sectionKey])
-                      if (nextOpen) {
-                        openAndScroll(link.sectionKey, link.href)
-                      }
-                      return {
-                        ...current,
-                        [link.sectionKey]: nextOpen,
-                      }
-                    })
-                  }}
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold transition ${
+                  onClick={() => activateLeftNavigation(link.sectionKey, link.href)}
+                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-semibold transition ${
                     link.isActive
                       ? "border-sky-300 bg-sky-100 text-sky-900"
-                      : link.complete
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                  }`}
-                >
-                  <span className="truncate">
-                    {link.complete ? "✓ " : ""}
-                    {link.sectionKey === "workflow"
-                      ? "[Start] "
-                      : link.sectionKey === "source"
-                        ? "[Files] "
-                        : link.sectionKey === "positioning"
-                          ? "[Profile] "
-                          : link.sectionKey === "documents"
-                            ? "[Docs] "
-                            : link.sectionKey === "company"
-                              ? "[Company] "
-                              : link.sectionKey === "interview"
-                                ? "[Interview] "
-                                : "[Jobs] "}
-                    {link.label}
-                  </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">
-                    {expandedLeftSections[link.sectionKey] ? "▾" : "▸"}
-                  </span>
-                </button>
-                <div
-                  className={`overflow-hidden border-t border-neutral-200 transition-[max-height,opacity,padding] duration-200 ease-out ${
-                    expandedLeftSections[link.sectionKey] ? "max-h-56 px-2.5 py-2 opacity-100" : "max-h-0 px-2.5 py-0 opacity-0"
-                  }`}
-                >
-                  <div className="space-y-1">
-                    {(sectionSubmenuLinks[link.sectionKey] ?? []).slice(0, 5).map((item) => (
+                    : link.complete
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                }`}
+              >
+                <span className="truncate">{cleanWorkflowLabel(link.label)}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">
+                  {expandedLeftSections[link.sectionKey] ? "▾" : "▸"}
+                </span>
+              </button>
+              <div
+                className={`overflow-hidden border-t border-neutral-200 transition-[max-height,opacity,padding] duration-200 ease-out ${
+                  expandedLeftSections[link.sectionKey] ? "max-h-44 px-2 py-1.5 opacity-100" : "max-h-0 px-2 py-0 opacity-0"
+                }`}
+              >
+                <div className="space-y-1">
+                  {(sectionSubmenuLinks[link.sectionKey] ?? []).slice(0, 4).map((item) => (
                       <button
                         key={`left-submenu-inline-${item.sectionKey}-${item.href}-${item.label}`}
                         type="button"
-                        onClick={() => openAndScroll(item.sectionKey, item.href)}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-left text-[10px] font-semibold text-neutral-700 hover:bg-white"
+                        onClick={() => activateLeftNavigation(item.sectionKey, item.href)}
+                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1 text-left text-[9px] font-semibold text-neutral-700 hover:bg-white"
                       >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
+                        {cleanWorkflowLabel(item.label)}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </aside>
+            </div>
+          ))}
+        </div>
+      </aside>
       {isMyFilesDrawerOpen && !isWizardFocusActive ? (
         <aside className="fixed right-4 top-24 z-40 hidden w-[340px] rounded-2xl border border-neutral-200 bg-white/95 p-4 shadow-xl backdrop-blur lg:block">
           <div className="flex items-center justify-between gap-3">
@@ -6701,6 +6716,13 @@ function formatAssetType(assetType: string | null | undefined) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
+}
+
+function cleanWorkflowLabel(label: string) {
+  return label
+    .replace(/^\[[^\]]+\]\s*/, "")
+    .replace(/^\d+\.\s*/, "")
+    .trim()
 }
 
 function formatRunStatus(status: string | null | undefined) {

@@ -63,7 +63,35 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - invite-to-signup attribution
   - conversion leaderboard for reward experiments
 
-5. P1 - TeamSync coach outreach automation
+5. P0 - Privacy-safe feedback and tester forms
+- Owner: Platform + Security
+- Target: 1 week
+- Why first: Internal/admin addresses should never leak in public-facing UI.
+- Codex action focus:
+  - hide admin/support email addresses from feedback, tester, and platform forms
+  - use role-based sender aliases and masked support identities in UI
+  - enforce server-side validation so only approved sender identities are used
+
+6. P0 - New user sign-in flow redesign (homepage + first-run path)
+- Owner: Product + UX
+- Target: 2 weeks
+- Why first: Faster account activation improves conversion and reduces support overhead.
+- Codex action focus:
+  - simplify front-page sign-in entry (one primary CTA + one fallback)
+  - remove duplicate auth prompts and unclear branching
+  - route first-time users directly into a guided module selection + onboarding
+  - instrument funnel steps: landing -> auth start -> auth complete -> first module opened
+
+7. P1 - Operations manager mailboxes and sender setup
+- Owner: Operations + Platform
+- Target: 2 weeks
+- Codex action focus:
+  - set up role-based operations sender accounts (support, outreach, escalation)
+  - map each campaign/form workflow to the correct sender identity
+  - add failover sender policy + verification status panel in Operations
+  - log sender usage by workflow for compliance and QA
+
+8. P1 - TeamSync coach outreach automation
 - Owner: Marketing Ops
 - Target: 3 weeks
 - Codex action focus:
@@ -71,18 +99,52 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - campaign templates + response tracking
   - booked-call and conversion reporting
 
-6. P1 - Ad campaign manager integration
+9. P1 - Ad campaign manager integration
 - Owner: Marketing Ops
 - Target: 2 weeks
 - Codex action focus:
   - surface LinkedIn/Google/Meta controls in Operations
   - show spend + lead quality snapshots in one view
 
-7. P2 - Organization accounts + role matrix
+10. P1 - Context-aware Agent (module + section intelligence)
+- Owner: Product + AI
+- Target: 2 weeks
+- Codex action focus:
+  - make agent responses aware of current module, section, and active workflow stage
+  - tailor quick prompts and default guidance to the visible page context
+  - prioritize “next best action” guidance from live section state, not generic copy
+  - add admin telemetry for context-match quality and stuck-state interventions
+
+11. P1 - Enterprise outreach program functionality
+- Owner: Marketing Ops + Platform
+- Target: 4 weeks
+- Codex action focus:
+  - recipient email verification and deliverability checks before campaign send
+  - audience segmentation and dynamic personalization by segment, module, and behavior
+  - enterprise template system (variables, approvals, brand-safe snippets, legal footer controls)
+  - campaign orchestration (scheduled sends, throttling, retries, suppression lists)
+  - engagement tracking (opens, clicks, replies, bounce classes, booked-call attribution)
+  - multi-stage outreach workflows with pause/resume and handoff to human support
+  - compliance controls (consent state, unsubscribe handling, audit logs, role-based approvals)
+  - operations reporting for conversion, ROI, and per-segment performance
+
+12. P1 - Content Library (CMS) management in Operations
+- Owner: Platform + Content Ops
+- Target: 3 weeks
+- Codex action focus:
+  - add a dedicated Operations section for Resources content administration (industry-standard CMS behavior)
+  - create/add/edit/delete resource items without code changes
+  - support document, image, video, and audio resource types
+  - manage visibility state (draft/published/archived) and resource categories by module
+  - add reusable asset library for future campaigns and resource pages
+  - include search, filtering, and lightweight metadata (title, tags, summary, file type, size, updated by)
+  - log content changes for governance/audit use
+
+13. P2 - Organization accounts + role matrix
 - Owner: Platform
 - Target: 6 weeks
 
-8. P2 - Enterprise audit and governance reporting
+14. P2 - Enterprise audit and governance reporting
 - Owner: Platform + Compliance
 - Target: 6 weeks
 
