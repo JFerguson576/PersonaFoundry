@@ -199,6 +199,40 @@ type SecurityAuditResponse = {
   }
 }
 
+type RecoverySummaryPayload = {
+  recovered_background?: number
+  recovered_live?: number
+  scanned_background?: number
+  scanned_live?: number
+  errors?: string[]
+}
+
+async function parseApiJson(response: Response, context: string) {
+  const raw = await response.text()
+  if (!raw) return {}
+  const contentType = (response.headers.get("content-type") || "").toLowerCase()
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>
+    } catch {
+      throw new Error(`Invalid JSON from ${context}.`)
+    }
+  }
+  if (raw.trimStart().startsWith("<")) {
+    throw new Error(`Unexpected non-JSON response from ${context}. Please refresh and sign in again.`)
+  }
+  try {
+    return JSON.parse(raw) as Record<string, unknown>
+  } catch {
+    throw new Error(`Unexpected response format from ${context}.`)
+  }
+}
+
+function readApiError(json: Record<string, unknown>, fallback: string) {
+  const error = json.error
+  return typeof error === "string" && error.trim().length > 0 ? error : fallback
+}
+
 type CodexBacklogItem = {
   id: string
   priority: "P0" | "P1" | "P2"
@@ -434,9 +468,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "jobs overview")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load jobs monitor")
+        throw new Error(readApiError(json, "Failed to load jobs monitor"))
       }
       setOverview(json as OverviewResponse)
       setMessage("")
@@ -453,9 +487,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "candidate health")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load candidate health")
+        throw new Error(readApiError(json, "Failed to load candidate health"))
       }
       setCandidateHealth((json.candidates ?? []) as CandidateHealthRow[])
     } catch (error) {
@@ -469,9 +503,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "health inbox")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load health inbox state")
+        throw new Error(readApiError(json, "Failed to load health inbox state"))
       }
 
       const rows = (json.states ?? []) as HealthInboxState[]
@@ -493,9 +527,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "TeamSync outreach")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load TeamSync outreach")
+        throw new Error(readApiError(json, "Failed to load TeamSync outreach"))
       }
       setTeamsyncOutreachQueue((json.queue ?? []) as TeamSyncOutreachQueueRow[])
       setTeamsyncOutreachCampaigns((json.campaigns ?? []) as TeamSyncOutreachCampaignRow[])
@@ -520,14 +554,14 @@ export function OperationsJobsClient() {
         }),
       ])
 
-      const notesJson = await notesResponse.json()
-      const campaignsJson = await campaignsResponse.json()
+      const notesJson = await parseApiJson(notesResponse, "tester notes")
+      const campaignsJson = await parseApiJson(campaignsResponse, "tester outreach campaigns")
 
       if (!notesResponse.ok) {
-        throw new Error(notesJson.error || "Failed to load tester notes")
+        throw new Error(readApiError(notesJson, "Failed to load tester notes"))
       }
       if (!campaignsResponse.ok) {
-        throw new Error(campaignsJson.error || "Failed to load tester outreach campaigns")
+        throw new Error(readApiError(campaignsJson, "Failed to load tester outreach campaigns"))
       }
 
       setTesterFeedbackNotes((notesJson.notes ?? []) as TesterFeedbackNoteRow[])
@@ -546,9 +580,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "financial summary")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load financial summary")
+        throw new Error(readApiError(json, "Failed to load financial summary"))
       }
       setEconomics(json as OperationsEconomicsResponse)
     } catch (error) {
@@ -565,9 +599,9 @@ export function OperationsJobsClient() {
         cache: "no-store",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "security audit")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load security audit")
+        throw new Error(readApiError(json, "Failed to load security audit"))
       }
       setSecurityAudit(json as SecurityAuditResponse)
     } catch (error) {
@@ -594,9 +628,9 @@ export function OperationsJobsClient() {
           message: testerOutreachMessage,
         }),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "send tester outreach")
       if (!response.ok) {
-        throw new Error(json.error || "Could not send tester outreach")
+        throw new Error(readApiError(json, "Could not send tester outreach"))
       }
       setMessage(`Tester outreach sent to ${json.recipients_sent ?? 0} users.`)
       await loadTesterFeedback()
@@ -899,9 +933,9 @@ export function OperationsJobsClient() {
           notes: draft.notes || null,
         }),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "save financial settings")
       if (!response.ok) {
-        throw new Error(json.error || "Could not save user economics settings")
+        throw new Error(readApiError(json, "Could not save user economics settings"))
       }
       setMessage("User financial settings updated.")
       await loadEconomics()
@@ -919,14 +953,14 @@ export function OperationsJobsClient() {
         method: "POST",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "recover stalled jobs")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to run stalled recovery")
+        throw new Error(readApiError(json, "Failed to run stalled recovery"))
       }
-
-      const recovered = (json.summary?.recovered_background ?? 0) + (json.summary?.recovered_live ?? 0)
-      const scanned = (json.summary?.scanned_background ?? 0) + (json.summary?.scanned_live ?? 0)
-      const errorDetails = (json.summary?.errors ?? []) as string[]
+      const summary = (json.summary ?? {}) as RecoverySummaryPayload
+      const recovered = Number(summary.recovered_background ?? 0) + Number(summary.recovered_live ?? 0)
+      const scanned = Number(summary.scanned_background ?? 0) + Number(summary.scanned_live ?? 0)
+      const errorDetails = Array.isArray(summary.errors) ? summary.errors : []
       const errors = Number(errorDetails.length)
       const nextLog: RecoverySweepLog = {
         ranAt: new Date().toISOString(),
@@ -974,9 +1008,9 @@ export function OperationsJobsClient() {
         snoozed_until: payload.snoozedUntil ?? null,
       }),
     })
-    const json = await response.json()
+    const json = await parseApiJson(response, "update health inbox")
     if (!response.ok) {
-      throw new Error(json.error || "Failed to update health inbox state")
+      throw new Error(readApiError(json, "Failed to update health inbox state"))
     }
     const row = json.state as HealthInboxState
     setHealthInboxState((current) => ({ ...current, [candidateId]: row }))
@@ -1007,9 +1041,9 @@ export function OperationsJobsClient() {
         method: "DELETE",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "reset health inbox")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to reset state")
+        throw new Error(readApiError(json, "Failed to reset state"))
       }
       setHealthInboxState((current) => {
         const next = { ...current }
@@ -1033,9 +1067,9 @@ export function OperationsJobsClient() {
           action: "queue_from_teamsync",
         }),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "queue TeamSync outreach")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to build TeamSync outreach queue")
+        throw new Error(readApiError(json, "Failed to build TeamSync outreach queue"))
       }
       const queued = Number(json.queued ?? 0)
       const skipped = Number(json.skipped ?? 0)
@@ -1065,9 +1099,9 @@ export function OperationsJobsClient() {
           calendly_url: teamsyncCalendlyUrl,
         }),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "send TeamSync outreach")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to send TeamSync outreach campaign")
+        throw new Error(readApiError(json, "Failed to send TeamSync outreach campaign"))
       }
       const attempted = Number(json.recipients_attempted ?? 0)
       const sent = Number(json.recipients_sent ?? 0)
@@ -1089,9 +1123,9 @@ export function OperationsJobsClient() {
         method: "POST",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "retry background job")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to retry background job")
+        throw new Error(readApiError(json, "Failed to retry background job"))
       }
       setMessage("Background job queued again.")
       await loadOverview()
@@ -1110,9 +1144,9 @@ export function OperationsJobsClient() {
         method: "POST",
         headers: await getAuthHeaders(),
       })
-      const json = await response.json()
+      const json = await parseApiJson(response, "retry live run")
       if (!response.ok) {
-        throw new Error(json.error || "Failed to retry live job run")
+        throw new Error(readApiError(json, "Failed to retry live job run"))
       }
       setMessage("Live job run queued again.")
       await loadOverview()
