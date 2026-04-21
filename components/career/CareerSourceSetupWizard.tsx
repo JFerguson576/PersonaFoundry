@@ -282,8 +282,8 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold">Load content</h2>
-          <p className="mt-1 text-sm text-neutral-600">Follow the wizard steps in order. Advanced options are available only when needed.</p>
+          <h2 className="text-lg font-semibold">Load your source files</h2>
+          <p className="mt-1 text-sm text-neutral-600">Follow these steps in order. Extra options stay hidden unless you need them.</p>
         </div>
         <button
           type="button"
@@ -293,7 +293,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
           }}
           className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_0_0_2px_rgba(10,102,194,0.18)]"
         >
-          Step-by-step upload
+          Start guided setup
         </button>
       </div>
 
@@ -341,15 +341,15 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             >
               Back
             </button>
-            <button
-              type="button"
-              onClick={skipCurrentStep}
-              disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
-              className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
-            >
-              Skip this step
-            </button>
-            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Save and continue</button>
+              <button
+                type="button"
+                onClick={skipCurrentStep}
+                disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
+                className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
+              >
+                Add later
+              </button>
+            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Mark done</button>
           </div>
         </div>
       </div>
@@ -357,19 +357,19 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       <div className="rounded-2xl border border-neutral-200 bg-white p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-xs text-neutral-600">
-            Need to upload a different content type than the current step?
+            Need a different content type?
           </div>
           <button
             type="button"
             onClick={() => setShowAdvancedTypeSelector((current) => !current)}
             className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
           >
-            {showAdvancedTypeSelector ? "Hide extra input types" : "More input types"}
+            {showAdvancedTypeSelector ? "Hide type list" : "Choose different type"}
           </button>
         </div>
         {showAdvancedTypeSelector ? (
           <div className="mt-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Optional content type picker</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Choose a different type</div>
             <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
               {CAREER_SOURCE_TYPE_OPTIONS.map((option) => (
                 <button
@@ -508,7 +508,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
           </button>
         </div>
       ) : null}
-      <p className="text-xs text-neutral-500">Next: go to Step 3 and generate the profile.</p>
+      <p className="text-xs text-neutral-500">Next step: open Step 3 and generate the profile.</p>
     </form>
   )
 }

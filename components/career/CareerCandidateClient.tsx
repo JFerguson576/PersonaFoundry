@@ -2299,6 +2299,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
               <p className="mt-0.5 hidden line-clamp-1 max-w-3xl text-[11px] leading-4 text-neutral-600 md:block">{personalizedWelcomeMessage}</p>
               <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-neutral-600">
+                <span className="font-semibold uppercase tracking-[0.08em] text-neutral-500">Workspace details</span>
                 <span>
                   <span className="font-semibold text-neutral-700">Location:</span>{" "}
                   {candidate.city || "Not set"}
@@ -6111,7 +6112,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 showOnboardingGuide ? "wizard-spotlight-soft" : ""
               }`}
             >
-              Guided setup
+              Setup helper
             </button>
             {!isWizardFocusActive ? (
               <button
@@ -6134,7 +6135,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                 }`}
               >
-                {isGuidedMode ? "Hints on" : "Hints off"}
+                {isGuidedMode ? "Tips on" : "Tips off"}
               </button>
             ) : null}
             <button
@@ -6149,7 +6150,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               onClick={() => setShowCompletedLeftSteps((current) => !current)}
               className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
             >
-              {showCompletedLeftSteps ? "Hide completed" : "Show completed"}
+              {showCompletedLeftSteps ? "Hide done" : "Show done"}
             </button>
           </div>
           <div className="mt-3 space-y-1.5">
