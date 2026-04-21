@@ -13,6 +13,35 @@ function sectionTone(sectionKey: string) {
   return "border-[#cfe8dd] bg-[#f4fbf8]"
 }
 
+function docThumbTone(id: string, sectionKey: string) {
+  const seed = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const variants = {
+    career: [
+      "from-[#eaf4ff] via-[#f5f9ff] to-[#eef3ff]",
+      "from-[#e8f7ff] via-[#f5fbff] to-[#edf6ff]",
+      "from-[#edf1ff] via-[#f7f9ff] to-[#eef4ff]",
+    ],
+    persona: [
+      "from-[#eff3ff] via-[#f9f9ff] to-[#f1f5ff]",
+      "from-[#ebf4ff] via-[#f7fbff] to-[#eef5ff]",
+      "from-[#f0f2ff] via-[#fafbff] to-[#f2f6ff]",
+    ],
+    teamsync: [
+      "from-[#ecf9f3] via-[#f6fcf9] to-[#eaf7f2]",
+      "from-[#e7f6ff] via-[#f5fbff] to-[#eaf8ff]",
+      "from-[#edf8f4] via-[#f8fcfa] to-[#edf7f3]",
+    ],
+    visual: [
+      "from-[#eef3ff] via-[#f7faff] to-[#edf5ff]",
+      "from-[#ecf9f3] via-[#f6fcf9] to-[#eef9f4]",
+      "from-[#edf3ff] via-[#f8faff] to-[#eef5ff]",
+    ],
+  } as const
+
+  const bucket = variants[sectionKey as keyof typeof variants] ?? variants.visual
+  return bucket[seed % bucket.length]
+}
+
 function ResourceTile({
   id,
   title,
@@ -20,6 +49,7 @@ function ResourceTile({
   href,
   thumbnailHref,
   type,
+  sectionKey,
 }: {
   id: string
   title: string
@@ -27,14 +57,31 @@ function ResourceTile({
   href: string
   thumbnailHref?: string
   type: "doc" | "pdf" | "image"
+  sectionKey: "career" | "persona" | "teamsync" | "visual"
 }) {
   const fileHref = safeSitePath(href)
   const previewHref = thumbnailHref ? safeSitePath(thumbnailHref) : fileHref
+  const titleShort = title.length > 52 ? `${title.slice(0, 52)}...` : title
+  const descriptionShort = description.length > 72 ? `${description.slice(0, 72)}...` : description
+  const thumbTone = docThumbTone(id, sectionKey)
 
   return (
     <article className="rounded-xl border border-[#d7e3f4] bg-white p-3 shadow-[0_10px_22px_-18px_rgba(15,30,70,0.35)]">
       <div className="relative overflow-hidden rounded-lg border border-[#d5e2f6] bg-[linear-gradient(145deg,#f8fbff_0%,#eef4ff_100%)]">
-        <Image src={previewHref} alt={`${title} preview`} width={1200} height={760} className="h-28 w-full object-cover" />
+        {type === "image" ? (
+          <Image src={previewHref} alt={`${title} preview`} width={1200} height={760} className="h-28 w-full object-cover" />
+        ) : (
+          <div className={`relative h-28 w-full bg-gradient-to-br ${thumbTone}`}>
+            <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(to_right,rgba(99,116,144,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(99,116,144,0.18)_1px,transparent_1px)] [background-size:16px_16px]" />
+            <div className="absolute inset-0 p-2.5">
+              <div className="inline-flex rounded-full border border-[#b9cde8] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#465d82]">
+                {formatResourceType(type)}
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs font-semibold text-[#18345b]">{titleShort}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] text-[#5a6f92]">{descriptionShort}</p>
+            </div>
+          </div>
+        )}
       </div>
       <div className="mt-2.5 flex items-start justify-between gap-2">
         <div>

@@ -31,9 +31,9 @@ export default function HelpPage() {
         <PlatformModuleNav />
         <section className="rounded-2xl border border-[#c9d8ef] bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">Help</p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight">Guided Help Center</h1>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight">Agent Help Center</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-[#475569]">
-            Guidance is available inside every module via the <span className="font-semibold">Guide me</span> button in the top navigation so users can get step-by-step help while they work.
+            Support is available inside every module via the <span className="font-semibold">Ask Agent</span> button in the top navigation so users can get real-time, in-context help while they work.
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {moduleItems.map((item) => (
@@ -51,7 +51,7 @@ export default function HelpPage() {
                 </Link>
                 {tourLaunchByPath[item.path] ? (
                   <Link href={tourLaunchByPath[item.path]} className="ml-3 mt-3 inline-flex text-xs font-semibold text-[#2a63e5] hover:underline">
-                    Relaunch walkthrough
+                    Start module tour
                   </Link>
                 ) : null}
               </article>

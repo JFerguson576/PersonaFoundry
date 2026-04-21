@@ -1823,6 +1823,7 @@ export function TeamSyncWorkspaceClient() {
   const [message, setMessage] = useState("")
   const [savePulse, setSavePulse] = useState<{ id: number; label: string } | null>(null)
   const [showFloatingWizardCta, setShowFloatingWizardCta] = useState(true)
+  const onboardingAutoStepRef = useRef("")
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(() => {
     if (typeof window === "undefined") return true
     return window.localStorage.getItem("teamsync-whats-new-hidden-v1") !== "1"
@@ -1968,6 +1969,19 @@ export function TeamSyncWorkspaceClient() {
     setIsFocusMode(true)
     setIsMenuRolledUp(true)
   }, [isSimpleView])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!isSimpleView) return
+    const targetStep =
+      members.length < 2 ? "intake:#teamsync-intake" : latestRun ? "" : "scenario:#teamsync-scenario"
+    if (!targetStep || onboardingAutoStepRef.current === targetStep) return
+    onboardingAutoStepRef.current = targetStep
+    const [stepKey, href] = targetStep.split(":")
+    setActiveStep(stepKey)
+    setIsMenuRolledUp(true)
+    scrollToSelectorWithOffset(href)
+  }, [isSimpleView, latestRun, members.length])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -2492,6 +2506,7 @@ export function TeamSyncWorkspaceClient() {
         : !runReady
           ? { title: "Run your first simulation", detail: "Generate risks, actions, and support priorities.", stepKey: "run", href: "#teamsync-run", cta: "Go to Run" }
           : { title: "Review and share insights", detail: "Your latest run is ready for action and sharing.", stepKey: "insights", href: "#teamsync-insights", cta: "Open Insights" }
+  const showOnboardingStartCard = members.length < 2 || !latestRun
   const readinessCount = readinessItems.filter((item) => item.ready).length
   const stepStatusByKey: Record<string, boolean> = {
     overview: readinessCount > 0 || Boolean(latestRun),
@@ -4044,6 +4059,24 @@ export function TeamSyncWorkspaceClient() {
           </div>
 
         </section>
+
+        {showOnboardingStartCard ? (
+          <section className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700">Start here</div>
+                <p className="mt-0.5 text-xs text-sky-900">{nextAction.detail}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openStep(nextAction.stepKey, nextAction.href)}
+                className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+              >
+                {nextAction.cta}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {hideTeamSyncMenuInFocus ? (
           <nav data-sticky-nav="true" className="sticky top-3 z-20 mt-3 rounded-2xl border border-neutral-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur lg:hidden">

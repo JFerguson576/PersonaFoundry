@@ -94,7 +94,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     setSourceType(CAREER_SOURCE_WIZARD_STEPS[next])
     setPendingFile(null)
     setSelectedFileName("")
-    setMessage(`Skipped ${selectedOption.label} for now. You can return any time.`)
+    setMessage(`Skipped ${selectedOption.label}. You can come back to this step any time.`)
   }
 
   function markCurrentStepComplete() {
@@ -347,9 +347,9 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
               disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
               className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
             >
-              Skip for now
+              Skip this step
             </button>
-            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Mark complete</button>
+            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Save and continue</button>
           </div>
         </div>
       </div>
