@@ -231,6 +231,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     jobs: false,
   })
   const [showCompletedLeftSteps, setShowCompletedLeftSteps] = useState(false)
+  const [didAutoRouteOnboarding, setDidAutoRouteOnboarding] = useState(false)
 
   const showToast = useCallback((nextToast: { tone: "success" | "error" | "info"; message: string }) => {
     setToast(nextToast)
@@ -446,6 +447,33 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   useEffect(() => {
     setOpenSections(openSectionsFor(activeStep))
   }, [activeStep, openSectionsFor])
+
+  useEffect(() => {
+    if (!workspace || didAutoRouteOnboarding) return
+    const latestProfile = workspace.profiles[0]
+    const hasProfile = Boolean(latestProfile)
+    const hasCv = workspace.documents.some((doc) => doc.source_type === "cv")
+    const hasGallupStrengths = workspace.documents.some((doc) => doc.source_type === "gallup_strengths")
+    const hasDraftDocuments = workspace.assets.length > 0
+    const hasLiveSearch = workspace.assets.some((asset) => asset.asset_type === "live_job_search")
+    const showOnboardingGuide = !hasCv || !hasGallupStrengths || !hasProfile
+    if (!showOnboardingGuide) return
+    const firstFiveChecklist = [
+      { sectionKey: "source", href: "#source-pack", done: hasCv },
+      { sectionKey: "source", href: "#source-pack", done: hasGallupStrengths },
+      { sectionKey: "positioning", href: "#profile-generator", done: hasProfile },
+      { sectionKey: "documents", href: "#document-workbench", done: hasDraftDocuments },
+      { sectionKey: "jobs", href: "#job-market-lab", done: hasLiveSearch },
+    ] as const
+    const nextStep = firstFiveChecklist.find((item) => !item.done)
+    if (!nextStep) return
+    setDidAutoRouteOnboarding(true)
+    setIsGuidedMode(true)
+    setShowStepGuidance(true)
+    setIsFocusMode(true)
+    setIsMenuRolledUp(true)
+    openAndScroll(nextStep.sectionKey, nextStep.href)
+  }, [didAutoRouteOnboarding, openAndScroll, workspace])
 
   if (!session?.user) {
     return (
@@ -2261,14 +2289,25 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 ) : null}
               </div>
               <p className="mt-0.5 hidden line-clamp-1 max-w-3xl text-[11px] leading-4 text-neutral-600 md:block">{personalizedWelcomeMessage}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-neutral-600">
+                <span>
+                  <span className="font-semibold text-neutral-700">Location:</span>{" "}
+                  {candidate.city || "Not set"}
+                </span>
+                <span className="text-neutral-400">|</span>
+                <span>
+                  <span className="font-semibold text-neutral-700">Target role:</span>{" "}
+                  {candidate.primary_goal ? candidate.primary_goal.replaceAll("_", " ") : "Not set"}
+                </span>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                {candidate.city || "No city"}
-              </span>
-              <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                {candidate.primary_goal ? candidate.primary_goal.replaceAll("_", " ") : "No goal set"}
-              </span>
+              <Link
+                href="/platform#modules"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Main modules
+              </Link>
             </div>
           </div>
         </div>

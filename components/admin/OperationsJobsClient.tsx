@@ -393,6 +393,7 @@ export function OperationsJobsClient() {
   const [economics, setEconomics] = useState<OperationsEconomicsResponse | null>(null)
   const [securityAudit, setSecurityAudit] = useState<SecurityAuditResponse | null>(null)
   const [loadingSecurityAudit, setLoadingSecurityAudit] = useState(false)
+  const [securityAuditError, setSecurityAuditError] = useState("")
   const [loadingEconomics, setLoadingEconomics] = useState(false)
   const [economicsDrafts, setEconomicsDrafts] = useState<Record<string, EconomicsDraft>>({})
   const [savingEconomicsUserId, setSavingEconomicsUserId] = useState("")
@@ -594,6 +595,7 @@ export function OperationsJobsClient() {
 
   const loadSecurityAudit = useCallback(async () => {
     setLoadingSecurityAudit(true)
+    setSecurityAuditError("")
     try {
       const response = await fetch("/api/admin/security-audit", {
         cache: "no-store",
@@ -605,7 +607,8 @@ export function OperationsJobsClient() {
       }
       setSecurityAudit(json as SecurityAuditResponse)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to load security audit")
+      setSecurityAudit(null)
+      setSecurityAuditError(error instanceof Error ? error.message : "Failed to load security audit")
     } finally {
       setLoadingSecurityAudit(false)
     }
@@ -1529,7 +1532,17 @@ export function OperationsJobsClient() {
                       </div>
                     ) : (
                       <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
-                        Set <code>NEXT_PUBLIC_AD_CAMPAIGN_MANAGER_URL</code> to load your ad spend console inside Operations.
+                        <div>
+                          Set <code>NEXT_PUBLIC_AD_CAMPAIGN_MANAGER_URL</code> to load your external ad spend console (LinkedIn/Google/Meta) inside Operations.
+                        </div>
+                        <div className="mt-2">
+                          <Link
+                            href="/control-center/marketing-engine"
+                            className="inline-flex rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                          >
+                            Open full internal marketing tools
+                          </Link>
+                        </div>
                       </div>
                     )
                   ) : null}
@@ -1852,7 +1865,7 @@ export function OperationsJobsClient() {
                     </>
                   ) : (
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#2e4b74]">
-                      Security audit data is unavailable right now.
+                      {securityAuditError || "Security audit data is unavailable right now."}
                     </div>
                   )}
                 </>
