@@ -35,6 +35,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const [fileLoading, setFileLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [localCompletions, setLocalCompletions] = useState<Set<CareerSourceTypeValue>>(new Set())
+  const [openWizardPanel, setOpenWizardPanel] = useState<"progress" | "file" | "paste" | "status">("progress")
 
   const completedTypes = useMemo(() => {
     const completed = new Set<CareerSourceTypeValue>()
@@ -191,6 +192,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setMessage(`Uploaded and saved ${json.file_name || pendingFile.name}. Find it in Step 4 > Saved files > Recent files.`)
       notifyCareerWorkspaceRefresh()
       router.refresh()
+      setOpenWizardPanel("status")
       if (wizardMode) moveToNextMissing()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
@@ -270,6 +272,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setMessage("Text saved. Find it in Step 4 > Saved files > Recent files.")
       notifyCareerWorkspaceRefresh()
       router.refresh()
+      setOpenWizardPanel("status")
       if (wizardMode) moveToNextMissing()
     } catch (error) {
       setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("save the source material")))
@@ -281,14 +284,13 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold">Source setup</h2>
-        </div>
+        <h2 className="text-lg font-semibold">Source setup</h2>
         <button
           type="button"
           onClick={() => {
             setWizardMode(true)
             moveToNextMissing()
+            setOpenWizardPanel("progress")
           }}
           className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_0_0_2px_rgba(10,102,194,0.18)]"
         >
@@ -296,206 +298,302 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
         </button>
       </div>
 
-      <div className="rounded-2xl border border-sky-200 bg-white px-3 py-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
-          <span>Setup {completedTypes.size}/{CAREER_SOURCE_WIZARD_STEPS.length} complete</span>
-          <span>Step {stepCountLabel}</span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sky-100">
-          <div className="h-full rounded-full bg-[#0a66c2] transition-all duration-300" style={{ width: `${wizardPercent}%` }} />
-        </div>
-        <div className="mt-1 text-[11px] text-neutral-600">
-          {remainingWizardSteps > 0
-            ? `${remainingWizardSteps} recommended ${remainingWizardSteps === 1 ? "item" : "items"} left.`
-            : "Core setup complete. You can update these files any time."}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Current step</div>
-            <div className="mt-1 text-base font-semibold text-sky-950">{selectedOption.label}</div>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-sky-900">{selectedOption.guidance}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const prev = Math.max(0, stepIndex - 1)
-                setStepIndex(prev)
-                setSourceType(CAREER_SOURCE_WIZARD_STEPS[prev])
-                setPendingFile(null)
-                setSelectedFileName("")
-              }}
-              disabled={stepIndex === 0}
-              className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
-            >
-              Back
-            </button>
-              <button
-                type="button"
-                onClick={skipCurrentStep}
-                disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
-                className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
-              >
-                Skip for now
-              </button>
-            <button type="button" onClick={markCurrentStepComplete} className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100">Done for now</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-neutral-200 bg-white p-3">
+      <section className="rounded-2xl border border-neutral-200 bg-white">
         <button
           type="button"
-          onClick={() => setShowAdvancedTypeSelector((current) => !current)}
-          className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+          onClick={() => setOpenWizardPanel("progress")}
+          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
+            openWizardPanel === "progress" ? "rounded-t-2xl border-b border-sky-200 bg-sky-50" : "rounded-2xl"
+          }`}
         >
-          {showAdvancedTypeSelector ? "Hide type list" : "Choose a different content type"}
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">1. Current step</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Step {stepCountLabel}</span>
         </button>
-        {showAdvancedTypeSelector ? (
-          <div className="mt-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Choose a different type</div>
-            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-              {CAREER_SOURCE_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    setSourceType(option.value)
-                    setPendingFile(null)
-                    setSelectedFileName("")
-                  }}
-                  className={`rounded-xl border px-3 py-2 text-left ${sourceType === option.value ? "border-sky-300 bg-sky-50" : "border-neutral-200 bg-neutral-50 hover:bg-white"}`}
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{option.priority}</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">{option.label}</div>
-                </button>
-              ))}
+        {openWizardPanel === "progress" ? (
+          <div className="space-y-3 px-3 py-3">
+            <div className="rounded-2xl border border-sky-200 bg-white px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+                <span>Setup {completedTypes.size}/{CAREER_SOURCE_WIZARD_STEPS.length} complete</span>
+                <span>Step {stepCountLabel}</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sky-100">
+                <div className="h-full rounded-full bg-[#0a66c2] transition-all duration-300" style={{ width: `${wizardPercent}%` }} />
+              </div>
+              <div className="mt-1 text-[11px] text-neutral-600">
+                {remainingWizardSteps > 0
+                  ? `${remainingWizardSteps} recommended ${remainingWizardSteps === 1 ? "item" : "items"} left.`
+                  : "Core setup complete. You can update these files any time."}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Current step</div>
+                  <div className="mt-1 text-base font-semibold text-sky-950">{selectedOption.label}</div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-sky-900">{selectedOption.guidance}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prev = Math.max(0, stepIndex - 1)
+                      setStepIndex(prev)
+                      setSourceType(CAREER_SOURCE_WIZARD_STEPS[prev])
+                      setPendingFile(null)
+                      setSelectedFileName("")
+                    }}
+                    disabled={stepIndex === 0}
+                    className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={skipCurrentStep}
+                    disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
+                    className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
+                  >
+                    Do later
+                  </button>
+                  <button
+                    type="button"
+                    onClick={markCurrentStepComplete}
+                    className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+                  >
+                    Mark done
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-neutral-200 bg-white p-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedTypeSelector((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showAdvancedTypeSelector ? "Hide type list" : "Choose a different content type"}
+              </button>
+              {showAdvancedTypeSelector ? (
+                <div className="mt-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Content types</div>
+                  <div className="mt-2 overflow-hidden rounded-xl border border-neutral-200">
+                    <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-neutral-200 bg-neutral-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-500">
+                      <span>Type</span>
+                      <span>Status</span>
+                      <span>Priority</span>
+                    </div>
+                    <div className="divide-y divide-neutral-200">
+                      {CAREER_SOURCE_TYPE_OPTIONS.map((option) => {
+                        const isSelected = sourceType === option.value
+                        const isLoaded = completedTypes.has(option.value)
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              setSourceType(option.value)
+                              setPendingFile(null)
+                              setSelectedFileName("")
+                            }}
+                            className={`grid w-full grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-2 text-left ${
+                              isSelected ? "bg-sky-50" : "bg-white hover:bg-neutral-50"
+                            }`}
+                          >
+                            <span className="text-sm font-medium text-neutral-900">
+                              {option.label}
+                              {isSelected ? <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Current</span> : null}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                isLoaded
+                                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                                  : "border border-amber-200 bg-amber-50 text-amber-800"
+                              }`}
+                            >
+                              {isLoaded ? "Loaded" : "Missing"}
+                            </span>
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{option.priority}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
-      </div>
+      </section>
 
-      <div
-        className={`rounded-2xl border px-3 py-2 text-xs ${
-          hasUploadedSourceForCurrentStep ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"
-        }`}
-      >
-        <div className="font-semibold uppercase tracking-[0.08em]">{hasUploadedSourceForCurrentStep ? "Uploaded status" : "Needs upload"}</div>
-        {hasUploadedSourceForCurrentStep ? (
-          <div className="mt-1">
-            <span className="font-semibold">{selectedOption.label} is loaded.</span>{" "}
-            {latestSourceDocument?.title ? (
-              <>
-                Latest file: <span className="font-semibold">{latestSourceDocument.title}</span>.
-              </>
-            ) : null}{" "}
-            {latestSourceDocument?.created_at ? `Saved ${new Date(latestSourceDocument.created_at).toLocaleString()}.` : ""}
+      <section className="rounded-2xl border border-neutral-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setOpenWizardPanel("file")}
+          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
+            openWizardPanel === "file" ? "rounded-t-2xl border-b border-neutral-200 bg-neutral-50" : "rounded-2xl"
+          }`}
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">2. Upload a file</span>
+          <span className="text-[11px] text-neutral-500">{pendingFile ? pendingFile.name : "Choose + upload"}</span>
+        </button>
+        {openWizardPanel === "file" ? (
+          <div className="space-y-3 px-3 py-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Title</label>
+              <input value={title} onChange={(event) => setTitle(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" placeholder={selectedOption.suggestedTitle} />
+              <p className="mt-1 text-[11px] text-neutral-500">Draft autosaves for this step.</p>
+            </div>
+
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <label className="block text-sm font-medium">Upload from your computer</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                    {fileLoading ? "Preparing..." : "Choose file"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleUploadSelectedFile()}
+                    disabled={fileLoading || !pendingFile}
+                    className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {fileLoading ? "Uploading..." : "Upload file"}
+                  </button>
+                </div>
+              </div>
+              <input ref={fileInputRef} type="file" accept=".txt,.md,.rtf,.docx,.pdf" onChange={handleFileUpload} className="hidden" />
+              <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
+              {pendingFile ? (
+                <p className="mt-1 text-xs text-amber-800">
+                  Selected (not uploaded yet): <span className="font-medium">{pendingFile.name}</span>
+                </p>
+              ) : null}
+              {selectedFileName && !pendingFile ? (
+                <p className="mt-1 text-xs text-neutral-600">
+                  Last uploaded in this session: <span className="font-medium">{selectedFileName}</span>
+                </p>
+              ) : null}
+            </div>
           </div>
-        ) : (
-          <div className="mt-1">{selectedOption.label} has not been uploaded yet for this candidate.</div>
-        )}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {pendingFile ? (
-            <button
-              type="button"
-              onClick={clearSelectedPendingFile}
-              className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100"
-            >
-              Clear selected file
-            </button>
-          ) : null}
-          {hasUploadedSourceForCurrentStep && latestSourceDocument?.id ? (
-            <button
-              type="button"
-              onClick={() => void handleDeleteLatestSourceDocument()}
-              disabled={loading || fileLoading}
-              className="rounded-full border border-rose-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Delete latest {selectedOption.label}
-            </button>
-          ) : null}
-        </div>
-      </div>
+        ) : null}
+      </section>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium">Title</label>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" placeholder={selectedOption.suggestedTitle} />
-        <p className="mt-1 text-[11px] text-neutral-500">Draft autosaves for this step.</p>
-      </div>
-
-      <div>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-          <label className="block text-sm font-medium">Upload from your computer</label>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
-              {fileLoading ? "Preparing..." : "Choose file"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleUploadSelectedFile()}
-              disabled={fileLoading || !pendingFile}
-              className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {fileLoading ? "Uploading..." : "Upload file"}
+      <section className="rounded-2xl border border-neutral-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setOpenWizardPanel("paste")}
+          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
+            openWizardPanel === "paste" ? "rounded-t-2xl border-b border-neutral-200 bg-neutral-50" : "rounded-2xl"
+          }`}
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">3. Paste text (optional)</span>
+          <span className="text-[11px] text-neutral-500">Manual entry</span>
+        </button>
+        {openWizardPanel === "paste" ? (
+          <div className="space-y-3 px-3 py-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Content</label>
+              <textarea
+                ref={contentTextareaRef}
+                value={contentText}
+                onChange={(event) => setContentText(event.target.value)}
+                className="min-h-[220px] w-full rounded-xl border border-neutral-300 px-3 py-2"
+                placeholder={`Paste ${selectedOption.label.toLowerCase()} content here, or import a file above...`}
+              />
+            </div>
+            <button type="submit" disabled={loading || fileLoading || !contentText.trim()} className="rounded-xl border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              {loading ? "Saving..." : "Save pasted text"}
             </button>
           </div>
-        </div>
-        <input ref={fileInputRef} type="file" accept=".txt,.md,.rtf,.docx,.pdf" onChange={handleFileUpload} className="hidden" />
-        <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
-        {pendingFile ? (
-          <p className="mt-1 text-xs text-amber-800">
-            Selected (not uploaded yet): <span className="font-medium">{pendingFile.name}</span>
-          </p>
         ) : null}
-        {selectedFileName && !pendingFile ? (
-          <p className="mt-1 text-xs text-neutral-600">
-            Last uploaded in this session: <span className="font-medium">{selectedFileName}</span>
-          </p>
+      </section>
+
+      <section className="rounded-2xl border border-neutral-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setOpenWizardPanel("status")}
+          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
+            openWizardPanel === "status" ? "rounded-t-2xl border-b border-neutral-200 bg-neutral-50" : "rounded-2xl"
+          }`}
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">4. Status and next step</span>
+          <span className="text-[11px] text-neutral-500">{hasUploadedSourceForCurrentStep ? "Ready" : "Needs upload"}</span>
+        </button>
+        {openWizardPanel === "status" ? (
+          <div className="space-y-3 px-3 py-3">
+            <div
+              className={`rounded-2xl border px-3 py-2 text-xs ${
+                hasUploadedSourceForCurrentStep ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"
+              }`}
+            >
+              <div className="font-semibold uppercase tracking-[0.08em]">{hasUploadedSourceForCurrentStep ? "Uploaded status" : "Needs upload"}</div>
+              {hasUploadedSourceForCurrentStep ? (
+                <div className="mt-1">
+                  <span className="font-semibold">{selectedOption.label} is loaded.</span>{" "}
+                  {latestSourceDocument?.title ? (
+                    <>
+                      Latest file: <span className="font-semibold">{latestSourceDocument.title}</span>.
+                    </>
+                  ) : null}{" "}
+                  {latestSourceDocument?.created_at ? `Saved ${new Date(latestSourceDocument.created_at).toLocaleString()}.` : ""}
+                </div>
+              ) : (
+                <div className="mt-1">{selectedOption.label} has not been uploaded yet for this candidate.</div>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {pendingFile ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedPendingFile}
+                    className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100"
+                  >
+                    Clear selected file
+                  </button>
+                ) : null}
+                {hasUploadedSourceForCurrentStep && latestSourceDocument?.id ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteLatestSourceDocument()}
+                    disabled={loading || fileLoading}
+                    className="rounded-full border border-rose-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete latest {selectedOption.label}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
+            {showUploadRecoveryActions ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => void handleUploadSelectedFile()}
+                  disabled={fileLoading || !pendingFile}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Retry upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenWizardPanel("paste")
+                    contentTextareaRef.current?.focus()
+                    contentTextareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100"
+                >
+                  Paste text instead
+                </button>
+              </div>
+            ) : null}
+            <p className="text-xs text-neutral-500">Next step: open Step 3 and generate the profile.</p>
+          </div>
         ) : null}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium">Content</label>
-        <textarea
-          ref={contentTextareaRef}
-          value={contentText}
-          onChange={(event) => setContentText(event.target.value)}
-          className="min-h-[220px] w-full rounded-xl border border-neutral-300 px-3 py-2"
-          placeholder={`Paste ${selectedOption.label.toLowerCase()} content here, or import a file above...`}
-        />
-      </div>
-
-      <button type="submit" disabled={loading || fileLoading || !contentText.trim()} className="rounded-xl border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-        {loading ? "Saving..." : "Save pasted text"}
-      </button>
-
-      {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
-      {showUploadRecoveryActions ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => void handleUploadSelectedFile()}
-            disabled={fileLoading || !pendingFile}
-            className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Retry upload
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              contentTextareaRef.current?.focus()
-              contentTextareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-            }}
-            className="rounded-full border border-amber-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-900 hover:bg-amber-100"
-          >
-            Paste text instead
-          </button>
-        </div>
-      ) : null}
-      <p className="text-xs text-neutral-500">Next step: open Step 3 and generate the profile.</p>
+      </section>
     </form>
   )
 }

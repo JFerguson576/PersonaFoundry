@@ -1205,10 +1205,14 @@ export default function Home() {
   }
 
   function togglePersonaStepDetails(stepKey: "presets" | "templates" | "analysis" | "traits" | "sandbox" | "exports") {
-    setPersonaStepDetails((current) => ({
-      ...current,
-      [stepKey]: !current[stepKey],
-    }))
+    setPersonaStepDetails((current) => {
+      const nextOpen = !current[stepKey]
+      const next: Record<string, boolean> = { ...current }
+      Object.keys(next).forEach((key) => {
+        next[key] = key === stepKey ? nextOpen : false
+      })
+      return next
+    })
   }
 
   function saveVersion(

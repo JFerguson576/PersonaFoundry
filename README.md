@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Workspace Note (Important)
+
+Use this folder as the only active repo:
+
+- `C:\Users\johnf\OneDrive\Desktop\personafoundry`
+
+Do **not** use this nested folder (legacy/locked and not the active workspace):
+
+- `C:\Users\johnf\OneDrive\Desktop\personafoundry\PersonaFoundry`
+
 ## Product Roadmap
 
 The working product roadmap for Persona Foundry and Career Copilot lives here:

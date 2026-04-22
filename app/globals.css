@@ -183,3 +183,28 @@ section[id],
     padding-bottom: 0.125rem;
   }
 }
+
+/* Candidate workspace compact mode */
+.candidate-compact-workspace .mt-6 {
+  margin-top: 1rem !important;
+}
+
+.candidate-compact-workspace .mt-5 {
+  margin-top: 0.875rem !important;
+}
+
+.candidate-compact-workspace .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.875rem !important;
+}
+
+.candidate-compact-workspace .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1rem !important;
+}
+
+.candidate-compact-workspace .p-5 {
+  padding: 1rem !important;
+}
+
+.candidate-compact-workspace .p-6 {
+  padding: 1rem !important;
+}

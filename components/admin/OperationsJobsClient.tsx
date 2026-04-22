@@ -243,6 +243,14 @@ type CodexBacklogItem = {
   notes: string
 }
 
+type OperationsMenuGroup =
+  | "runHealth"
+  | "marketingTools"
+  | "candidateManagement"
+  | "financials"
+  | "executionRoadmap"
+  | "quickActions"
+
 
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
@@ -289,6 +297,36 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     notes: "Complete route-by-route auth review, key rotation runbook, audit logs baseline, and incident response checklist.",
   },
   {
+    id: "p0-legal-policies-rollout",
+    priority: "P0",
+    status: "planned",
+    title: "Publish Terms + Privacy with legal sign-off",
+    owner: "Legal + Platform",
+    target: "1 week",
+    notes:
+      "Add Terms of Use and Privacy Policy documents into the platform, complete lawyer review/sign-off, and configure privacy@personara.ai as the primary privacy/compliance contact email across legal pages and platform email templates.",
+  },
+  {
+    id: "p0-codex-cost-observability",
+    priority: "P0",
+    status: "planned",
+    title: "Add Codex API cost visibility to operations",
+    owner: "Platform + Finance Ops",
+    target: "2 weeks",
+    notes:
+      "Track Codex/API usage as a first-class cost line in Financials, expose daily + monthly totals, and roll costs into margin guardrails and revenue-vs-expense monitoring.",
+  },
+  {
+    id: "p0-codex-usage-automatic-control",
+    priority: "P0",
+    status: "planned",
+    title: "Set up CODEX API usage automatic control (tomorrow morning)",
+    owner: "Platform + Finance Ops",
+    target: "Start tomorrow AM",
+    notes:
+      "Implement automatic CODEX usage controls: per-user and global spend caps, alert thresholds, guardrail actions when thresholds are crossed, and clear daily/monthly tracking inside Operations Financials.",
+  },
+  {
     id: "p1-growth-loop",
     priority: "P1",
     status: "planned",
@@ -314,6 +352,65 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     owner: "Marketing Ops",
     target: "2 weeks",
     notes: "Embed LinkedIn/Google/Meta campaign console within Operations and surface spend + lead signals.",
+  },
+  {
+    id: "p1-enterprise-outreach-functionality",
+    priority: "P1",
+    status: "planned",
+    title: "Enterprise outreach program functionality",
+    owner: "Marketing Ops + Platform",
+    target: "4 weeks",
+    notes:
+      "Add recipient email verification, dynamic personalization, enterprise templates, send scheduling/throttling, suppression controls, compliance-safe unsubscribe handling, and full conversion/ROI analytics.",
+  },
+  {
+    id: "p1-content-library-cms",
+    priority: "P1",
+    status: "planned",
+    title: "Content Library (CMS) in Operations",
+    owner: "Platform + Content Ops",
+    target: "3 weeks",
+    notes:
+      "Add a CMS-style Operations section to create/edit/delete Resources items, support docs/images/video/audio, manage draft/published/archive states, and keep a reusable media asset library for future content.",
+  },
+  {
+    id: "p1-context-aware-agent",
+    priority: "P1",
+    status: "planned",
+    title: "Context-aware agent guidance",
+    owner: "Product + AI",
+    target: "2 weeks",
+    notes: "Make agent responses module + section aware, adapt quick prompts by page context, and surface next-best-action guidance from live workflow state.",
+  },
+  {
+    id: "p1-gallup-practitioner-management",
+    priority: "P1",
+    status: "planned",
+    title: "Create Gallup Practitioner management module",
+    owner: "Marketing Ops + Platform",
+    target: "4 weeks",
+    notes:
+      "Build practitioner CRM + channel workflows: import practitioner lists, segment by ICP/tier/region, track outreach lifecycle, manage templates and campaigns, and report conversion from first contact to active subscription referrals.",
+  },
+  {
+    id: "p1-teamsync-addon-practitioner-plan",
+    priority: "P1",
+    status: "planned",
+    title: "Create TeamSync add-on plan for practitioners",
+    owner: "Product + TeamSync + Marketing Ops",
+    target: "3 weeks",
+    notes:
+      "Define the practitioner add-on package: capability scope, pricing model, onboarding flow, enablement assets, rollout milestones, and success metrics so coaches can adopt TeamSync faster and scale client delivery.",
+  },
+  {
+    id: "p1-due-diligence-resources",
+    priority: "P1",
+    status: "planned",
+    title: "Due Diligence Resources module + weekly system review",
+    owner: "Platform + Operations + Finance",
+    target: "6 weeks",
+    notes:
+      "Add an Operations menu item (Due Diligence Resources) that generates investment/sale-ready diligence packs: system architecture and feature inventory, business model narrative, capability evidence, risk/control posture, and optional financial attachments. Include weekly cron-based platform review updates, right-panel report rendering, DOC/PDF download, clear component visuals/diagrams, and a document library for future diligence artifacts (e.g., financial reports, security and compliance packs).",
   },
   {
     id: "p2-enterprise-accounts",
@@ -1164,6 +1261,24 @@ export function OperationsJobsClient() {
     setCollapsedPanels((current) => ({ ...current, [panel]: !current[panel] }))
   }
 
+  function toggleOperationsMenu(group: OperationsMenuGroup) {
+    const current = {
+      runHealth: runHealthMenuOpen,
+      marketingTools: marketingToolsMenuOpen,
+      candidateManagement: candidateMenuOpen,
+      financials: financialMenuOpen,
+      executionRoadmap: executionRoadmapMenuOpen,
+      quickActions: quickActionsMenuOpen,
+    }
+    const nextOpen = !current[group]
+    setRunHealthMenuOpen(group === "runHealth" ? nextOpen : false)
+    setMarketingToolsMenuOpen(group === "marketingTools" ? nextOpen : false)
+    setCandidateMenuOpen(group === "candidateManagement" ? nextOpen : false)
+    setFinancialMenuOpen(group === "financials" ? nextOpen : false)
+    setExecutionRoadmapMenuOpen(group === "executionRoadmap" ? nextOpen : false)
+    setQuickActionsMenuOpen(group === "quickActions" ? nextOpen : false)
+  }
+
   function focusPanel(panel: keyof typeof collapsedPanels) {
     setActivePanel(panel)
     setCollapsedPanels((current) =>
@@ -1223,9 +1338,7 @@ export function OperationsJobsClient() {
                 <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                   <button
                     type="button"
-                    onClick={() =>
-                      setMarketingToolsMenuOpen((current) => !current)
-                    }
+                    onClick={() => toggleOperationsMenu("marketingTools")}
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                     aria-expanded={marketingToolsMenuOpen}
                   >
@@ -1310,9 +1423,7 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
-                  onClick={() =>
-                    setCandidateMenuOpen((current) => !current)
-                  }
+                  onClick={() => toggleOperationsMenu("candidateManagement")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={candidateMenuOpen}
                 >
@@ -1333,9 +1444,7 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
-                  onClick={() =>
-                    setRunHealthMenuOpen((current) => !current)
-                  }
+                  onClick={() => toggleOperationsMenu("runHealth")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={runHealthMenuOpen}
                 >
@@ -1352,9 +1461,7 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
-                  onClick={() =>
-                    setFinancialMenuOpen((current) => !current)
-                  }
+                  onClick={() => toggleOperationsMenu("financials")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={financialMenuOpen}
                 >
@@ -1370,9 +1477,7 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
-                  onClick={() =>
-                    setExecutionRoadmapMenuOpen((current) => !current)
-                  }
+                  onClick={() => toggleOperationsMenu("executionRoadmap")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={executionRoadmapMenuOpen}
                 >
@@ -1387,9 +1492,7 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
-                  onClick={() =>
-                    setQuickActionsMenuOpen((current) => !current)
-                  }
+                  onClick={() => toggleOperationsMenu("quickActions")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={quickActionsMenuOpen}
                 >

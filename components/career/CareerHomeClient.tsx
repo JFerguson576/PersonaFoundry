@@ -70,10 +70,10 @@ export function CareerHomeClient() {
         return
       }
 
-      const candidatesUrl = isCandidatePreviewMode
-        ? "/api/career/candidates?scope=mine"
-        : isOwnerPreviewMode
-          ? `/api/career/candidates?scope=owner_preview&owner_user_id=${encodeURIComponent(ownerPreviewUserId || "")}`
+      const candidatesUrl = isOwnerPreviewMode
+        ? `/api/career/candidates?scope=owner_preview&owner_user_id=${encodeURIComponent(ownerPreviewUserId || "")}`
+        : isCandidatePreviewMode
+          ? "/api/career/candidates?scope=all"
           : "/api/career/candidates"
       const response = await fetch(candidatesUrl, {
         cache: "no-store",

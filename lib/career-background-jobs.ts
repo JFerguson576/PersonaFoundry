@@ -269,13 +269,15 @@ async function upsertSprintApplication(params: {
     fitAnalysisAssetId,
   } = params
 
+  const normalizedCompanyName = companyName?.trim() || "Unknown company"
+
   const { data: existing } = await supabase
-    .from("career_job_applications")
+    .from("career_applications")
     .select("id")
     .eq("candidate_id", candidateId)
     .eq("user_id", userId)
     .eq("job_title", jobTitle)
-    .eq("company_name", companyName || null)
+    .eq("company_name", normalizedCompanyName)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -283,7 +285,7 @@ async function upsertSprintApplication(params: {
   const payload = {
     candidate_id: candidateId,
     user_id: userId,
-    company_name: companyName || null,
+    company_name: normalizedCompanyName,
     job_title: jobTitle,
     location: location || null,
     job_url: jobUrl || null,
@@ -297,7 +299,7 @@ async function upsertSprintApplication(params: {
 
   if (existing?.id) {
     const { error } = await supabase
-      .from("career_job_applications")
+      .from("career_applications")
       .update(payload)
       .eq("id", existing.id)
       .eq("candidate_id", candidateId)
@@ -308,7 +310,7 @@ async function upsertSprintApplication(params: {
   }
 
   const { data: created, error } = await supabase
-    .from("career_job_applications")
+    .from("career_applications")
     .insert([payload])
     .select("id")
     .single()

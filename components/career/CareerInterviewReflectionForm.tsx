@@ -87,41 +87,42 @@ Executive presence: ${executivePresenceScore}/5`,
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div>
-        <h2 className="text-xl font-semibold">Capture interview assessment</h2>
-        <p className="mt-2 text-sm leading-6 text-neutral-600">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Interview review</div>
+        <h2 className="text-lg font-semibold">Capture interview assessment</h2>
+        <p className="mt-1 text-sm leading-6 text-neutral-600">
           Record how the interview actually went so the next practice pack can focus on the real weak spots, surprise questions, and better answer angles.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Job title</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Job title</label>
           <input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Company</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Company</label>
           <input value={companyName} onChange={(event) => setCompanyName(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
         </div>
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Overall assessment</label>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Overall assessment</label>
         <textarea
           value={overallAssessment}
           onChange={(event) => setOverallAssessment(event.target.value)}
-          className="min-h-[120px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
+          className="min-h-[100px] w-full rounded-2xl border border-neutral-300 px-3 py-2.5 text-sm leading-6"
           placeholder="How did it go overall? Confidence, chemistry, pacing, outcomes, and how the interview felt."
         />
       </div>
 
-      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-        <div className="text-sm font-medium text-neutral-900">Interview scorecard</div>
-        <p className="mt-1 text-sm leading-6 text-neutral-600">
+      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+        <div className="text-sm font-semibold text-neutral-900">Interview scorecard</div>
+        <p className="mt-1 text-xs leading-5 text-neutral-600">
           Score the interview from 1 to 5 so the next training round can target specific gaps more precisely.
         </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           <ScoreSelect label="Confidence" value={confidenceScore} onChange={setConfidenceScore} />
           <ScoreSelect label="Clarity" value={clarityScore} onChange={setClarityScore} />
           <ScoreSelect label="Commercial sharpness" value={commercialScore} onChange={setCommercialScore} />
@@ -130,55 +131,65 @@ Executive presence: ${executivePresenceScore}/5`,
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">What went well</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">What went well</label>
           <textarea
             value={whatWentWell}
             onChange={(event) => setWhatWentWell(event.target.value)}
-            className="min-h-[160px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
+            className="min-h-[120px] w-full rounded-2xl border border-neutral-300 px-3 py-2.5 text-sm leading-6"
             placeholder="Which stories landed well? What questions felt strong? What feedback seemed positive?"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Where you struggled</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Where you struggled</label>
           <textarea
             value={whereStruggled}
             onChange={(event) => setWhereStruggled(event.target.value)}
-            className="min-h-[160px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
+            className="min-h-[120px] w-full rounded-2xl border border-neutral-300 px-3 py-2.5 text-sm leading-6"
             placeholder="Where did you hesitate, ramble, lack evidence, or feel underprepared?"
           />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium">Surprise questions or themes</label>
-          <textarea
-            value={surpriseQuestions}
-            onChange={(event) => setSurpriseQuestions(event.target.value)}
-            className="min-h-[160px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
-            placeholder="What did they ask that you did not expect?"
-          />
+      <details className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700">More detail (optional)</summary>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Surprise questions or themes</label>
+            <textarea
+              value={surpriseQuestions}
+              onChange={(event) => setSurpriseQuestions(event.target.value)}
+              className="min-h-[110px] w-full rounded-2xl border border-neutral-300 px-3 py-2.5 text-sm leading-6"
+              placeholder="What did they ask that you did not expect?"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">What to change next time</label>
+            <textarea
+              value={nextTimeChanges}
+              onChange={(event) => setNextTimeChanges(event.target.value)}
+              className="min-h-[110px] w-full rounded-2xl border border-neutral-300 px-3 py-2.5 text-sm leading-6"
+              placeholder="What should the next practice round focus on?"
+            />
+          </div>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">What to change next time</label>
-          <textarea
-            value={nextTimeChanges}
-            onChange={(event) => setNextTimeChanges(event.target.value)}
-            className="min-h-[160px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6"
-            placeholder="What should the next practice round focus on?"
-          />
-        </div>
-      </div>
+      </details>
 
-      <button
-        type="submit"
-        disabled={loading || !overallAssessment.trim()}
-        className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Saving assessment..." : "Save interview assessment"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          disabled={loading || !overallAssessment.trim()}
+          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Saving assessment..." : "Save interview assessment"}
+        </button>
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+          overallAssessment.trim() ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-500"
+        }`}>
+          {overallAssessment.trim() ? "Ready to save" : "Add overall assessment"}
+        </span>
+      </div>
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
     </form>
@@ -196,8 +207,8 @@ function ScoreSelect({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-neutral-700">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm">
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-1.5 text-sm">
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>

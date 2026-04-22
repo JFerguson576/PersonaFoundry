@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { createPortal } from "react-dom"
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react"
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
@@ -75,6 +76,7 @@ export function PlatformModuleNav() {
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false)
   const [showReturnMenu, setShowReturnMenu] = useState(false)
   const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
   const dropdownWrapRef = useRef<HTMLDivElement | null>(null)
 
   const isModulePage = useMemo(() => {
@@ -94,6 +96,10 @@ export function PlatformModuleNav() {
     setOpenDropdownKey(null)
     setShowReturnMenu(false)
   }, [pathname])
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
     function closeMenus(event: MouseEvent) {
@@ -454,7 +460,8 @@ export function PlatformModuleNav() {
           ) : null}
         </div>
       </div>
-      {showReferralModal ? (
+      {showReferralModal && isClient
+        ? createPortal(
         <div
           className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto bg-black/35 px-3 py-4 sm:px-4 sm:py-6"
           onClick={() => setShowReferralModal(false)}
@@ -566,7 +573,8 @@ export function PlatformModuleNav() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </nav>
   )
