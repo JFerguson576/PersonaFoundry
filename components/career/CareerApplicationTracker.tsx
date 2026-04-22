@@ -87,6 +87,8 @@ export function CareerApplicationTracker({
   const [companyDossierAssetId, setCompanyDossierAssetId] = useState("")
   const [salaryAnalysisAssetId, setSalaryAnalysisAssetId] = useState("")
   const [fitAnalysisAssetId, setFitAnalysisAssetId] = useState("")
+  const [showStageMeanings, setShowStageMeanings] = useState(false)
+  const [openBoardStage, setOpenBoardStage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const today = new Date()
@@ -101,6 +103,7 @@ export function CareerApplicationTracker({
     if (!application.follow_up_date) return false
     return application.follow_up_date === todayKey && !["offer", "rejected", "archived"].includes(application.status ?? "")
   })
+  const hasAnyApplications = applications.length > 0
   const applicationsByStatus = applicationStatuses.map((statusOption) => ({
     ...statusOption,
     count: applications.filter((application) => application.status === statusOption.value).length,
@@ -205,6 +208,26 @@ export function CareerApplicationTracker({
     }
   }, [companyName, companyDossierAssetId, coverLetterAssetId, suggestedCoverLetter, suggestedDossier])
 
+  useEffect(() => {
+    if (!hasAnyApplications) {
+      if (openBoardStage !== null) {
+        setOpenBoardStage(null)
+      }
+      return
+    }
+
+    const activeStageExists = openBoardStage
+      ? applicationsByStatus.some((item) => item.value === openBoardStage && item.count > 0)
+      : false
+
+    if (activeStageExists) return
+
+    const firstStageWithRoles = applicationsByStatus.find((item) => item.count > 0)?.value ?? applicationStatuses[0]?.value ?? null
+    if (firstStageWithRoles !== openBoardStage) {
+      setOpenBoardStage(firstStageWithRoles)
+    }
+  }, [applicationsByStatus, hasAnyApplications, openBoardStage])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
@@ -258,8 +281,8 @@ export function CareerApplicationTracker({
   }
 
   return (
-    <div className="space-y-5">
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold">Add or update a target role</h2>
@@ -446,8 +469,8 @@ export function CareerApplicationTracker({
         </div>
       </form>
 
-      <section className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+        <div className="mb-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           <TrackerMetricCard label="Active roles" value={String(activeApplications.length)} tone="neutral" />
           <TrackerMetricCard label="Shortlisted" value={String(shortlistedApplications.length)} tone={shortlistedApplications.length > 0 ? "success" : "neutral"} />
           <TrackerMetricCard label="Overdue follow-ups" value={String(overdueApplications.length)} tone={overdueApplications.length > 0 ? "danger" : "neutral"} />
@@ -455,45 +478,61 @@ export function CareerApplicationTracker({
           <TrackerMetricCard label="Offers" value={String(applications.filter((application) => application.status === "offer").length)} tone="success" />
         </div>
 
-        <div className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Stage guide</div>
-              <h3 className="mt-2 text-lg font-semibold">What each status means</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                These labels are meant to be practical. Use them to show where a role really is, not where you hope it is.
-              </p>
+              <h3 className="mt-1 text-sm font-semibold">Role pipeline</h3>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Available stages</div>
-              <div className="mt-1 text-2xl font-semibold">{applicationStatuses.length}</div>
+            <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-right">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Stages</div>
+              <div className="mt-0.5 text-sm font-semibold">{applicationStatuses.length}</div>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {applicationStatuses.map((statusOption) => (
-              <div key={`guide-${statusOption.value}`} className="rounded-2xl border border-neutral-200 bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="font-semibold text-neutral-900">{statusOption.label}</div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(statusOption.value)}`}>
-                    {applicationsByStatus.find((item) => item.value === statusOption.value)?.count ?? 0}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-neutral-600">{applicationStatusGuidance[statusOption.value]}</p>
+          <div className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+            {applicationsByStatus.map((statusOption) => (
+              <div
+                key={`guide-${statusOption.value}`}
+                className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5"
+              >
+                <div className="text-xs font-semibold text-neutral-900">{statusOption.label}</div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(statusOption.value)}`}>
+                  {statusOption.count}
+                </span>
               </div>
             ))}
           </div>
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowStageMeanings((current) => !current)}
+              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {showStageMeanings ? "Hide details" : "Stage details"}
+            </button>
+          </div>
+          {showStageMeanings ? (
+            <div className="mt-2 grid gap-1.5 rounded-xl border border-neutral-200 bg-white p-2.5 md:grid-cols-2 xl:grid-cols-3">
+              {applicationStatuses.map((statusOption) => (
+                <div key={`guide-meaning-${statusOption.value}`} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+                  <div className="text-xs font-semibold text-neutral-900">{statusOption.label}</div>
+                  <p className="mt-1 text-[11px] leading-4 text-neutral-600">{applicationStatusGuidance[statusOption.value]}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        <div className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Focus guide</div>
-              <h3 className="mt-2 text-lg font-semibold">Where to focus next</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
+              <h3 className="mt-1 text-base font-semibold">Where to focus next</h3>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
                 These signals help show which roles are strongest right now, which ones need more tailoring, and which ones should wait.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-3">
               <TrackerMetricCard label="Strong fit" value={String(applicationDecisionSummary.strongFit.length)} tone="success" />
               <TrackerMetricCard label="Promising" value={String(applicationDecisionSummary.promising.length)} tone="warning" />
               <TrackerMetricCard label="Lower priority" value={String(applicationDecisionSummary.lowFit.length)} tone="neutral" />
@@ -557,7 +596,7 @@ export function CareerApplicationTracker({
           </div>
         </div>
 
-        <div className="mb-5 rounded-3xl border border-violet-200 bg-violet-50 p-5">
+        <div className="mb-4 rounded-3xl border border-violet-200 bg-violet-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Shortlist</div>
@@ -652,7 +691,7 @@ export function CareerApplicationTracker({
           )}
         </div>
 
-        <div className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+        <div className="mb-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Compare roles</div>
@@ -668,7 +707,9 @@ export function CareerApplicationTracker({
           </div>
 
           {rankedComparisonRows.length === 0 ? (
-            <p className="mt-4 text-sm leading-6 text-neutral-500">Add roles to the tracker and they will appear here for comparison.</p>
+            <div className="mt-3 rounded-2xl border border-dashed border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-600">
+              Add roles to the tracker and they will appear here for side-by-side comparison.
+            </div>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
@@ -714,46 +755,45 @@ export function CareerApplicationTracker({
           )}
         </div>
 
-        <div className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Roles by stage</div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {applicationsByStatus.map((item) => (
-              <div key={item.value} className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">{item.label}</div>
-                <div className="mt-2 text-2xl font-semibold text-neutral-900">{item.count}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-2.5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Board view</div>
-              <h3 className="mt-2 text-lg font-semibold">Role board</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Use this to scan every role quickly by stage before opening the cards below to edit details.
-              </p>
+              <h3 className="mt-1 text-sm font-semibold">Role board</h3>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Visible stages</div>
-              <div className="mt-1 text-2xl font-semibold">{applicationStatuses.length}</div>
+            <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Visible stages</div>
+              <div className="mt-0.5 text-sm font-semibold">{applicationStatuses.length}</div>
             </div>
           </div>
 
-          <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-            {applicationStatuses.map((statusOption) => {
-              const items = applications.filter((application) => application.status === statusOption.value)
-              return (
-                <div key={statusOption.value} className={`min-w-[260px] flex-1 rounded-2xl border p-4 ${pipelineStageToneClass(statusOption.value)}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-semibold text-neutral-900">{statusOption.label}</div>
-                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-700">{items.length}</span>
-                  </div>
-                  {items.length === 0 ? (
-                    <p className="mt-4 text-sm leading-6 text-neutral-500">No applications in this stage.</p>
-                  ) : (
-                    <div className="mt-4 space-y-3">
+          {!hasAnyApplications ? (
+            <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-600">
+              No tracked roles yet. Add one role above and the board will populate automatically.
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1.5">
+              {applicationStatuses.map((statusOption) => {
+                const items = applications.filter((application) => application.status === statusOption.value)
+                const isExpanded = openBoardStage === statusOption.value
+                return (
+                  <div key={statusOption.value} className={`rounded-lg border p-2 ${pipelineStageToneClass(statusOption.value)}`}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenBoardStage((current) => (current === statusOption.value ? null : statusOption.value))}
+                      className="flex w-full items-center justify-between gap-3 text-left"
+                    >
+                      <div className="font-semibold text-neutral-900">{statusOption.label}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">{items.length}</span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">{isExpanded ? "Hide" : "Show"}</span>
+                      </div>
+                    </button>
+                    {isExpanded ? (
+                      items.length === 0 ? (
+                        <p className="mt-2 text-xs leading-5 text-neutral-500">No applications in this stage.</p>
+                      ) : (
+                        <div className="mt-2 space-y-2">
                       {items.map((application) => {
                         const followUpState = getFollowUpState(application.follow_up_date || "", application.status || "")
                         const linkedCoverLetterTitle = application.cover_letter_asset_id ? coverLetterTitleById.get(application.cover_letter_asset_id) : null
@@ -773,10 +813,10 @@ export function CareerApplicationTracker({
                           hasFollowUp: Boolean(application.follow_up_date),
                         })
                         return (
-                          <div key={`board-${application.id}`} className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                          <div key={`board-${application.id}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5">
                             <div className="font-semibold text-neutral-900">{application.company_name || "Untitled company"}</div>
                             <div className="mt-1 text-sm text-neutral-600">{application.job_title || "Untitled role"}</div>
-                            <div className="mt-3">
+                            <div className="mt-2">
                               <CampaignLane steps={campaignLane} compact />
                             </div>
                             {fitDecision ? (
@@ -787,13 +827,13 @@ export function CareerApplicationTracker({
                                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-700">{fitScore}/100 fit</span>
                               </div>
                             ) : null}
-                            {application.next_action ? <p className="mt-2 text-sm leading-6 text-neutral-600">{application.next_action}</p> : null}
+                            {application.next_action ? <p className="mt-1.5 text-xs leading-5 text-neutral-600">{application.next_action}</p> : null}
                             {linkedCoverLetterTitle || linkedDossierTitle || linkedSalaryTitle || linkedFitTitle ? (
-                              <div className="mt-3 space-y-2">
+                              <div className="mt-2 space-y-1.5">
                                 <button
                                   type="button"
                                   onClick={() => setCareerWorkspaceTarget(application.id)}
-                                  className="block w-full rounded-xl border border-sky-300 bg-white px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                                  className="block w-full rounded-lg border border-sky-300 bg-white px-2.5 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
                                 >
                                   Focus this role across workspace
                                 </button>
@@ -850,12 +890,14 @@ export function CareerApplicationTracker({
                           </div>
                         )
                       })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                      </div>
+                    )
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <h2 className="text-xl font-semibold">Saved roles and applications</h2>

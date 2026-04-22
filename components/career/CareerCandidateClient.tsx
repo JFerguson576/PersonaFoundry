@@ -1834,7 +1834,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
   } as const
   const stepContentCompactClass =
-    "mt-1 space-y-1.5 [&_.rounded-3xl]:rounded-2xl [&_.rounded-3xl]:p-2.5 [&_.rounded-2xl]:p-2 [&_h2]:text-[0.98rem] [&_h3]:text-[0.92rem] [&_p]:leading-5"
+    "mt-1 space-y-1 [&_.rounded-3xl]:rounded-xl [&_.rounded-3xl]:p-2 [&_.rounded-2xl]:p-1.5 [&_h2]:text-[0.96rem] [&_h3]:text-[0.9rem] [&_p]:leading-[1.35] [&_.text-sm]:text-[0.82rem]"
   const urgentSectionKey =
     priorityItems[0]?.sectionKey ||
     todayBoardItems[0]?.sectionKey ||
@@ -4420,7 +4420,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : null}
             </section>
 
-            <section id="document-workbench" className={`rounded-[1.5rem] border border-[#d8ebe4] bg-[linear-gradient(180deg,#fcfffd_0%,#f1fbf7_100%)] p-3 shadow-sm ${activeStep === "documents" ? "" : "hidden"}`}>
+            <section id="document-workbench" className={`rounded-[1.25rem] border border-[#d8ebe4] bg-[linear-gradient(180deg,#fcfffd_0%,#f1fbf7_100%)] p-2.5 shadow-sm ${activeStep === "documents" ? "" : "hidden"}`}>
               <button
                 type="button"
                 onClick={() => toggleSection("documents")}
@@ -4482,7 +4482,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </>
               ) : null}
               {showSectionContext.documents ? (
-              <section className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+              <section className="mb-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Application lane</div>
@@ -4498,7 +4498,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       key={step.id}
                       type="button"
                       onClick={() => openAndScroll(step.sectionKey, step.href)}
-                      className={`rounded-lg border px-2.5 py-1.5 text-left transition ${
+                      className={`rounded-lg border px-2 py-1.5 text-left transition ${
                         step.ready ? "border-emerald-300 bg-emerald-50" : "border-neutral-200 bg-white hover:border-neutral-300"
                       }`}
                     >
@@ -4516,11 +4516,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </section>
               ) : null}
 
-              <section className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+              <section className="mb-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Application tracker</div>
-                    <h3 className="mt-0.5 text-sm font-semibold">Live roles being pursued</h3>
+                    <h3 className="mt-0.5 text-sm font-semibold">Live roles</h3>
                     <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-neutral-600">
                       Keep application status, follow-up notes, and next actions in one place.
                     </p>
@@ -4537,7 +4537,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </div>
                 </div>
 
-                <div className="mt-3">
+                <div className="mt-2.5">
                   <CareerApplicationTracker
                     candidateId={candidate.id}
                     applications={applications}
@@ -4551,16 +4551,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 </div>
               </section>
 
-              <div id="document-actions" className="space-y-4">
-                <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+              <div id="document-actions" className="space-y-3">
+                <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Document tools</div>
-                      <h3 className="mt-0.5 text-sm font-semibold">Create and tailor application outputs</h3>
+                      <h3 className="mt-0.5 text-sm font-semibold">Create application outputs</h3>
                     </div>
                     <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Order</div>
-                      <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets ? Letter ? Strategy</div>
+                      <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets → Letter → Support</div>
                     </div>
                   </div>
                   <div className="mt-2 grid gap-1.5 md:grid-cols-3">
@@ -4592,7 +4592,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <CareerStrategicDocumentGenerator candidateId={candidate.id} assetType="job_hit_list" />
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#b9d8c8] bg-[#ecf9f1] px-3 py-2 text-[11px] text-[#166534]">
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#b9d8c8] bg-[#ecf9f1] px-3 py-2 text-[11px] text-[#166534]">
                 <span>
                   Secondary document panels are hidden to keep this workspace focused. Open when you want to review history or edit older versions.
                 </span>
@@ -6789,6 +6789,18 @@ function CurrentTargetBriefCard({
     jobUrl?: string
   }
 }) {
+  const formatBriefValue = (label: string, value: string) => {
+    if (!value) return "Not set yet"
+    if (label === "Website" || label === "Job link") {
+      try {
+        const parsed = new URL(value)
+        return parsed.hostname.replace(/^www\./, "")
+      } catch {
+        return value
+      }
+    }
+    return value
+  }
   const rows = [
     { label: "Role", value: brief.jobTitle || "Not set yet" },
     { label: "Company", value: brief.companyName || "Not set yet" },
@@ -6809,12 +6821,12 @@ function CurrentTargetBriefCard({
           {statusBadge || "Editable in each tool"}
         </div>
       </div>
-      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <dl className="mt-2.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {rows.map((row) => (
-          <div key={`${title}-${row.label}`} className="rounded-xl border border-white/80 bg-white px-3 py-2">
+          <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2.5 py-2">
             <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}</dt>
-            <dd className="mt-1 truncate text-sm font-semibold text-neutral-900" title={row.value}>
-              {row.value}
+            <dd className="mt-1 line-clamp-2 break-words text-xs font-semibold text-neutral-900" title={row.value}>
+              {formatBriefValue(row.label, row.value)}
             </dd>
           </div>
         ))}
