@@ -1816,7 +1816,7 @@ export default function Home() {
       setShowQuickStartWizard(false)
       openPersonaSection('analysis', '#persona-analysis')
       await runAiProfileAnalysis(sourceText, `Career Gallup strengths (${selected.candidate_name})`)
-      flashMessage(`Gallup Strengths loaded from ${selected.candidate_name}.`)
+      flashMessage(`Strengths report loaded and mapped from ${selected.candidate_name}.`)
     } finally {
       setIsApplyingGallupSource(false)
     }
@@ -1836,7 +1836,7 @@ export default function Home() {
       source: 'analysis',
     })
 
-    flashMessage('Profile text analyzed.')
+      flashMessage('Profile text analyzed and mapped. Review traits, then save your profile.')
 
     if (result.confidence === 'Low') {
       void runAiProfileAnalysis(analysisText, uploadedFileName || 'Pasted text (AI refined)')
@@ -1862,18 +1862,18 @@ export default function Home() {
       try {
         payload = JSON.parse(raw) as { text?: string; error?: string }
       } catch {
-        flashMessage('Upload failed: server did not return valid JSON.')
+        flashMessage('Upload failed. Server returned an invalid response.')
         return
       }
 
       if (!response.ok) {
-        flashMessage(payload.error || 'File extraction failed.')
+        flashMessage(payload.error || 'Upload failed. Could not extract readable text.')
         return
       }
 
       const extractedText = String(payload.text || '').trim()
       if (!extractedText) {
-        flashMessage('No readable text was extracted.')
+        flashMessage('Upload completed, but no readable text was found.')
         return
       }
 
@@ -1888,14 +1888,14 @@ export default function Home() {
         source: 'analysis',
       })
 
-      flashMessage(`Uploaded and analyzed ${file.name}.`)
+      flashMessage(`Source file loaded and mapped: ${file.name}. Review traits, then save your profile.`)
 
       if (result.confidence === 'Low') {
         void runAiProfileAnalysis(extractedText, `${file.name} (AI refined)`)
       }
     } catch (error) {
       console.error('Upload analysis failed:', error)
-      flashMessage('Failed to process uploaded file.')
+      flashMessage('Upload failed. Please try again with another file.')
     } finally {
       setUploadingFile(false)
       setIsDragging(false)
@@ -2932,7 +2932,7 @@ export default function Home() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-sm font-medium">Upload a profile file</div>
-                    <div className="mt-1 text-xs text-neutral-500">Supported: TXT, PDF, DOCX. Drag-and-drop supported.</div>
+                    <div className="mt-1 text-xs text-neutral-500">Supported: TXT, PDF, DOCX. Upload one file to extract text and auto-analyze.</div>
                   </div>
 
                   <div className="flex flex-wrap gap-3">
@@ -2950,7 +2950,7 @@ export default function Home() {
                           await handleProfileFileUpload(file)
                         }}
                       />
-                      {uploadingFile ? 'Uploading...' : 'Upload file'}
+                      {uploadingFile ? 'Uploading...' : 'Upload and analyze'}
                     </label>
 
                     <label className="inline-flex cursor-pointer items-center rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium hover:bg-neutral-100">
@@ -2966,12 +2966,12 @@ export default function Home() {
                           input.value = ''
                         }}
                       />
-                      {synthesizingDocs ? 'Synthesizing...' : 'Synthesize documents'}
+                      {synthesizingDocs ? 'Synthesizing...' : 'Combine + analyze (up to 5)'}
                     </label>
                   </div>
                 </div>
 
-                {uploadedFileName && <p className="mt-3 text-xs text-neutral-600">Last upload: {uploadedFileName}</p>}
+                {uploadedFileName && <p className="mt-3 text-xs text-neutral-600">Latest analyzed file: {uploadedFileName}</p>}
               </div>
 
               <textarea

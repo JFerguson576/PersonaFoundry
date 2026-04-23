@@ -235,6 +235,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     interview: false,
     jobs: false,
   })
+  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false)
   const [showCompletedLeftSteps, setShowCompletedLeftSteps] = useState(false)
   const [didAutoRouteOnboarding, setDidAutoRouteOnboarding] = useState(false)
 
@@ -1492,15 +1493,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     label: nextUndoneStep?.actionLabel || "Open Step Coach",
     sectionKey: nextUndoneStep?.sectionKey || "source",
     href: nextUndoneStep?.href || "#source-material",
-  }
-  const sectionBreadcrumbByKey: Record<string, string> = {
-    workflow: "Step-by-step menu / Start",
-    source: "Step-by-step menu / Add files",
-    positioning: "Step-by-step menu / Create profile",
-    documents: "Step-by-step menu / Create documents",
-    company: "Step-by-step menu / Research companies",
-    interview: "Step-by-step menu / Practice interviews",
-    jobs: "Step-by-step menu / Search jobs",
   }
   const savedLibraryLinks = [
     {
@@ -4148,10 +4140,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       />
                     </>
                   ) : null}
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <p className="max-w-2xl text-sm leading-5 text-neutral-600">
-                      Create the candidate&rsquo;s market narrative before generating outward-facing documents.
-                    </p>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-800">
+                      Build profile first, then generate outward-facing assets.
+                    </div>
                     <div id="generate-profile" className="w-full max-w-xl">
                       <CareerGenerateProfileButton candidateId={candidate.id} />
                     </div>
@@ -4224,14 +4216,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       tone={positioningGapItems.length === 0 ? "success" : "warning"}
                     />
                   </div>
-                  <div className="rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm">
+                  <div className="rounded-3xl border border-indigo-200 bg-white p-4 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Use this profile next</div>
-                        <h3 className="mt-2 text-lg font-semibold text-neutral-900">Turn the narrative into action</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                          Once the profile reads well, move directly into the next work area rather than staying inside the narrative section.
-                        </p>
+                        <h3 className="mt-1 text-base font-semibold text-neutral-900">Move from profile to outputs</h3>
                       </div>
                       <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Best next move</div>
@@ -4240,39 +4229,30 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         </div>
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
                       <button
                         type="button"
                         onClick={() => openAndScroll("documents", "#document-actions")}
-                        className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left transition hover:shadow-sm"
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800">Create assets</div>
-                        <div className="mt-2 font-semibold text-neutral-900">Generate CV, LinkedIn, and cover-letter drafts</div>
-                        <p className="mt-2 text-sm leading-6 text-neutral-700">
-                          Use this profile to produce the outward-facing documents the candidate will actually send.
-                        </p>
+                        <div className="mt-1 font-semibold text-neutral-900">Generate CV, LinkedIn, and letters</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => openAndScroll("company", "#company-dossier")}
-                        className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left transition hover:shadow-sm"
+                        className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Tailor the story</div>
-                        <div className="mt-2 font-semibold text-neutral-900">Match the profile to target employers</div>
-                        <p className="mt-2 text-sm leading-6 text-neutral-700">
-                          Build company dossiers so the profile language can be adapted to the tone and messaging of each employer.
-                        </p>
+                        <div className="mt-1 font-semibold text-neutral-900">Match narrative to target employers</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => openAndScroll("jobs", "#jobs")}
-                        className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-left transition hover:shadow-sm"
+                        className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Test it in market</div>
-                        <div className="mt-2 font-semibold text-neutral-900">Search live roles from this narrative</div>
-                        <p className="mt-2 text-sm leading-6 text-neutral-700">
-                          Use the current profile to search roles, compare fit, and decide where the candidate should spend energy next.
-                        </p>
+                        <div className="mt-1 font-semibold text-neutral-900">Search live roles from this narrative</div>
                       </button>
                     </div>
                   </div>
@@ -4563,24 +4543,29 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       <div className="mt-0.5 text-[11px] font-semibold text-neutral-900">Assets → Letter → Support</div>
                     </div>
                   </div>
-                  <div className="mt-2 grid gap-1.5 md:grid-cols-3">
-                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">1. Base assets</div>
-                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate CV and LinkedIn drafts first.</p>
+                  {showSectionContext.documents ? (
+                    <div className="mt-2 grid gap-1.5 md:grid-cols-3">
+                      <div className="rounded-lg border border-white/80 bg-white p-2.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">1. Base assets</div>
+                        <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate CV and LinkedIn drafts first.</p>
+                      </div>
+                      <div className="rounded-lg border border-white/80 bg-white p-2.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">2. Tailored letter</div>
+                        <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Create role or dossier-matched letter next.</p>
+                      </div>
+                      <div className="rounded-lg border border-white/80 bg-white p-2.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">3. Support documents</div>
+                        <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate packs only when needed.</p>
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">2. Tailored letter</div>
-                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Create role or dossier-matched letter next.</p>
+                  ) : (
+                    <div className="mt-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[11px] text-neutral-700">
+                      Order: Base assets, then tailored letter, then support documents.
                     </div>
-                    <div className="rounded-lg border border-white/80 bg-white p-2.5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">3. Support documents</div>
-                      <p className="mt-0.5 text-[11px] leading-4 text-neutral-600">Generate packs only when needed.</p>
-                    </div>
-                  </div>
+                  )}
                 </section>
                 <CurrentTargetBriefCard
                   title="Current target brief"
-                  description="These workflow forms now prefill from the strongest live target in the workspace so the user can move faster across dossier, fit, salary, interview, and outreach."
                   brief={currentTargetBrief}
                   statusBadge={targetStatusBadgeLabel}
                 />
@@ -6136,61 +6121,68 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           {completionCount}/{preparationSteps.length} steps done
         </div>
         <div className="mt-1.5">
-          <details className="group rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-              Quick settings
-              <span className="text-[9px] text-neutral-500 group-open:hidden">Expand</span>
-              <span className="hidden text-[9px] text-neutral-500 group-open:inline">Collapse</span>
-            </summary>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={openWizardFlow}
-                className={`rounded-full border border-[#0a66c2] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                  showOnboardingGuide
-                    ? "wizard-spotlight-soft bg-[#0a66c2] text-white hover:bg-[#004182]"
-                    : "bg-[#e8f3ff] text-[#0a66c2] hover:bg-[#dcecff]"
-                }`}
-              >
-                Setup helper
-              </button>
-              {!hideWorkspaceGuideToggle ? (
+          <div className="rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
+            <button
+              type="button"
+              onClick={() => setQuickSettingsOpen((current) => !current)}
+              className="flex w-full items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700"
+            >
+              Quick actions
+              <span className="text-[9px] text-neutral-500">{quickSettingsOpen ? "Collapse" : "Expand"}</span>
+            </button>
+            {quickSettingsOpen ? (
+              <div className="mt-1.5 space-y-1.5">
                 <button
                   type="button"
-                  onClick={() => setGuidedModeEnabled(!isGuidedMode)}
-                  className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-                    isGuidedMode
-                      ? "border-[#0a66c2] bg-[#0a66c2] text-white"
-                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                  onClick={openWizardFlow}
+                  className={`w-full rounded-full border border-[#0a66c2] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                    showOnboardingGuide
+                      ? "wizard-spotlight-soft bg-[#0a66c2] text-white hover:bg-[#004182]"
+                      : "bg-[#e8f3ff] text-[#0a66c2] hover:bg-[#dcecff]"
                   }`}
                 >
-                  {isGuidedMode ? "Hints on" : "Hints off"}
+                  Guided setup
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={resetWorkspaceView}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                Reset view
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCompletedLeftSteps((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                {showCompletedLeftSteps ? "Hide completed" : "Show completed"}
-              </button>
-            </div>
-          </details>
+                {!hideWorkspaceGuideToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuidedModeEnabled(!isGuidedMode)}
+                    className={`w-full rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                      isGuidedMode
+                        ? "border-[#0a66c2] bg-[#0a66c2] text-white"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+                    }`}
+                  >
+                    {isGuidedMode ? "Hints on" : "Hints off"}
+                  </button>
+                ) : null}
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={resetWorkspaceView}
+                    className="flex-1 rounded-full border border-neutral-300 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCompletedLeftSteps((current) => !current)}
+                    className="flex-1 rounded-full border border-neutral-300 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {showCompletedLeftSteps ? "Hide done" : "Show done"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="mt-2.5 space-y-1">
           {visibleLeftWorkflowLinks.map((link) => (
             <div key={`left-step-${link.href}`} className="rounded-lg border border-neutral-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => activateLeftNavigation(link.sectionKey, link.href)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-semibold transition ${
+              <button
+                type="button"
+                onClick={() => activateLeftNavigation(link.sectionKey, link.href)}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-semibold transition ${
                     link.isActive
                       ? "border-sky-300 bg-sky-100 text-sky-900"
                     : link.complete
@@ -6199,28 +6191,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 }`}
               >
                 <span className="truncate">{cleanWorkflowLabel(link.label)}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">
-                  {expandedLeftSections[link.sectionKey] ? "▾" : "▸"}
-                </span>
               </button>
-              <div
-                className={`overflow-hidden border-t border-neutral-200 transition-[max-height,opacity,padding] duration-200 ease-out ${
-                  expandedLeftSections[link.sectionKey] ? "max-h-44 px-2 py-1.5 opacity-100" : "max-h-0 px-2 py-0 opacity-0"
-                }`}
-              >
-                <div className="space-y-1">
-                  {(sectionSubmenuLinks[link.sectionKey] ?? []).slice(0, 1).map((item) => (
-                      <button
-                        key={`left-submenu-inline-${item.sectionKey}-${item.href}-${item.label}`}
-                        type="button"
-                        onClick={() => activateLeftNavigation(item.sectionKey, item.href)}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1 text-left text-[9px] font-semibold text-neutral-700 hover:bg-white"
-                      >
-                        {cleanWorkflowLabel(item.label)}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           ))}
         </div>
@@ -6774,12 +6745,10 @@ function CompactHistoryCard({
 
 function CurrentTargetBriefCard({
   title,
-  description,
   brief,
   statusBadge,
 }: {
   title: string
-  description: string
   statusBadge?: string
   brief: {
     jobTitle?: string
@@ -6810,20 +6779,19 @@ function CurrentTargetBriefCard({
   ]
 
   return (
-    <section className="rounded-2xl border border-[#d7e8f0] bg-[linear-gradient(180deg,#ffffff_0%,#f5fbfd_100%)] p-3 shadow-sm">
+    <section className="rounded-2xl border border-[#d7e8f0] bg-[linear-gradient(180deg,#ffffff_0%,#f5fbfd_100%)] p-2.5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]">Shared target brief</div>
-          <h3 className="mt-1 text-base font-semibold text-[#0f172a]">{title}</h3>
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-600">{description}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-[#0f172a]">{title}</h3>
         </div>
         <div className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
           {statusBadge || "Editable in each tool"}
         </div>
       </div>
-      <dl className="mt-2.5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <dl className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
         {rows.map((row) => (
-          <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2.5 py-2">
+          <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2 py-1.5">
             <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}</dt>
             <dd className="mt-1 line-clamp-2 break-words text-xs font-semibold text-neutral-900" title={row.value}>
               {formatBriefValue(row.label, row.value)}

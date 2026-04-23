@@ -54,15 +54,15 @@ const applicationStatuses = [
 ]
 
 const applicationStatusGuidance: Record<string, string> = {
-  targeting: "Use this when the role looks interesting but the user has not decided to prioritize it yet.",
-  shortlisted: "Use this when the role is worth serious attention and should move toward tailoring or application.",
-  applied: "Use this once the application has gone out.",
-  interviewing: "Use this once interview conversations have started.",
-  final_round: "Use this for the last stage of interviews or decision conversations.",
-  offer: "Use this once an offer has been made.",
-  on_hold: "Use this when the role is paused for now but still alive.",
-  rejected: "Use this when the process has ended with a rejection.",
-  archived: "Use this when the role is closed and no more action is needed.",
+  targeting: "Interesting role, not prioritized yet.",
+  shortlisted: "High-priority role ready for tailoring or application.",
+  applied: "Application submitted.",
+  interviewing: "Interview conversations started.",
+  final_round: "Final decision stage.",
+  offer: "Offer received.",
+  on_hold: "Paused for now.",
+  rejected: "Process ended in rejection.",
+  archived: "Closed and no longer active.",
 }
 
 export function CareerApplicationTracker({
@@ -88,7 +88,13 @@ export function CareerApplicationTracker({
   const [salaryAnalysisAssetId, setSalaryAnalysisAssetId] = useState("")
   const [fitAnalysisAssetId, setFitAnalysisAssetId] = useState("")
   const [showStageMeanings, setShowStageMeanings] = useState(false)
+  const [showFocusGuide, setShowFocusGuide] = useState(false)
+  const [showRoleComparison, setShowRoleComparison] = useState(false)
+  const [showShortlist, setShowShortlist] = useState(false)
+  const [showRoleBoard, setShowRoleBoard] = useState(false)
+  const [showAdvancedRoleEntry, setShowAdvancedRoleEntry] = useState(false)
   const [openBoardStage, setOpenBoardStage] = useState<string | null>(null)
+  const [openApplicationId, setOpenApplicationId] = useState<string | null>(applications[0]?.id ?? null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const today = new Date()
@@ -108,6 +114,11 @@ export function CareerApplicationTracker({
     ...statusOption,
     count: applications.filter((application) => application.status === statusOption.value).length,
   }))
+  const statusChips = applicationsByStatus.filter((item) => item.count > 0)
+  const visibleStatusChips = statusChips.length > 0 ? statusChips : applicationsByStatus.slice(0, 3)
+  const boardStatuses = applicationStatuses.filter((statusOption) =>
+    applications.some((application) => application.status === statusOption.value)
+  )
   const coverLetterTitleById = new Map(coverLetterOptions.map((asset) => [asset.id, asset.title || "Untitled cover letter"]))
   const companyDossierTitleById = new Map(companyDossierOptions.map((asset) => [asset.id, asset.title || "Untitled company dossier"]))
   const salaryAnalysisTitleById = new Map(salaryAnalysisOptions.map((asset) => [asset.id, asset.title || "Untitled salary analysis"]))
@@ -228,6 +239,23 @@ export function CareerApplicationTracker({
     }
   }, [applicationsByStatus, hasAnyApplications, openBoardStage])
 
+  useEffect(() => {
+    if (applications.length === 0) {
+      if (openApplicationId !== null) {
+        setOpenApplicationId(null)
+      }
+      return
+    }
+
+    const currentlyOpenStillExists = openApplicationId
+      ? applications.some((application) => application.id === openApplicationId)
+      : false
+
+    if (!currentlyOpenStillExists) {
+      setOpenApplicationId(applications[0]?.id ?? null)
+    }
+  }, [applications, openApplicationId])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
@@ -282,21 +310,29 @@ export function CareerApplicationTracker({
 
   return (
     <div className="space-y-3">
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Add or update a target role</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Save the real roles the user is exploring or applying for, then keep the next step, follow-up, and linked assets in one place.
+            <h2 className="text-base font-semibold">Add a target role</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
+              Save the role first, then handle follow-up and linked assets.
             </p>
           </div>
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Saved roles</div>
-            <div className="mt-1 text-2xl font-semibold">{applications.length}</div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+              Saved roles {applications.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedRoleEntry((current) => !current)}
+              className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {showAdvancedRoleEntry ? "Hide extras" : "Show extras"}
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Company">
             <input value={companyName} onChange={(event) => setCompanyName(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
           </Field>
@@ -314,7 +350,7 @@ export function CareerApplicationTracker({
                 </option>
               ))}
             </select>
-            <p className="mt-2 text-xs leading-5 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
           </Field>
           <Field label="Job URL">
             <input value={jobUrl} onChange={(event) => setJobUrl(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
@@ -322,6 +358,23 @@ export function CareerApplicationTracker({
           <Field label="Follow-up date">
             <input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
           </Field>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Field label="Next action">
+            <input
+              value={nextAction}
+              onChange={(event) => setNextAction(event.target.value)}
+              placeholder="What should happen next?"
+              className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Notes">
+            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[72px] w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm leading-5" />
+          </Field>
+        </div>
+
+        {showAdvancedRoleEntry ? (
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Field label="Linked cover letter">
             <select value={coverLetterAssetId} onChange={(event) => setCoverLetterAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
               <option value="">No linked cover letter</option>
@@ -332,42 +385,43 @@ export function CareerApplicationTracker({
               ))}
             </select>
           </Field>
-        <Field label="Linked company dossier">
-          <select value={companyDossierAssetId} onChange={(event) => setCompanyDossierAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
-            <option value="">No linked dossier</option>
-            {companyDossierOptions.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.title || "Untitled company dossier"}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Linked salary analysis">
-          <select value={salaryAnalysisAssetId} onChange={(event) => setSalaryAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
-            <option value="">No linked salary analysis</option>
-            {salaryAnalysisOptions.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.title || "Untitled salary analysis"}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Linked fit analysis">
-          <select value={fitAnalysisAssetId} onChange={(event) => setFitAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
-            <option value="">No linked fit analysis</option>
-            {fitAnalysisOptions.map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.title || "Untitled fit analysis"}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+          <Field label="Linked company dossier">
+            <select value={companyDossierAssetId} onChange={(event) => setCompanyDossierAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+              <option value="">No linked dossier</option>
+              {companyDossierOptions.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.title || "Untitled company dossier"}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Linked salary analysis">
+            <select value={salaryAnalysisAssetId} onChange={(event) => setSalaryAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+              <option value="">No linked salary analysis</option>
+              {salaryAnalysisOptions.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.title || "Untitled salary analysis"}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Linked fit analysis">
+            <select value={fitAnalysisAssetId} onChange={(event) => setFitAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+              <option value="">No linked fit analysis</option>
+              {fitAnalysisOptions.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.title || "Untitled fit analysis"}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        ) : null}
 
-        {suggestedCoverLetter || suggestedDossier || suggestedOutreachStrategy || suggestedRecruiterMatchSearch ? (
-          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+        {showAdvancedRoleEntry && (suggestedCoverLetter || suggestedDossier || suggestedOutreachStrategy || suggestedRecruiterMatchSearch) ? (
+          <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Suggested links</div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
               {suggestedCoverLetter ? (
                 <div className="rounded-2xl border border-sky-200 bg-white p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested cover letter</div>
@@ -395,7 +449,7 @@ export function CareerApplicationTracker({
                 </div>
               ) : null}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {suggestedOutreachStrategy ? (
                 <button
                   type="button"
@@ -448,16 +502,7 @@ export function CareerApplicationTracker({
           </div>
         ) : null}
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Next action">
-            <textarea value={nextAction} onChange={(event) => setNextAction(event.target.value)} className="min-h-[110px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6" />
-          </Field>
-          <Field label="Notes">
-            <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[110px] w-full rounded-2xl border border-neutral-300 px-3 py-3 text-sm leading-6" />
-          </Field>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={loading || !companyName.trim() || !jobTitle.trim()}
@@ -478,103 +523,108 @@ export function CareerApplicationTracker({
           <TrackerMetricCard label="Offers" value={String(applications.filter((application) => application.status === "offer").length)} tone="success" />
         </div>
 
-        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-2.5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Stage guide</div>
-              <h3 className="mt-1 text-sm font-semibold">Role pipeline</h3>
-            </div>
-            <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Stages</div>
-              <div className="mt-0.5 text-sm font-semibold">{applicationStatuses.length}</div>
-            </div>
+        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Application stages</div>
+            <button
+              type="button"
+              onClick={() => setShowStageMeanings((current) => !current)}
+              className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {showStageMeanings ? "Hide guide" : "Stage guide"}
+            </button>
           </div>
-          <div className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-            {applicationsByStatus.map((statusOption) => (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {visibleStatusChips.map((statusOption) => (
               <div
                 key={`guide-${statusOption.value}`}
-                className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5"
+                className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2 py-1"
               >
-                <div className="text-xs font-semibold text-neutral-900">{statusOption.label}</div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(statusOption.value)}`}>
+                <div className="text-[11px] font-semibold text-neutral-900">{statusOption.label}</div>
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${statusBadgeClass(statusOption.value)}`}>
                   {statusOption.count}
                 </span>
               </div>
             ))}
           </div>
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setShowStageMeanings((current) => !current)}
-              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-            >
-              {showStageMeanings ? "Hide details" : "Stage details"}
-            </button>
-          </div>
           {showStageMeanings ? (
-            <div className="mt-2 grid gap-1.5 rounded-xl border border-neutral-200 bg-white p-2.5 md:grid-cols-2 xl:grid-cols-3">
-              {applicationStatuses.map((statusOption) => (
-                <div key={`guide-meaning-${statusOption.value}`} className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2">
-                  <div className="text-xs font-semibold text-neutral-900">{statusOption.label}</div>
-                  <p className="mt-1 text-[11px] leading-4 text-neutral-600">{applicationStatusGuidance[statusOption.value]}</p>
-                </div>
-              ))}
+            <div className="mt-2 rounded-lg border border-neutral-200 bg-white p-2">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Stage legend</div>
+              <div className="mt-1.5 grid gap-1.5 md:grid-cols-2 xl:grid-cols-3">
+                {applicationStatuses.map((statusOption) => (
+                  <div key={`guide-meaning-${statusOption.value}`} className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                    <div className="text-[11px] font-semibold text-neutral-900">{statusOption.label}</div>
+                    <div className="mt-0.5 text-[10px] leading-4 text-neutral-600">{applicationStatusGuidance[statusOption.value]}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
 
-        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Focus guide</div>
-              <h3 className="mt-1 text-base font-semibold">Where to focus next</h3>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
-                These signals help show which roles are strongest right now, which ones need more tailoring, and which ones should wait.
-              </p>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Focus next</div>
+              <h3 className="mt-0.5 text-sm font-semibold">Where to spend time first</h3>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <TrackerMetricCard label="Strong fit" value={String(applicationDecisionSummary.strongFit.length)} tone="success" />
-              <TrackerMetricCard label="Promising" value={String(applicationDecisionSummary.promising.length)} tone="warning" />
-              <TrackerMetricCard label="Lower priority" value={String(applicationDecisionSummary.lowFit.length)} tone="neutral" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800">
+                Strong {applicationDecisionSummary.strongFit.length}
+              </span>
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+                Promising {applicationDecisionSummary.promising.length}
+              </span>
+              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                Lower {applicationDecisionSummary.lowFit.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFocusGuide((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showFocusGuide ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
-          {topFocusRow ? (
-            <div className="mt-4 rounded-3xl border border-sky-200 bg-white p-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+          {showFocusGuide && topFocusRow ? (
+            <div className="mt-2 rounded-xl border border-sky-200 bg-white p-2.5">
+              <div className="flex flex-wrap items-start justify-between gap-2.5">
                 <div className="max-w-2xl">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Top recommended focus</div>
-                  <h4 className="mt-2 text-lg font-semibold text-neutral-900">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700">Top focus</div>
+                  <h4 className="mt-1 text-sm font-semibold text-neutral-900">
                     {topFocusRow.company} | {topFocusRow.role}
                   </h4>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">{topFocusRow.nextMove}</p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-600">{topFocusRow.nextMove}</p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <span className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] ${topFocusRow.fitBadgeClass}`}>
+                <div className="grid gap-1.5 sm:grid-cols-3">
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${topFocusRow.fitBadgeClass}`}>
                     {topFocusRow.fitScore !== null ? `${topFocusRow.fitScore}/100 fit` : "Fit not scored"}
                   </span>
-                  <span className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] ${topFocusRow.urgencyBadgeClass}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${topFocusRow.urgencyBadgeClass}`}>
                     {topFocusRow.urgencyLabel}
                   </span>
-                  <span className="rounded-full bg-neutral-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                  <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                     {topFocusRow.salaryStatus}
                   </span>
                 </div>
               </div>
-              <div className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 text-sm leading-6 text-neutral-700">
+              <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs leading-5 text-neutral-700">
                 {topFocusRow.decision}
               </div>
-              <div className="mt-3">
+              <div className="mt-2">
                 <button
                   type="button"
                   onClick={() => setCareerWorkspaceTarget(topFocusRow.id)}
-                  className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                  className="rounded-full border border-sky-300 bg-white px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
                 >
                   Focus this role across workspace
                 </button>
               </div>
             </div>
           ) : null}
-          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          {showFocusGuide ? (
+          <div className="mt-2 grid gap-2 xl:grid-cols-3">
             <DecisionColumn
               title="Push now"
               description="High-fit roles where the candidate should invest more energy immediately."
@@ -594,28 +644,47 @@ export function CareerApplicationTracker({
               items={applicationDecisionSummary.lowFit}
             />
           </div>
+          ) : null}
         </div>
 
-        <div className="mb-4 rounded-3xl border border-violet-200 bg-violet-50 p-4">
+        <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-2.5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Shortlist</div>
-              <h3 className="mt-2 text-lg font-semibold">Roles to decide on next</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Use this as the space between search and application. Shortlisted roles should either move forward quickly or be closed out.
-              </p>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700">Shortlist</div>
+              <h3 className="mt-0.5 text-sm font-semibold">Roles to decide next</h3>
             </div>
-            <div className="rounded-2xl border border-violet-200 bg-white px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Shortlisted roles</div>
-              <div className="mt-1 text-2xl font-semibold">{shortlistedApplications.length}</div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-violet-700">
+                Shortlisted {shortlistedApplications.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowShortlist((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showShortlist ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
-          {shortlistedApplications.length === 0 ? (
-            <p className="mt-4 text-sm leading-6 text-neutral-600">
-              Save strong live-search results into the shortlist and they will appear here with clear next steps.
-            </p>
+          {!showShortlist ? (
+            <div className="mt-2 rounded-xl border border-violet-200 bg-white px-2.5 py-2 text-xs text-neutral-700">
+              {shortlistedApplications.length === 0
+                ? "No shortlisted roles yet."
+                : `${shortlistedApplications.length} shortlisted role${shortlistedApplications.length === 1 ? "" : "s"} ready for review.`}
+            </div>
+          ) : shortlistedApplications.length === 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+              <span>No shortlisted roles yet.</span>
+              <button
+                type="button"
+                onClick={() => navigateCareerWorkspace("jobs", "#current-live-opportunities")}
+                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                Open live roles
+              </button>
+            </div>
           ) : (
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {shortlistedApplications.map((application) => {
                 const linkedDossierTitle = application.company_dossier_asset_id ? companyDossierTitleById.get(application.company_dossier_asset_id) : null
                 const linkedCoverLetterTitle = application.cover_letter_asset_id ? coverLetterTitleById.get(application.cover_letter_asset_id) : null
@@ -629,54 +698,54 @@ export function CareerApplicationTracker({
                 const nextStatusOption = getNextStatusOption(application.status)
 
                 return (
-                  <div key={`shortlist-${application.id}`} className={`rounded-2xl border p-4 shadow-sm ${readiness.cardClass}`}>
+                  <div key={`shortlist-${application.id}`} className={`rounded-xl border p-2.5 shadow-sm ${readiness.cardClass}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-current/80">Shortlisted role</div>
-                        <div className="mt-2 text-base font-semibold text-neutral-900">{application.job_title || "Untitled role"}</div>
-                        <div className="mt-1 text-sm text-neutral-700">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/80">Role</div>
+                        <div className="mt-1 text-sm font-semibold text-neutral-900">{application.job_title || "Untitled role"}</div>
+                        <div className="mt-0.5 text-xs text-neutral-700">
                           {application.company_name || "Untitled company"}
                           {application.location ? ` | ${application.location}` : ""}
                         </div>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${readiness.badgeClass}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${readiness.badgeClass}`}>
                         {readiness.label}
                       </span>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-700">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold text-neutral-700">
                         {fitScore !== null ? `${fitScore}/100 fit` : "Fit not scored"}
                       </span>
-                      <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-700">
+                      <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold text-neutral-700">
                         {linkedDossierTitle ? "Dossier linked" : "Dossier missing"}
                       </span>
-                      <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-neutral-700">
+                      <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-semibold text-neutral-700">
                         {linkedCoverLetterTitle ? "Letter linked" : "Letter missing"}
                       </span>
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-neutral-700">{buildShortlistGuidance(readiness.level, application.next_action)}</p>
+                    <p className="mt-2 text-xs leading-5 text-neutral-700">{buildShortlistGuidance(readiness.level, application.next_action)}</p>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         onClick={() => setCareerWorkspaceTarget(application.id)}
-                        className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                        className="rounded-full border border-sky-300 bg-white px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
                       >
                         Focus this role
                       </button>
                       <button
                         type="button"
                         onClick={() => navigateCareerWorkspace("company", linkedDossierTitle ? "#current-company-dossiers" : "#company-dossier")}
-                        className="rounded-full border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                       >
                         {linkedDossierTitle ? "Open dossier" : "Create dossier"}
                       </button>
                       <button
                         type="button"
                         onClick={() => navigateCareerWorkspace("documents", linkedCoverLetterTitle ? "#current-cover-letters" : "#document-workbench")}
-                        className="rounded-full border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                       >
                         {linkedCoverLetterTitle ? "Open letter" : "Create letter"}
                       </button>
@@ -691,34 +760,39 @@ export function CareerApplicationTracker({
           )}
         </div>
 
-        <div className="mb-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
+        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Compare roles</div>
-              <h3 className="mt-2 text-lg font-semibold">Side-by-side role view</h3>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Compare roles on one screen so it is easier to decide where the user should spend time first.
-              </p>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Compare roles</div>
+              <h3 className="mt-0.5 text-sm font-semibold">Side-by-side view</h3>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Compared roles</div>
-              <div className="mt-1 text-2xl font-semibold">{rankedComparisonRows.length}</div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                Compared {rankedComparisonRows.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRoleComparison((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showRoleComparison ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
 
-          {rankedComparisonRows.length === 0 ? (
-            <div className="mt-3 rounded-2xl border border-dashed border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-600">
-              Add roles to the tracker and they will appear here for side-by-side comparison.
+          {showRoleComparison && rankedComparisonRows.length === 0 ? (
+            <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white px-2.5 py-2 text-xs text-neutral-600">
+              Add at least two roles to compare.
             </div>
-          ) : (
-            <div className="mt-4 overflow-x-auto">
+          ) : showRoleComparison ? (
+            <div className="mt-2 overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-0">
                 <thead>
                   <tr>
                     {["Role", "Company", "Fit", "Urgency", "Salary", "Decision", "Next move"].map((heading) => (
                       <th
                         key={heading}
-                        className="border-b border-neutral-200 bg-white px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500"
+                        className="border-b border-neutral-200 bg-white px-2.5 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500"
                       >
                         {heading}
                       </th>
@@ -728,65 +802,73 @@ export function CareerApplicationTracker({
                 <tbody>
                   {rankedComparisonRows.map((row) => (
                     <tr key={row.id}>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-900">{row.role}</td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">{row.company}</td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs font-semibold text-neutral-900">{row.role}</td>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-700">{row.company}</td>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-700">
                         {row.fitScore !== null ? (
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${row.fitBadgeClass}`}>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.fitBadgeClass}`}>
                             {row.fitScore}/100
                           </span>
                         ) : (
                           <span className="text-neutral-400">Not scored</span>
                         )}
                       </td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${row.urgencyBadgeClass}`}>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-700">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.urgencyBadgeClass}`}>
                           {row.urgencyLabel}
                         </span>
                       </td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">{row.salaryStatus}</td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">{row.decision}</td>
-                      <td className="border-b border-neutral-200 bg-white px-4 py-3 text-sm leading-6 text-neutral-700">{row.nextMove}</td>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-700">{row.salaryStatus}</td>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-700">{row.decision}</td>
+                      <td className="border-b border-neutral-200 bg-white px-2.5 py-2 text-xs leading-5 text-neutral-700">{row.nextMove}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </div>
 
-        <div className="mb-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-2.5">
+        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Board view</div>
-              <h3 className="mt-1 text-sm font-semibold">Role board</h3>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role board</div>
+              <h3 className="mt-0.5 text-sm font-semibold">Pipeline by stage</h3>
             </div>
-            <div className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Visible stages</div>
-              <div className="mt-0.5 text-sm font-semibold">{applicationStatuses.length}</div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                Stages {boardStatuses.length || 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRoleBoard((current) => !current)}
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+              >
+                {showRoleBoard ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
 
-          {!hasAnyApplications ? (
-            <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-600">
-              No tracked roles yet. Add one role above and the board will populate automatically.
+          {!hasAnyApplications && showRoleBoard ? (
+            <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-white px-2.5 py-2 text-xs text-neutral-600">
+              No tracked roles yet. Save one live role to start this board.
             </div>
-          ) : (
-            <div className="mt-2 space-y-1.5">
-              {applicationStatuses.map((statusOption) => {
+          ) : showRoleBoard ? (
+            <div className="mt-1.5 space-y-1">
+              {(boardStatuses.length > 0 ? boardStatuses : applicationStatuses.slice(0, 1)).map((statusOption) => {
                 const items = applications.filter((application) => application.status === statusOption.value)
                 const isExpanded = openBoardStage === statusOption.value
                 return (
-                  <div key={statusOption.value} className={`rounded-lg border p-2 ${pipelineStageToneClass(statusOption.value)}`}>
+                  <div key={statusOption.value} className={`rounded-md border p-1.5 ${pipelineStageToneClass(statusOption.value)}`}>
                     <button
                       type="button"
                       onClick={() => setOpenBoardStage((current) => (current === statusOption.value ? null : statusOption.value))}
                       className="flex w-full items-center justify-between gap-3 text-left"
                     >
-                      <div className="font-semibold text-neutral-900">{statusOption.label}</div>
+                      <div className="text-xs font-semibold text-neutral-900">{statusOption.label}</div>
                       <div className="flex items-center gap-2">
                         <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">{items.length}</span>
-                        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">{isExpanded ? "Hide" : "Show"}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{isExpanded ? "Hide" : "Show"}</span>
                       </div>
                     </button>
                     {isExpanded ? (
@@ -897,6 +979,10 @@ export function CareerApplicationTracker({
                 )
               })}
             </div>
+          ) : (
+            <div className="mt-2 rounded-xl border border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-600">
+              Keep this collapsed for a cleaner view. Open when you need stage-by-stage detail.
+            </div>
           )}
         </div>
 
@@ -904,18 +990,59 @@ export function CareerApplicationTracker({
         {applications.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-600">No saved roles yet. Add one above to start managing tailoring, follow-up, and interview progress.</p>
         ) : (
-          <div className="mt-4 space-y-4">
-            {applications.map((application) => (
-              <ApplicationEditor
-                key={application.id}
-                application={application}
-                coverLetterOptions={coverLetterOptions}
-                companyDossierOptions={companyDossierOptions}
-                outreachStrategyOptions={outreachStrategyOptions}
-                salaryAnalysisOptions={salaryAnalysisOptions}
-                fitAnalysisOptions={fitAnalysisOptions}
-              />
-            ))}
+          <div className="mt-4 space-y-2.5">
+            {applications.map((application) => {
+              const isOpen = openApplicationId === application.id
+              const fitScore = application.fit_analysis_asset_id ? extractFitScore(fitAnalysisContentById.get(application.fit_analysis_asset_id) || "") : null
+              const fitDecision = fitScore !== null ? getFitDecision(fitScore) : null
+              const followUpState = getFollowUpState(application.follow_up_date || "", application.status || "")
+
+              return (
+                <div key={application.id} className="rounded-xl border border-neutral-200 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setOpenApplicationId((current) => (current === application.id ? null : application.id))}
+                    className="flex w-full flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-left"
+                  >
+                    <div>
+                      <div className="text-sm font-semibold text-neutral-900">{application.company_name || "Untitled company"}</div>
+                      <div className="mt-0.5 text-xs text-neutral-600">{application.job_title || "Untitled role"}</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {fitDecision && fitScore !== null ? (
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${fitDecision.badgeClass}`}>
+                          {fitScore}/100
+                        </span>
+                      ) : null}
+                      {followUpState ? (
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${followUpState.badgeClass}`}>
+                          {followUpState.label}
+                        </span>
+                      ) : null}
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(application.status)}`}>
+                        {formatStatus(application.status)}
+                      </span>
+                      <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                        {isOpen ? "Collapse" : "Open"}
+                      </span>
+                    </div>
+                  </button>
+                  {isOpen ? (
+                    <div className="border-t border-neutral-200 p-2">
+                      <ApplicationEditor
+                        application={application}
+                        coverLetterOptions={coverLetterOptions}
+                        companyDossierOptions={companyDossierOptions}
+                        outreachStrategyOptions={outreachStrategyOptions}
+                        salaryAnalysisOptions={salaryAnalysisOptions}
+                        fitAnalysisOptions={fitAnalysisOptions}
+                        embedded
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
         )}
       </section>
@@ -930,6 +1057,7 @@ function ApplicationEditor({
   outreachStrategyOptions,
   salaryAnalysisOptions,
   fitAnalysisOptions,
+  embedded = false,
 }: {
   application: ApplicationRow
   coverLetterOptions: { id: string; title: string | null }[]
@@ -937,6 +1065,7 @@ function ApplicationEditor({
   outreachStrategyOptions: { id: string; title: string | null }[]
   salaryAnalysisOptions: { id: string; title: string | null }[]
   fitAnalysisOptions: { id: string; title: string | null; content?: string | null }[]
+  embedded?: boolean
 }) {
   const [companyName, setCompanyName] = useState(application.company_name || "")
   const [jobTitle, setJobTitle] = useState(application.job_title || "")
@@ -952,6 +1081,10 @@ function ApplicationEditor({
   const [fitAnalysisAssetId, setFitAnalysisAssetId] = useState(application.fit_analysis_asset_id || "")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [showCampaignLane, setShowCampaignLane] = useState(false)
+  const [showSuggestedLinks, setShowSuggestedLinks] = useState(false)
+  const [showLinkedAssets, setShowLinkedAssets] = useState(false)
+  const [showWarmPlan, setShowWarmPlan] = useState(false)
   const followUpState = getFollowUpState(followUpDate, status)
   const linkedCoverLetterTitle = coverLetterAssetId ? coverLetterOptions.find((asset) => asset.id === coverLetterAssetId)?.title || "Untitled cover letter" : null
   const linkedDossierTitle = companyDossierAssetId ? companyDossierOptions.find((asset) => asset.id === companyDossierAssetId)?.title || "Untitled company dossier" : null
@@ -1036,7 +1169,7 @@ function ApplicationEditor({
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+    <div className={embedded ? "rounded-xl bg-neutral-50 p-3" : "rounded-xl border border-neutral-200 bg-neutral-50 p-3"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-neutral-900">{companyName || "Untitled company"}</div>
@@ -1060,12 +1193,12 @@ function ApplicationEditor({
         </span>
       </div>
 
-      <div className={`mt-4 rounded-2xl border p-4 ${recommendedAction.cardClass}`}>
+      <div className={`mt-3 rounded-xl border p-3 ${recommendedAction.cardClass}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-current/80">Recommended action</div>
-            <div className="mt-2 text-sm font-semibold text-neutral-900">{recommendedAction.title}</div>
-            <p className="mt-2 text-sm leading-6 text-neutral-700">{recommendedAction.body}</p>
+            <div className="mt-1.5 text-sm font-semibold text-neutral-900">{recommendedAction.title}</div>
+            <p className="mt-1.5 text-sm leading-5 text-neutral-700">{recommendedAction.body}</p>
           </div>
           <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${recommendedAction.badgeClass}`}>
             {recommendedAction.badge}
@@ -1073,7 +1206,7 @@ function ApplicationEditor({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Field label="Company">
           <input value={companyName} onChange={(event) => setCompanyName(event.target.value)} className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2" />
         </Field>
@@ -1091,7 +1224,7 @@ function ApplicationEditor({
               </option>
             ))}
           </select>
-          <p className="mt-2 text-xs leading-5 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
         </Field>
         <Field label="Job URL">
           <input value={jobUrl} onChange={(event) => setJobUrl(event.target.value)} className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2" />
@@ -1141,87 +1274,117 @@ function ApplicationEditor({
         </Field>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Campaign lane</div>
-        <p className="mt-2 text-sm leading-6 text-neutral-600">
-          See this target as one joined-up motion: research the company, shape a warm route in, apply with tailored assets, prepare interviews, and stay on top of follow-up.
-        </p>
-        <div className="mt-4">
-          <CampaignLane steps={campaignLane} />
-        </div>
-        <div className="mt-4">
+      <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Campaign lane</div>
           <button
             type="button"
-            onClick={() => setCareerWorkspaceTarget(application.id)}
-            className="rounded-full border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+            onClick={() => setShowCampaignLane((current) => !current)}
+            className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
           >
-            Use this as current workspace brief
+            {showCampaignLane ? "Hide" : "Show"}
           </button>
         </div>
+        {showCampaignLane ? (
+          <>
+            <p className="mt-1.5 text-sm leading-5 text-neutral-600">
+              Research, warm outreach, tailored apply, interview prep, and follow-up in one flow.
+            </p>
+            <div className="mt-2.5">
+              <CampaignLane steps={campaignLane} />
+            </div>
+            <div className="mt-2.5">
+              <button
+                type="button"
+                onClick={() => setCareerWorkspaceTarget(application.id)}
+                className="rounded-full border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+              >
+                Use this as current workspace brief
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="mt-1.5 text-xs text-neutral-600">Hidden for focus. Expand when you want full pipeline detail.</p>
+        )}
       </div>
 
       {suggestedCoverLetter || suggestedDossier || suggestedOutreachStrategy ? (
-        <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Suggested links for this company</div>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            {suggestedCoverLetter ? (
-              <div className="rounded-2xl border border-sky-200 bg-white p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested cover letter</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedCoverLetter.title || "Untitled cover letter"}</div>
-              </div>
-            ) : null}
-            {suggestedDossier ? (
-              <div className="rounded-2xl border border-sky-200 bg-white p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested dossier</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedDossier.title || "Untitled company dossier"}</div>
-              </div>
-            ) : null}
-            {suggestedOutreachStrategy ? (
-              <div className="rounded-2xl border border-sky-200 bg-white p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested outreach plan</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedOutreachStrategy.title || "Untitled outreach strategy"}</div>
-              </div>
-            ) : null}
+        <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Suggested links for this company</div>
+            <button
+              type="button"
+              onClick={() => setShowSuggestedLinks((current) => !current)}
+              className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+            >
+              {showSuggestedLinks ? "Hide" : "Show"}
+            </button>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {suggestedOutreachStrategy ? (
-              <button
-                type="button"
-                onClick={() => navigateCareerWorkspace("company", "#current-outreach-strategies")}
-                className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
-              >
-                Open outreach plan
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() =>
-                  navigateCareerWorkspace("company", "#outreach-strategy", {
-                    companyName,
-                    location,
-                    roleFamily: jobTitle,
-                    notes: "Create an outreach strategy for this tracked application before the next contact step.",
-                  })
-                }
-                className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
-              >
-                Create outreach plan
-              </button>
-            )}
-          </div>
+          {showSuggestedLinks ? (
+            <>
+              <div className="mt-2 grid gap-2 md:grid-cols-3">
+                {suggestedCoverLetter ? (
+                  <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested cover letter</div>
+                    <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedCoverLetter.title || "Untitled cover letter"}</div>
+                  </div>
+                ) : null}
+                {suggestedDossier ? (
+                  <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested dossier</div>
+                    <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedDossier.title || "Untitled company dossier"}</div>
+                  </div>
+                ) : null}
+                {suggestedOutreachStrategy ? (
+                  <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested outreach plan</div>
+                    <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedOutreachStrategy.title || "Untitled outreach strategy"}</div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {suggestedOutreachStrategy ? (
+                  <button
+                    type="button"
+                    onClick={() => navigateCareerWorkspace("company", "#current-outreach-strategies")}
+                    className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                  >
+                    Open outreach plan
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigateCareerWorkspace("company", "#outreach-strategy", {
+                        companyName,
+                        location,
+                        roleFamily: jobTitle,
+                        notes: "Create an outreach strategy for this tracked application before the next contact step.",
+                      })
+                    }
+                    className="rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                  >
+                    Create outreach plan
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="mt-1.5 text-xs text-sky-900/80">Hidden by default to keep this role editor compact.</p>
+          )}
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
         <Field label="Next action">
-          <textarea value={nextAction} onChange={(event) => setNextAction(event.target.value)} className="min-h-[110px] w-full rounded-2xl border border-neutral-300 bg-white px-3 py-3 text-sm leading-6" />
+          <textarea value={nextAction} onChange={(event) => setNextAction(event.target.value)} className="min-h-[88px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm leading-5" />
         </Field>
         <Field label="Notes">
-          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[110px] w-full rounded-2xl border border-neutral-300 bg-white px-3 py-3 text-sm leading-6" />
+          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[88px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm leading-5" />
         </Field>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void handleSave()}
@@ -1292,45 +1455,71 @@ function ApplicationEditor({
       </div>
 
       {linkedCoverLetterTitle || linkedDossierTitle || linkedSalaryTitle || linkedFitTitle ? (
-        <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Linked execution assets</div>
-          <div className="mt-3 grid gap-3 md:grid-cols-4">
-            {linkedCoverLetterTitle ? (
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Cover letter</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedCoverLetterTitle}</div>
-              </div>
-            ) : null}
-            {linkedDossierTitle ? (
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Company dossier</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedDossierTitle}</div>
-              </div>
-            ) : null}
-            {linkedSalaryTitle ? (
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Salary analysis</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedSalaryTitle}</div>
-              </div>
-            ) : null}
-            {linkedFitTitle ? (
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Fit analysis</div>
-                <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedFitTitle}</div>
-              </div>
-            ) : null}
+        <div className="mt-3 rounded-xl border border-neutral-200 bg-white p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Linked execution assets</div>
+            <button
+              type="button"
+              onClick={() => setShowLinkedAssets((current) => !current)}
+              className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              {showLinkedAssets ? "Hide" : "Show"}
+            </button>
           </div>
+          {showLinkedAssets ? (
+            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {linkedCoverLetterTitle ? (
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Cover letter</div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedCoverLetterTitle}</div>
+                </div>
+              ) : null}
+              {linkedDossierTitle ? (
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Company dossier</div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedDossierTitle}</div>
+                </div>
+              ) : null}
+              {linkedSalaryTitle ? (
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Salary analysis</div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedSalaryTitle}</div>
+                </div>
+              ) : null}
+              {linkedFitTitle ? (
+                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Fit analysis</div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900">{linkedFitTitle}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-1.5 text-xs text-neutral-600">Linked assets are available. Expand to view details.</p>
+          )}
         </div>
       ) : null}
 
       <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Warm application plan</div>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <PlanCard title="Do first" body={warmPlan.doFirst} />
-          <PlanCard title="Tighten before applying" body={warmPlan.tightenBeforeApplying} />
-          <PlanCard title="Best asset to use" body={warmPlan.bestAssetToUse} />
-          <PlanCard title="Decision" body={warmPlan.decision} />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Warm application plan</div>
+          <button
+            type="button"
+            onClick={() => setShowWarmPlan((current) => !current)}
+            className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+          >
+            {showWarmPlan ? "Hide" : "Show"}
+          </button>
         </div>
+        {showWarmPlan ? (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <PlanCard title="Do first" body={warmPlan.doFirst} />
+            <PlanCard title="Tighten before applying" body={warmPlan.tightenBeforeApplying} />
+            <PlanCard title="Best asset to use" body={warmPlan.bestAssetToUse} />
+            <PlanCard title="Decision" body={warmPlan.decision} />
+          </div>
+        ) : (
+          <p className="mt-1.5 text-xs text-sky-900/80">Use this when you want a deeper decision checklist before applying.</p>
+        )}
       </div>
     </div>
   )

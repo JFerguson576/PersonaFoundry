@@ -27,7 +27,7 @@ const configByType: Record<
     heading: "Generate executive interview playbook",
     description: "Build a polished prep pack with positioning, story bank, question bank, 90-day plan, follow-up language, and a final interview checklist.",
     buttonLabel: "Generate interview playbook",
-    successMessage: "Executive interview playbook generated and saved.",
+    successMessage: "Executive interview playbook saved. Open My files &gt; Strategy docs.",
     showRoleFields: true,
     showMarketFields: false,
   },
@@ -35,7 +35,7 @@ const configByType: Record<
     heading: "Generate interview training pack",
     description: "Create a practice-ready training pack with story frameworks, core stories, likely questions, drills, and a strategic coaching note.",
     buttonLabel: "Generate training pack",
-    successMessage: "Interview training pack generated and saved.",
+    successMessage: "Interview training pack saved. Open My files &gt; Strategy docs.",
     showRoleFields: true,
     showMarketFields: false,
   },
@@ -43,7 +43,7 @@ const configByType: Record<
     heading: "Generate job hit list",
     description: "Create a targeted pursuit list with role focus, employer types, outreach angles, and a weekly execution plan.",
     buttonLabel: "Generate job hit list",
-    successMessage: "Job hit list generated and saved.",
+    successMessage: "Job hit list saved. Open My files &gt; Strategy docs.",
     showRoleFields: false,
     showMarketFields: true,
   },
@@ -101,7 +101,7 @@ export function CareerStrategicDocumentGenerator({ candidateId, assetType }: Pro
       <div>
         <h2 className="text-xl font-semibold">{config.heading}</h2>
         <p className="mt-2 text-sm text-neutral-600">{config.description}</p>
-        <p className="mt-2 text-sm text-neutral-500">Saved documents appear in the current outputs and history panels on the right.</p>
+        <p className="mt-2 text-sm text-neutral-500">Saved documents appear in My files &gt; Strategy docs and Recent files.</p>
       </div>
 
       {config.showRoleFields ? (

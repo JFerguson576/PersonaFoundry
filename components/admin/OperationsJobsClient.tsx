@@ -345,6 +345,16 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     notes: "Queue high-intent TeamSync users, send campaign templates, and track reply/booked call outcomes.",
   },
   {
+    id: "p1-outreach-queue-from-practitioner-data",
+    priority: "P1",
+    status: "planned",
+    title: "Build outreach queue directly from practitioner dataset",
+    owner: "Marketing Ops + Platform",
+    target: "2 weeks",
+    notes:
+      "Wire the NZ practitioner outreach spreadsheet into queue generation so Operations can parse rows, validate email fields, segment by profile, and create campaign-ready outreach batches without manual copy/paste.",
+  },
+  {
     id: "p1-ads-console",
     priority: "P1",
     status: "planned",
@@ -457,7 +467,9 @@ export function OperationsJobsClient() {
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
   const [executionRoadmapMenuOpen, setExecutionRoadmapMenuOpen] = useState(false)
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
-  const [activeMarketingView, setActiveMarketingView] = useState<"overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager">("overview")
+  const [activeMarketingView, setActiveMarketingView] = useState<
+    "overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager" | "practitioner_outreach_data"
+  >("overview")
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
     marketing: false,
@@ -1302,6 +1314,7 @@ export function OperationsJobsClient() {
     [activePanel]
   )
   const campaignManagerUrl = process.env.NEXT_PUBLIC_AD_CAMPAIGN_MANAGER_URL?.trim() || ""
+  const practitionerOutreachDataUrl = "/docs/outreach/nz_gallup_practitioner_outreach_codex.xlsx"
 
   return (
     <main className="min-h-screen bg-[#eef3fb] text-[#152238]">
@@ -1416,6 +1429,20 @@ export function OperationsJobsClient() {
                       }`}
                     >
                       Ad campaign manager
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMarketingView("practitioner_outreach_data")
+                        focusPanel("marketing")
+                      }}
+                      className={`mt-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "marketing" && activeMarketingView === "practitioner_outreach_data"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Practitioner outreach data
                     </button>
                   </div> : null}
                 </section>
@@ -1588,7 +1615,7 @@ export function OperationsJobsClient() {
                     <SnapshotStat label="Responded" value={String(marketingSignals.responded)} />
                     <SnapshotStat label="Campaign logs" value={String(marketingSignals.campaigns)} />
                   </div>
-                  <div className="mt-2 grid gap-2 md:grid-cols-3">
+                  <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                     <button
                       type="button"
                       onClick={() => focusPanel("teamsyncOutreach")}
@@ -1620,7 +1647,44 @@ export function OperationsJobsClient() {
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Campaign manager</div>
                       <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">LinkedIn, Google, and Meta spend console</div>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMarketingView("practitioner_outreach_data")
+                        focusPanel("marketing")
+                      }}
+                      className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-left hover:bg-[#f4f8ff]"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Outreach data</div>
+                      <div className="mt-0.5 text-sm font-semibold text-[#142c4f]">NZ practitioner source file</div>
+                    </button>
                   </div>
+                  {activeMarketingView === "practitioner_outreach_data" ? (
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Practitioner outreach dataset</div>
+                      <h3 className="mt-1 text-sm font-semibold text-[#142c4f]">NZ Gallup practitioner outreach sheet</h3>
+                      <p className="mt-1 text-xs text-[#3d567d]">
+                        Use this list as the base source for TeamSync practitioner outreach queue building and campaign targeting.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <a
+                          href={practitionerOutreachDataUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex rounded-full border border-[#8fb4ef] bg-[#eaf3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1f4f99]"
+                        >
+                          Open sheet
+                        </a>
+                        <a
+                          href={practitionerOutreachDataUrl}
+                          download
+                          className="inline-flex rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                        >
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  ) : null}
                   {activeMarketingView === "campaign_manager" ? (
                     campaignManagerUrl ? (
                       <div className="mt-2 overflow-hidden rounded-xl border border-[#cbd8eb] bg-white">

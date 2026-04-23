@@ -139,6 +139,17 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
     (normalizedMessage.includes("timed out") ||
       normalizedMessage.includes("failed to upload") ||
       normalizedMessage.includes("upload the file"))
+  const wizardComplete = wizardCompletionCount >= setupWizardSteps.length
+
+  function jumpToBuildProfile() {
+    if (typeof window === "undefined") return
+    const target = document.querySelector("#generate-profile") as HTMLElement | null
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
+    window.location.hash = "generate-profile"
+  }
 
   const nextWizardIndex = useMemo(() => {
     const nextUnfinished = setupWizardSteps.findIndex((step) => !wizardCompletedTypes.has(step))
@@ -179,7 +190,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
 
     setPendingFile(file)
     setSelectedFileName(file.name)
-    setMessage("File ready to upload. Click 'Upload selected file' to continue.")
+    setMessage(`File selected for ${selectedSourceType.label}. Click 'Upload and save file' to extract and store it.`)
     if (event.target) {
       event.target.value = ""
     }
@@ -228,7 +239,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
       if (setupWizardSteps.includes(sourceType as SourceTypeValue)) {
         setWizardCompletedTypes((current) => new Set(current).add(sourceType as SourceTypeValue))
       }
-      setMessage(`Uploaded and saved ${json.file_name || pendingFile.name} into the workspace.`)
+      setMessage(`File uploaded and saved under ${selectedSourceType.label}: ${json.file_name || pendingFile.name}.`)
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) {
@@ -431,7 +442,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
               disabled={fileLoading}
               className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {fileLoading ? "Importing file..." : "Choose file from computer"}
+              {fileLoading ? "Preparing file..." : "Select file"}
             </button>
             <button
               type="button"
@@ -439,7 +450,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
               disabled={fileLoading || !pendingFile}
               className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {fileLoading ? "Uploading..." : "Upload selected file"}
+              {fileLoading ? "Uploading..." : "Upload and save file"}
             </button>
           </div>
         </div>
@@ -453,7 +464,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
         <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
         {selectedFileName ? (
           <p className="mt-2 text-xs text-neutral-700">
-            Last uploaded file: <span className="font-medium">{selectedFileName}</span>
+            Latest uploaded file ({selectedSourceType.label}): <span className="font-medium">{selectedFileName}</span>
           </p>
         ) : null}
       </div>
@@ -500,9 +511,23 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
           </button>
         </div>
       ) : null}
-      <p className="text-xs text-neutral-500">
-        Next step: go to Step 3 and generate the profile.
-      </p>
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Next step</div>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-700">
+          <span>
+            {wizardComplete
+              ? "Source setup is complete. Build the profile now."
+              : "Continue the source checklist, then build the profile."}
+          </span>
+          <button
+            type="button"
+            onClick={jumpToBuildProfile}
+            className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+          >
+            Open build profile
+          </button>
+        </div>
+      </div>
     </form>
   )
 }

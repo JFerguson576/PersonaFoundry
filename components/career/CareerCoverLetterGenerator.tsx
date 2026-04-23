@@ -81,7 +81,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
           Paste a job description and the Career Intelligence engine will generate a tailored letter using the candidate&apos;s positioning and CV/LinkedIn drafts.
         </p>
         <p className="mt-1 text-xs text-neutral-500">
-          Saved cover letters appear in the generated outputs and output history panels on the right.
+          Saved cover letters appear in My files &gt; Cover letters and Recent files.
         </p>
         <p className="mt-1 text-xs text-neutral-500">
           If you have already generated a company dossier for this employer, you can choose how strongly it should influence the language and tone of the letter.
@@ -98,7 +98,7 @@ export function CareerCoverLetterGenerator({ candidateId, companyDossiers }: Pro
             <span className="font-semibold text-neutral-900">Strongest input combo:</span> full job description plus a saved company dossier.
           </p>
           <p>
-            <span className="font-semibold text-neutral-900">Where it appears:</span> saved into the cover letter area for edit and reuse.
+            <span className="font-semibold text-neutral-900">Where it appears:</span> My files &gt; Cover letters (ready to edit and reuse).
           </p>
         </div>
       </details>

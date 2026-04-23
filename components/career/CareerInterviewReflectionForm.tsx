@@ -76,7 +76,7 @@ Executive presence: ${executivePresenceScore}/5`,
       setWhereStruggled("")
       setSurpriseQuestions("")
       setNextTimeChanges("")
-      setMessage("Interview assessment saved. Future interview prep can now learn from it.")
+      setMessage("Interview assessment saved and mapped. Future interview prep now uses this feedback.")
       notifyCareerWorkspaceRefresh()
       router.refresh()
     } catch (error) {

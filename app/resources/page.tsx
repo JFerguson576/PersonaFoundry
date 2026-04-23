@@ -68,7 +68,7 @@ function ResourceTile({
   return (
     <article className="rounded-xl border border-[#d7e3f4] bg-white p-3 shadow-[0_10px_22px_-18px_rgba(15,30,70,0.35)]">
       <div className="relative overflow-hidden rounded-lg border border-[#d5e2f6] bg-[linear-gradient(145deg,#f8fbff_0%,#eef4ff_100%)]">
-        {type === "image" ? (
+        {type === "image" || Boolean(thumbnailHref) ? (
           <Image src={previewHref} alt={`${title} preview`} width={1200} height={760} className="h-28 w-full object-cover" />
         ) : (
           <div className={`relative h-28 w-full bg-gradient-to-br ${thumbTone}`}>

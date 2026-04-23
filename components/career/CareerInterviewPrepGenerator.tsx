@@ -60,7 +60,7 @@ export function CareerInterviewPrepGenerator({ candidateId, initialPrefill }: Pr
           Paste a role description and the Career Intelligence engine will build practice questions, answer angles, and likely objections for this candidate.
         </p>
         <p className="mt-2 text-sm text-neutral-500">
-          Saved interview prep appears in the interview panels below.
+          Saved interview prep appears in My files &gt; Interview prep and Recent files.
         </p>
         <p className="mt-2 text-sm text-neutral-500">
           If the candidate has saved interview assessments from previous rounds, this prep will use them to improve the next training pack.

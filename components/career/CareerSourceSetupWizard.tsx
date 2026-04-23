@@ -36,7 +36,6 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const [message, setMessage] = useState("")
   const [localCompletions, setLocalCompletions] = useState<Set<CareerSourceTypeValue>>(new Set())
   const [openWizardPanel, setOpenWizardPanel] = useState<"progress" | "file" | "paste" | "status">("progress")
-  const [openSourceStep, setOpenSourceStep] = useState<CareerSourceTypeValue>(CAREER_SOURCE_WIZARD_STEPS[0])
 
   const completedTypes = useMemo(() => {
     const completed = new Set<CareerSourceTypeValue>()
@@ -70,12 +69,16 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     (normalizedMessage.includes("timed out") ||
       normalizedMessage.includes("failed to upload") ||
       normalizedMessage.includes("upload the file"))
+  const nextRecommendedType = CAREER_SOURCE_WIZARD_STEPS.find((step) => !completedTypes.has(step)) ?? null
+  const nextRecommendedOption = nextRecommendedType
+    ? CAREER_SOURCE_TYPE_OPTIONS.find((option) => option.value === nextRecommendedType) ?? null
+    : null
+  const sourceSetupComplete = nextRecommendedType === null
+  const nextActionLabel = sourceSetupComplete
+    ? "Go to Step 3: Build profile"
+    : `Open next step: ${nextRecommendedOption?.label || "Continue source setup"}`
 
   const activeDraftKey = `${DRAFT_KEY_PREFIX}:${candidateId}:${sourceType}`
-
-  useEffect(() => {
-    setOpenSourceStep(sourceType)
-  }, [sourceType])
 
   function moveToNextMissing() {
     const nextType = CAREER_SOURCE_WIZARD_STEPS[nextIncompleteIndex] ?? CAREER_SOURCE_WIZARD_STEPS[0]
@@ -83,6 +86,23 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     setSourceType(nextType)
     setPendingFile(null)
     setSelectedFileName("")
+  }
+
+  function openStep(type: CareerSourceTypeValue) {
+    const nextIndex = CAREER_SOURCE_WIZARD_STEPS.indexOf(type)
+    if (nextIndex >= 0) setStepIndex(nextIndex)
+    setSourceType(type)
+    setOpenWizardPanel("progress")
+  }
+
+  function jumpToCreateProfileStep() {
+    if (typeof window === "undefined") return
+    const target = document.querySelector("#generate-profile") as HTMLElement | null
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" })
+      return
+    }
+    window.location.hash = "generate-profile"
   }
 
   function markDone(type: CareerSourceTypeValue) {
@@ -158,7 +178,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     }
     setPendingFile(file)
     setSelectedFileName(file.name)
-    setMessage("File ready to upload. Click 'Upload selected file' to continue.")
+    setMessage(`File selected for ${selectedOption.label}. Click 'Upload and save' to extract and store it.`)
     if (event.target) event.target.value = ""
   }
 
@@ -194,7 +214,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setContentText("")
       clearActiveDraft()
       markDone(sourceType)
-      setMessage(`Uploaded and saved ${json.file_name || pendingFile.name}. Find it in Step 4 > Saved files > Recent files.`)
+      setMessage(`${selectedOption.label} uploaded and saved: ${json.file_name || pendingFile.name}. Open My files > Recent files to view it.`)
       notifyCareerWorkspaceRefresh()
       router.refresh()
       setOpenWizardPanel("status")
@@ -274,7 +294,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setSelectedFileName("")
       clearActiveDraft()
       markDone(sourceType)
-      setMessage("Text saved. Find it in Step 4 > Saved files > Recent files.")
+      setMessage("Text saved. You can find it in My files > Recent files.")
       notifyCareerWorkspaceRefresh()
       router.refresh()
       setOpenWizardPanel("status")
@@ -289,7 +309,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   return (
     <form onSubmit={handleSubmit} className="space-y-2.5 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Source setup</h2>
+        <h2 className="text-base font-semibold">Load source files</h2>
         <button
           type="button"
           onClick={() => {
@@ -302,6 +322,29 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
           Guided setup
         </button>
       </div>
+      <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-sky-950">
+            <span className="font-semibold">Next:</span>{" "}
+            {sourceSetupComplete ? "Build the profile from these inputs." : "Finish the next source step."}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (sourceSetupComplete) {
+                jumpToCreateProfileStep()
+                return
+              }
+              if (nextRecommendedType) {
+                openStep(nextRecommendedType)
+              }
+            }}
+            className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
+          >
+            {nextActionLabel}
+          </button>
+        </div>
+      </div>
 
       <section className="rounded-2xl border border-neutral-200 bg-white">
         <button
@@ -311,14 +354,14 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             openWizardPanel === "progress" ? "rounded-t-2xl border-b border-sky-200 bg-sky-50" : "rounded-2xl"
           }`}
         >
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">1. Current step</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">Current step</span>
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Step {stepCountLabel}</span>
         </button>
         {openWizardPanel === "progress" ? (
           <div className="space-y-2.5 px-3 py-2.5">
             <div className="rounded-2xl border border-sky-200 bg-white px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800">
-                <span>Setup {completedTypes.size}/{CAREER_SOURCE_WIZARD_STEPS.length} complete</span>
+                <span>Setup {completedTypes.size}/{CAREER_SOURCE_WIZARD_STEPS.length}</span>
                 <span>Step {stepCountLabel}</span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sky-100">
@@ -378,72 +421,50 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 onClick={() => setShowAdvancedTypeSelector((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {showAdvancedTypeSelector ? "Hide steps" : "Choose a different step"}
+                {showAdvancedTypeSelector ? "Hide type list" : "Change source type"}
               </button>
               {showAdvancedTypeSelector ? (
                 <div className="mt-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Step accordion</div>
-                  <div className="mt-2 space-y-2">
-                    {CAREER_SOURCE_TYPE_OPTIONS.map((option) => {
-                      const isSelected = sourceType === option.value
-                      const isOpen = openSourceStep === option.value
-                      const isLoaded = completedTypes.has(option.value)
-
-                      return (
-                        <div key={option.value} className={`overflow-hidden rounded-xl border ${isSelected ? "border-sky-200" : "border-neutral-200"}`}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenSourceStep((current) => (current === option.value ? sourceType : option.value))
-                              if (sourceType !== option.value) {
-                                setSourceType(option.value)
-                                setPendingFile(null)
-                                setSelectedFileName("")
-                              }
-                            }}
-                            className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
-                              isSelected ? "bg-sky-50" : "bg-white hover:bg-neutral-50"
-                            }`}
-                          >
-                            <span className="text-sm font-medium text-neutral-900">{option.label}</span>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                                  isLoaded
-                                    ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                                    : "border border-amber-200 bg-amber-50 text-amber-800"
-                                }`}
-                              >
-                                {isLoaded ? "Loaded" : "Missing"}
-                              </span>
-                              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{option.priority}</span>
-                            </div>
-                          </button>
-                          {isOpen ? (
-                            <div className="border-t border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-600">
-                              <p className="leading-5">{option.guidance}</p>
-                              {isSelected ? (
-                                <span className="mt-2 inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800">
-                                  Current step
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSourceType(option.value)
-                                    setPendingFile(null)
-                                    setSelectedFileName("")
-                                  }}
-                                  className="mt-2 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                                >
-                                  Set as current
-                                </button>
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })}
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Type chooser</div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                    <label className="text-xs font-medium text-neutral-700">
+                      Source type
+                      <select
+                        value={sourceType}
+                        onChange={(event) => {
+                          setSourceType(event.target.value as CareerSourceTypeValue)
+                          setPendingFile(null)
+                          setSelectedFileName("")
+                        }}
+                        className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                      >
+                        {CAREER_SOURCE_TYPE_OPTIONS.map((option) => {
+                          const isLoaded = completedTypes.has(option.value)
+                          return (
+                            <option key={option.value} value={option.value}>
+                              {option.label} · {isLoaded ? "Loaded" : "Missing"}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                        {selectedOption.priority}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                          completedTypes.has(sourceType)
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border border-amber-200 bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        {completedTypes.has(sourceType) ? "Loaded" : "Missing"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+                    {selectedOption.guidance}
                   </div>
                 </div>
               ) : null}
@@ -476,7 +497,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 <label className="block text-sm font-medium">Upload from your computer</label>
                 <div className="flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
-                    {fileLoading ? "Preparing..." : "Choose file"}
+                    {fileLoading ? "Preparing..." : "Select file"}
                   </button>
                   <button
                     type="button"
@@ -484,7 +505,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                     disabled={fileLoading || !pendingFile}
                     className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {fileLoading ? "Uploading..." : "Upload file"}
+                    {fileLoading ? "Uploading..." : "Upload and save"}
                   </button>
                 </div>
               </div>
@@ -497,7 +518,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
               ) : null}
               {selectedFileName && !pendingFile ? (
                 <p className="mt-1 text-xs text-neutral-600">
-                  Last uploaded in this session: <span className="font-medium">{selectedFileName}</span>
+                  Latest uploaded file ({selectedOption.label}): <span className="font-medium">{selectedFileName}</span>
                 </p>
               ) : null}
             </div>
@@ -614,7 +635,32 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 </button>
               </div>
             ) : null}
-            <p className="text-xs text-neutral-500">Next step: open Step 3 and generate the profile.</p>
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">What to do next</div>
+              {!sourceSetupComplete && nextRecommendedOption ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-neutral-600">Continue setup with <span className="font-semibold">{nextRecommendedOption.label}</span>.</p>
+                  <button
+                    type="button"
+                    onClick={() => openStep(nextRecommendedOption.value)}
+                    className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                  >
+                    Open next source step
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-neutral-600">Core source setup is complete. Generate the profile next.</p>
+                  <button
+                    type="button"
+                    onClick={jumpToCreateProfileStep}
+                    className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                  >
+                    Go to create profile
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </section>

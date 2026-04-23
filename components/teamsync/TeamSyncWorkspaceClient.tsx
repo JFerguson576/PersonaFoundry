@@ -2682,23 +2682,23 @@ export function TeamSyncWorkspaceClient() {
       })
       const payload = await response.json()
       if (!response.ok) {
-        setMessage(payload.error || "Could not read uploaded strengths file.")
-        setLastUploadSummary("Upload failed. Please try another file.")
+        setMessage(payload.error || "Upload failed. Could not read the strengths report.")
+        setLastUploadSummary("Upload failed. Please try another strengths report.")
         return
       }
       const extractedText = typeof payload.content_text === "string" ? payload.content_text : ""
       const detected = extractGallupStrengths(extractedText)
       if (detected.length > 0) {
         setMemberStrengths(detected.join(", "))
-        setMessage(`Loaded ${detected.length} Gallup strengths from file.`)
-        setLastUploadSummary(`${detected.length} strengths detected. Review and click Add member.`)
+        setMessage(`Strengths report loaded and mapped: ${detected.length} strengths captured. Click Add member to save.`)
+        setLastUploadSummary(`Strengths report loaded and mapped. ${detected.length} strengths detected. Next step: click Add member.`)
       } else {
         setMemberStrengths(extractedText.slice(0, 800))
-        setMessage("File loaded. Please confirm strengths before adding member.")
-        setLastUploadSummary("No direct Gallup themes detected. Review extracted text before adding member.")
+        setMessage("Report loaded. No direct Gallup themes were auto-detected. Review extracted text, then click Add member.")
+        setLastUploadSummary("Report loaded. Review extracted text and confirm strengths before clicking Add member.")
       }
     } catch {
-      setMessage("File upload failed. Please try again.")
+      setMessage("Upload failed. Please try again.")
       setLastUploadSummary("Upload failed. Please try again.")
     } finally {
       setMemberFileLoading(false)
@@ -2730,7 +2730,7 @@ export function TeamSyncWorkspaceClient() {
     setMemberRole("")
     setMemberStrengths("")
     setLastUploadSummary("")
-    setMessage(`Member added to ${groupName || "your group"}.`)
+    setMessage(`Member saved to ${groupName || "your group"}.`)
   }
 
   function removeMember(memberId: string) {
@@ -4366,7 +4366,7 @@ export function TeamSyncWorkspaceClient() {
                 </span>
               </div>
               {members.length === 0 ? (
-                <p className="mt-1 text-xs text-[#64748b]">No members loaded yet. Start with Upload Gallup file, then click Add member.</p>
+                <p className="mt-1 text-xs text-[#64748b]">No members loaded yet. Start with Upload strengths report, then click Add member.</p>
               ) : (
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {members.slice(0, 8).map((member) => (
@@ -4397,7 +4397,7 @@ export function TeamSyncWorkspaceClient() {
                   }}
                   className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
                 >
-                  {memberFileLoading ? "Reading file..." : "Upload Gallup file"}
+                  {memberFileLoading ? "Reading file..." : "Upload strengths report"}
                 </button>
               </div>
               <input
@@ -4414,7 +4414,14 @@ export function TeamSyncWorkspaceClient() {
               />
               {lastUploadedFileName ? (
                  <div className="mt-1.5 rounded-lg border border-[#bfdbfe] bg-white px-2.5 py-1.5 text-xs text-[#334155]">
-                  <span className="font-semibold">Last file:</span> {lastUploadedFileName}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">Latest report:</span> {lastUploadedFileName}
+                    {!memberFileLoading && selectedStrengthCount > 0 ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                        Ready to add
+                      </span>
+                    ) : null}
+                  </div>
                   {lastUploadSummary ? <span className="block mt-0.5 text-[#475569]">{lastUploadSummary}</span> : null}
                 </div>
               ) : null}
@@ -4508,7 +4515,7 @@ export function TeamSyncWorkspaceClient() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-semibold">Add one member</div>
                 <span className="rounded-full border border-[#d8e4f2] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                  1. Name  2. Strengths  3. Add
+                  1. Name  2. Upload report  3. Review strengths  4. Add
                 </span>
               </div>
               <p className="mt-1 text-xs text-[#64748b]">Required: member name + strengths. Role is optional.</p>
@@ -4534,36 +4541,77 @@ export function TeamSyncWorkspaceClient() {
                 </div>
               </div>
 
+              <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Next step</div>
+                  <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                    {canAddMember
+                      ? "Ready to add"
+                      : !memberName.trim()
+                        ? "Start with member name"
+                        : selectedStrengthCount > 0
+                          ? "Review then add"
+                          : "Upload strengths report"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[#475569]">
+                  {!memberName.trim()
+                    ? "Enter the member name first."
+                    : selectedStrengthCount > 0
+                      ? "Strengths are captured. You can add this member now."
+                      : "Now upload the Gallup report for this member, or paste strengths manually."}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIntakeMode("upload")
+                      memberUploadInputRef.current?.click()
+                    }}
+                    className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
+                  >
+                    {memberFileLoading ? "Reading file..." : "Upload strengths report"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIntakeMode("manual")}
+                    className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#334155] hover:bg-neutral-50"
+                  >
+                    Paste manually
+                  </button>
+                </div>
+              </div>
+
               <div className="ui-action-row mt-1.5">
                 <button
                   type="button"
                   onClick={() => setIntakeMode("manual")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "manual" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Paste strengths text
+                  Paste text
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("upload")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "upload" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Upload mode
+                  Upload report
                 </button>
                 <button
                   type="button"
                   onClick={() => setIntakeMode("quick")}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "quick" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
                 >
-                  Pick from themes
+                  Theme picker
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-[#64748b]">
-                Use Upload Gallup file above for reports. Use these options only if you want to paste or edit manually.
+                Use the upload button above for reports. Use these options when you want to paste or edit manually.
               </p>
 
               {intakeMode === "upload" ? (
                 <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5 text-xs text-[#475569]">
-                  Upload mode is active. Use the <span className="font-semibold">Upload Gallup file</span> button above to choose or replace a file.
+                  Upload mode is active. Use the <span className="font-semibold">Upload strengths report</span> button above to choose or replace a file.
                 </div>
               ) : null}
 
@@ -4598,7 +4646,11 @@ export function TeamSyncWorkspaceClient() {
               </div>
 
               <div className="mt-1.5 flex items-center justify-between text-xs text-[#64748b]">
-                <span>{memberFileLoading ? "Reading strengths file..." : "Add member when name and strengths are complete."}</span>
+                <span>
+                  {memberFileLoading
+                    ? "Reading strengths file..."
+                    : "After upload, review strengths text below, then click Add member to group."}
+                </span>
                 <span>{selectedStrengthCount} strengths captured</span>
               </div>
 

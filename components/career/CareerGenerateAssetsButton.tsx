@@ -56,7 +56,7 @@ export function CareerGenerateAssetsButton({ candidateId }: Props) {
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Where it saves</div>
           <p className="mt-1 text-[11px] leading-4 text-neutral-700">
-            The finished files appear in the saved library and application documents area when the background run completes.
+            Finished files appear in My files &gt; CV/profile docs and Recent files when the background run completes.
           </p>
         </div>
       </div>
