@@ -56,7 +56,7 @@ function ResourceTile({
   description: string
   href: string
   thumbnailHref?: string
-  type: "doc" | "pdf" | "image"
+  type: "doc" | "pdf" | "image" | "md" | "xlsx"
   sectionKey: "career" | "persona" | "teamsync" | "visual"
 }) {
   const fileHref = safeSitePath(href)

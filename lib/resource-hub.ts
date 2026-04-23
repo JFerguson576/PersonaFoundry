@@ -1,4 +1,4 @@
-export type ResourceAssetType = "doc" | "pdf" | "image"
+export type ResourceAssetType = "doc" | "pdf" | "image" | "md" | "xlsx"
 
 export type ResourceItem = {
   id: string
@@ -57,7 +57,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Career Intelligence Explainer",
     description: "Core operating model for candidate outcomes.",
     href: "/docs/personara-ai-career-intelligence-explainer.docx",
-    thumbnailHref: "/images/personara-platform-anatomy.png",
+    thumbnailHref: "/images/career-intelligence-bullseye.png",
     type: "doc",
     sectionKey: "career",
   },
@@ -100,6 +100,33 @@ export const resourceItems: ResourceItem[] = [
     title: "Gallup Strengths Explainer",
     description: "How strengths data improves quality and positioning.",
     href: "/docs/personara-ai-gallup-strengths-explainer.docx",
+    thumbnailHref: "/images/personara-platform-anatomy.png",
+    type: "doc",
+    sectionKey: "career",
+  },
+  {
+    id: "career-competitor-feature-table",
+    title: "Career Competitor Feature Table",
+    description: "Website-ready comparison table for Personara positioning vs adjacent categories.",
+    href: "/docs/personara-competitor-feature-table.md",
+    thumbnailHref: "/images/career-intelligence-bullseye.png",
+    type: "md",
+    sectionKey: "career",
+  },
+  {
+    id: "career-competitor-source-matrix",
+    title: "Competitor Source Matrix (XLSX)",
+    description: "Working spreadsheet source for competitor benchmarking and feature tracking.",
+    href: "/docs/personara-competitor-matrix.xlsx",
+    thumbnailHref: "/images/career-intelligence-blueprint-diagram.png",
+    type: "xlsx",
+    sectionKey: "career",
+  },
+  {
+    id: "personara-moat-plan-todo",
+    title: "Personara Moat Plan (To-Do)",
+    description: "Strategic moat planning worksheet and execution notes.",
+    href: "/docs/personara-moat-plan-todo.docx",
     thumbnailHref: "/images/personara-strengths-ecosystem.png",
     type: "doc",
     sectionKey: "career",
@@ -109,7 +136,7 @@ export const resourceItems: ResourceItem[] = [
     title: "User Experience Explainer (v2)",
     description: "Why custom AI personalities improve consistency and speed.",
     href: "/docs/personara-user-explainer-v2.docx",
-    thumbnailHref: "/images/personara-strengths-ecosystem.png",
+    thumbnailHref: "/images/personara-platform-anatomy.png",
     type: "doc",
     sectionKey: "persona",
   },
@@ -136,7 +163,7 @@ export const resourceItems: ResourceItem[] = [
     title: "Analyst Intelligence Explainer (v2)",
     description: "Interpret simulation signals and actions.",
     href: "/docs/personara-analyst-explainer-v2.docx",
-    thumbnailHref: "/images/teamsync-executive-intelligence-visual.png",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
     type: "doc",
     sectionKey: "teamsync",
   },
@@ -168,6 +195,15 @@ export const resourceItems: ResourceItem[] = [
     sectionKey: "teamsync",
   },
   {
+    id: "teamsync-future-pathway",
+    title: "TeamSync Future Pathway",
+    description: "Forward plan for TeamSync module growth, sequencing, and execution focus.",
+    href: "/docs/future-pathway.md",
+    thumbnailHref: "/images/teamsync-executive-intelligence-engine.png",
+    type: "md",
+    sectionKey: "teamsync",
+  },
+  {
     id: "platform-anatomy-visual",
     title: "Personara Platform Anatomy",
     description: "Architecture linking strengths, career, and team outcomes.",
@@ -196,6 +232,8 @@ export const resourceItems: ResourceItem[] = [
 export function formatResourceType(type: ResourceAssetType) {
   if (type === "doc") return "DOCX"
   if (type === "pdf") return "PDF"
+  if (type === "md") return "MD"
+  if (type === "xlsx") return "XLSX"
   return "IMAGE"
 }
 
