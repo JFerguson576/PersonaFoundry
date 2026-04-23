@@ -6745,10 +6745,12 @@ function CompactHistoryCard({
 
 function CurrentTargetBriefCard({
   title,
+  description,
   brief,
   statusBadge,
 }: {
   title: string
+  description?: string
   statusBadge?: string
   brief: {
     jobTitle?: string
@@ -6784,6 +6786,7 @@ function CurrentTargetBriefCard({
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]">Shared target brief</div>
           <h3 className="mt-0.5 text-sm font-semibold text-[#0f172a]">{title}</h3>
+          {description ? <p className="mt-1 text-xs leading-5 text-neutral-600">{description}</p> : null}
         </div>
         <div className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
           {statusBadge || "Editable in each tool"}
