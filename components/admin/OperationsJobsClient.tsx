@@ -2087,7 +2087,7 @@ export function OperationsJobsClient() {
                         value={formatUsd(Number(economics.summary.total_openai_api_cost_usd || 0))}
                       />
                       <SnapshotStat
-                        label="Codex spend"
+                        label="Codex spend (in-app Codex logs)"
                         value={formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
                       />
                       <SnapshotStat
@@ -2105,6 +2105,14 @@ export function OperationsJobsClient() {
                     ) : null}
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
                       Use this panel to keep API and outreach spend below subscription revenue.
+                    </div>
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2 text-[11px] text-[#486387]">
+                      <span className="font-semibold uppercase tracking-[0.08em] text-[#304e79]">Pricing source</span>: OpenAI PAYG model rates.{" "}
+                      <span className="font-semibold">Codex spend</span> is calculated from in-app Codex logs only.
+                      <div className="mt-1">
+                        Environment keys used: <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_PRICE_{"{MODEL}"}_INPUT_PER_1M</code>{" "}
+                        and <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_PRICE_{"{MODEL}"}_OUTPUT_PER_1M</code>.
+                      </div>
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2237,7 +2245,7 @@ export function OperationsJobsClient() {
                             </span>
                           </p>
                           <p className="mt-1">
-                            Codex spend:{" "}
+                            Codex spend (in-app Codex logs):{" "}
                             <span className="font-semibold">
                               {formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
                             </span>
