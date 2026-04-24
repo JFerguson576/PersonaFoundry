@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient, getAdminCapabilities } from "@/lib/admin"
 import { getRequestAuth } from "@/lib/supabase/auth"
+import { estimateOpenAICost } from "@/lib/telemetry"
 
 type BillingStatus = "trial" | "active" | "past_due" | "cancelled"
 type PlanCode = string
@@ -266,7 +267,7 @@ export async function GET(request: Request) {
   const [apiLogsResult, subscriptionsResult, usersResponse] = await Promise.all([
     admin
       .from("api_usage_logs")
-      .select("user_id, total_tokens, estimated_cost_usd, created_at, provider, model")
+      .select("user_id, input_tokens, output_tokens, total_tokens, estimated_cost_usd, created_at, provider, model")
       .gte("created_at", trendStartIso)
       .order("created_at", { ascending: false })
       .limit(20000),
@@ -328,7 +329,16 @@ export async function GET(request: Request) {
   for (const log of apiLogsResult.data ?? []) {
     if (!log.created_at) continue
     const provider = resolveProvider((log as Record<string, unknown>).provider, (log as Record<string, unknown>).model)
-    const estimatedCost = Number(log.estimated_cost_usd ?? 0)
+    const storedEstimatedCost = Number(log.estimated_cost_usd ?? 0)
+    const estimatedCost =
+      Number.isFinite(storedEstimatedCost) && storedEstimatedCost > 0
+        ? storedEstimatedCost
+        : estimateOpenAICost(
+            String((log as Record<string, unknown>).model ?? ""),
+            log.input_tokens ?? null,
+            log.output_tokens ?? null,
+            log.total_tokens ?? null
+          ) ?? 0
     const dayKey = dayKeyFromIso(log.created_at)
     const dayBucket = bucketForDay(costByDay, dayKey)
     dayBucket.api_cost_usd += estimatedCost

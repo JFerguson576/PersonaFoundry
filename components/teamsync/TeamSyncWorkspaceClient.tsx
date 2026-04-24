@@ -462,6 +462,75 @@ function truncateWords(text: string, maxWords = 8) {
   return `${parts.slice(0, maxWords).join(" ")}...`
 }
 
+function wrapTextForCard(text: string, maxChars = 26, maxLines = 2) {
+  const words = text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (words.length === 0) return [""]
+
+  const lines: string[] = []
+  let current = ""
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length <= maxChars) {
+      current = candidate
+      continue
+    }
+    if (current) {
+      lines.push(current)
+      current = word
+    } else {
+      lines.push(word.slice(0, maxChars))
+      current = word.slice(maxChars)
+    }
+    if (lines.length >= maxLines) break
+  }
+  if (lines.length < maxLines && current) lines.push(current)
+  if (lines.length > maxLines) lines.length = maxLines
+
+  if (lines.length === maxLines) {
+    const sourceWordCount = words.length
+    const renderedWordCount = lines.join(" ").trim().split(/\s+/).filter(Boolean).length
+    if (sourceWordCount > renderedWordCount) {
+      const lastIndex = lines.length - 1
+      lines[lastIndex] = `${lines[lastIndex].replace(/[.]+$/, "").trimEnd()}...`
+    }
+  }
+  return lines
+}
+
+function toneForLevel(level: "high" | "medium" | "low", score: number) {
+  if (level === "high") {
+    return {
+      stroke: "#ef4444",
+      fill: "#fff1f2",
+      text: "#881337",
+      edgeOpacity: 0.92,
+      edgeWidth: Math.min(3.4, 2 + score / 100),
+      edgeDash: "4 3",
+    }
+  }
+  if (level === "medium") {
+    return {
+      stroke: "#f59e0b",
+      fill: "#fffbeb",
+      text: "#92400e",
+      edgeOpacity: 0.85,
+      edgeWidth: Math.min(2.8, 1.8 + score / 140),
+      edgeDash: "3 2",
+    }
+  }
+  return {
+    stroke: "#10b981",
+    fill: "#ecfdf5",
+    text: "#065f46",
+    edgeOpacity: 0.8,
+    edgeWidth: Math.min(2.4, 1.6 + score / 170),
+    edgeDash: "",
+  }
+}
+
 function buildMemberSupportPriorities(
   members: TeamMember[],
   scenarioTitle: string,
@@ -1057,47 +1126,53 @@ function deriveActionTimeline(run: RunResult) {
 function buildSignalMapSvgMarkup(run: RunResult) {
   const rows = buildSignalMapRows(run)
   const slots = [
-    { x: 140, y: 64 },
-    { x: 620, y: 64 },
-    { x: 620, y: 250 },
-    { x: 140, y: 250 },
-    { x: 380, y: 282 },
+    { x: 134, y: 66 },
+    { x: 626, y: 66 },
+    { x: 626, y: 258 },
+    { x: 134, y: 258 },
+    { x: 380, y: 294 },
   ]
   const esc = (value: string) => escapeHtml(value)
-  const toneFor = (level: string) =>
-    level === "HIGH"
-      ? { stroke: "#ef4444", fill: "#fff1f2" }
-      : level === "MEDIUM"
-        ? { stroke: "#f59e0b", fill: "#fffbeb" }
-        : { stroke: "#10b981", fill: "#ecfdf5" }
+  const scenarioLines = wrapTextForCard(run.scenarioTitle, 24, 2)
 
   const nodes = rows
     .map((row, index) => {
       const slot = slots[index] ?? slots[0]
-      const tone = toneFor(row.level)
+      const normalizedLevel = row.level === "HIGH" ? "high" : row.level === "MEDIUM" ? "medium" : "low"
+      const tone = toneForLevel(normalizedLevel, row.score)
+      const moveLines = wrapTextForCard(row.move, 28, 2)
+      const moveTspans = moveLines
+        .map((line, lineIndex) => `<tspan x="${slot.x - 100}" dy="${lineIndex === 0 ? "0" : "12"}">${esc(line)}</tspan>`)
+        .join("")
       return `
       <g>
-        <line x1="380" y1="160" x2="${slot.x}" y2="${slot.y}" stroke="${tone.stroke}" stroke-width="1.8" stroke-dasharray="4 3" />
-        <rect x="${slot.x - 96}" y="${slot.y - 36}" width="192" height="72" rx="12" fill="${tone.fill}" stroke="${tone.stroke}" stroke-width="1.5" />
-        <text x="${slot.x - 84}" y="${slot.y - 14}" font-size="11" font-weight="700" fill="#0f172a">${esc(truncateWords(row.member, 2))}</text>
-        <text x="${slot.x - 84}" y="${slot.y + 2}" font-size="10" fill="#334155">${row.level} | ${row.score}/100</text>
-        <text x="${slot.x - 84}" y="${slot.y + 18}" font-size="10" fill="#334155">${esc(truncateWords(row.move, 6))}</text>
+        <line x1="380" y1="176" x2="${slot.x}" y2="${slot.y - 2}" stroke="${tone.stroke}" stroke-opacity="${tone.edgeOpacity}" stroke-width="${tone.edgeWidth}" ${tone.edgeDash ? `stroke-dasharray="${tone.edgeDash}"` : ""}/>
+        <rect x="${slot.x - 112}" y="${slot.y - 44}" width="224" height="88" rx="14" fill="${tone.fill}" stroke="${tone.stroke}" stroke-width="1.7" filter="url(#signalCardShadowReport)" />
+        <text x="${slot.x - 100}" y="${slot.y - 20}" font-size="11" font-weight="700" fill="#0f172a">${esc(truncateWords(row.member, 3))}</text>
+        <text x="${slot.x - 100}" y="${slot.y - 4}" font-size="10" fill="${tone.text}">${row.level} | ${row.score}/100</text>
+        <text x="${slot.x - 100}" y="${slot.y + 14}" font-size="10" fill="#334155">${moveTspans}</text>
       </g>`
     })
     .join("")
 
   return `
-  <svg viewBox="0 0 760 320" role="img" aria-label="Team signal map" style="width:100%;border:1px solid #dbe7f5;border-radius:10px;background:#fff;">
+  <svg viewBox="0 0 760 344" role="img" aria-label="Team signal map" style="width:100%;border:1px solid #dbe7f5;border-radius:12px;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);">
     <defs>
       <linearGradient id="signalCenterReport" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stop-color="#dbeafe" />
         <stop offset="100%" stop-color="#e0e7ff" />
       </linearGradient>
+      <filter id="signalCardShadowReport" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2.4" flood-color="#0f172a" flood-opacity="0.14" />
+      </filter>
     </defs>
-    <circle cx="380" cy="160" r="72" fill="url(#signalCenterReport)" stroke="#93c5fd" stroke-width="2" />
-    <text x="380" y="148" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">SCENARIO</text>
-    <text x="380" y="166" text-anchor="middle" font-size="12" font-weight="600" fill="#0f172a">${esc(truncateWords(run.scenarioTitle, 5))}</text>
-    <text x="380" y="184" text-anchor="middle" font-size="10" fill="#334155">Pressure ${run.pressureLevel}/5</text>
+    <circle cx="380" cy="176" r="76" fill="url(#signalCenterReport)" stroke="#93c5fd" stroke-width="2.2" filter="url(#signalCardShadowReport)" />
+    <text x="380" y="158" text-anchor="middle" font-size="11" font-weight="700" fill="#1e3a8a">SCENARIO</text>
+    <text x="380" y="174" text-anchor="middle" font-size="12" font-weight="600" fill="#0f172a">
+      <tspan x="380" dy="0">${esc(scenarioLines[0] || "")}</tspan>
+      ${scenarioLines[1] ? `<tspan x="380" dy="13">${esc(scenarioLines[1])}</tspan>` : ""}
+    </text>
+    <text x="380" y="203" text-anchor="middle" font-size="10" fill="#334155">Pressure ${run.pressureLevel}/5</text>
     ${nodes}
   </svg>`
 }
@@ -1777,6 +1852,7 @@ export function TeamSyncWorkspaceClient() {
   const [memberRole, setMemberRole] = useState("")
   const [memberStrengths, setMemberStrengths] = useState("")
   const [intakeMode, setIntakeMode] = useState<"manual" | "upload" | "quick">("upload")
+  const [memberIntakePanel, setMemberIntakePanel] = useState<"name" | "strengths" | "review">("name")
   const [memberFileLoading, setMemberFileLoading] = useState(false)
   const [lastUploadedFileName, setLastUploadedFileName] = useState("")
   const [lastUploadSummary, setLastUploadSummary] = useState("")
@@ -1816,7 +1892,7 @@ export function TeamSyncWorkspaceClient() {
   const [historyWithNotesOnly, setHistoryWithNotesOnly] = useState(false)
   const [historyNeedsReviewOnly, setHistoryNeedsReviewOnly] = useState(false)
   const [savedRunsExpanded, setSavedRunsExpanded] = useState(false)
-  const [membersListExpanded, setMembersListExpanded] = useState(true)
+  const [membersListExpanded, setMembersListExpanded] = useState(false)
   const [scenarioAdvancedOpen, setScenarioAdvancedOpen] = useState(false)
   const [showAdvancedInsights, setShowAdvancedInsights] = useState(false)
   const [undoDeletedRuns, setUndoDeletedRuns] = useState<RunResult[]>([])
@@ -2448,6 +2524,17 @@ export function TeamSyncWorkspaceClient() {
   const hideTeamSyncMenuInFocus = isFocusMode && activeStep !== "overview"
   const canAddMember = memberName.trim().length > 1 && memberStrengths.trim().length > 0
   const selectedStrengthCount = parseStrengthTokens(memberStrengths).length
+  useEffect(() => {
+    if (!memberName.trim()) {
+      setMemberIntakePanel("name")
+      return
+    }
+    if (!memberStrengths.trim()) {
+      setMemberIntakePanel("strengths")
+      return
+    }
+    setMemberIntakePanel("review")
+  }, [memberName, memberStrengths])
   const membersReady = members.length >= 2
   const scenarioReady =
     scenarioMode === "library"
@@ -2729,7 +2816,10 @@ export function TeamSyncWorkspaceClient() {
     setMemberName("")
     setMemberRole("")
     setMemberStrengths("")
+    setIntakeMode("upload")
+    setMemberIntakePanel("name")
     setLastUploadSummary("")
+    setLastUploadedFileName("")
     setMessage(`Member saved to ${groupName || "your group"}.`)
   }
 
@@ -4513,158 +4603,158 @@ export function TeamSyncWorkspaceClient() {
 
             <div className="mt-1.5 rounded-lg border border-neutral-200 p-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold">Add one member</div>
+                <div>
+                  <div className="text-sm font-semibold">Add one member</div>
+                  <p className="mt-0.5 text-xs text-[#64748b]">Keep this simple: name, strengths, then add.</p>
+                </div>
                 <span className="rounded-full border border-[#d8e4f2] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                  1. Name  2. Upload report  3. Review strengths  4. Add
+                  {memberIntakePanel === "name" ? "Step 1 of 3" : memberIntakePanel === "strengths" ? "Step 2 of 3" : "Step 3 of 3"}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#64748b]">Required: member name + strengths. Role is optional.</p>
 
-              <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Member Name</label>
-                  <input
-                    value={memberName}
-                    onChange={(e) => setMemberName(e.target.value)}
-                    placeholder="Full name"
-                   className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Role (Optional)</label>
-                  <input
-                    value={memberRole}
-                    onChange={(e) => setMemberRole(e.target.value)}
-                    placeholder="Role or relationship"
-                   className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Next step</div>
-                  <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                    {canAddMember
-                      ? "Ready to add"
-                      : !memberName.trim()
-                        ? "Start with member name"
-                        : selectedStrengthCount > 0
-                          ? "Review then add"
-                          : "Upload strengths report"}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-[#475569]">
-                  {!memberName.trim()
-                    ? "Enter the member name first."
-                    : selectedStrengthCount > 0
-                      ? "Strengths are captured. You can add this member now."
-                      : "Now upload the Gallup report for this member, or paste strengths manually."}
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <div className="mt-1.5 space-y-1.5">
+                <div className="rounded-lg border border-[#d8e4f2] bg-white">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIntakeMode("upload")
-                      memberUploadInputRef.current?.click()
-                    }}
-                    className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
+                    onClick={() => setMemberIntakePanel("name")}
+                    className="flex w-full items-center justify-between px-2.5 py-2 text-left"
                   >
-                    {memberFileLoading ? "Reading file..." : "Upload strengths report"}
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">1. Member details</span>
+                    <span className="text-xs text-[#64748b]">{memberName.trim() ? "Ready" : "Required"}</span>
                   </button>
+                  {memberIntakePanel === "name" ? (
+                    <div className="grid gap-1.5 border-t border-[#e2e8f0] px-2.5 py-2 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Member Name</label>
+                        <input
+                          value={memberName}
+                          onChange={(e) => setMemberName(e.target.value)}
+                          placeholder="Full name"
+                          className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Role (Optional)</label>
+                        <input
+                          value={memberRole}
+                          onChange={(e) => setMemberRole(e.target.value)}
+                          placeholder="Role or relationship"
+                          className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="rounded-lg border border-[#d8e4f2] bg-white">
                   <button
                     type="button"
-                    onClick={() => setIntakeMode("manual")}
-                    className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#334155] hover:bg-neutral-50"
+                    onClick={() => setMemberIntakePanel("strengths")}
+                    className="flex w-full items-center justify-between px-2.5 py-2 text-left"
                   >
-                    Paste manually
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">2. Capture strengths</span>
+                    <span className="text-xs text-[#64748b]">{selectedStrengthCount > 0 ? `${selectedStrengthCount} captured` : "Needed"}</span>
                   </button>
+                  {memberIntakePanel === "strengths" ? (
+                    <div className="space-y-1.5 border-t border-[#e2e8f0] px-2.5 py-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIntakeMode("upload")
+                            memberUploadInputRef.current?.click()
+                          }}
+                          className="rounded-lg border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#1e40af]"
+                        >
+                          {memberFileLoading ? "Reading file..." : "Upload strengths report"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIntakeMode("manual")}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+                            intakeMode === "manual" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
+                          }`}
+                        >
+                          Paste manually
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIntakeMode("quick")}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+                            intakeMode === "quick" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
+                          }`}
+                        >
+                          Theme picker
+                        </button>
+                      </div>
+                      {lastUploadedFileName ? (
+                        <div className="rounded-lg border border-[#bfdbfe] bg-[#f8fbff] px-2.5 py-1.5 text-xs text-[#334155]">
+                          <span className="font-semibold">Loaded report:</span> {lastUploadedFileName}
+                          {lastUploadSummary ? <span className="mt-0.5 block text-[#475569]">{lastUploadSummary}</span> : null}
+                        </div>
+                      ) : null}
+                      {intakeMode === "quick" ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {gallupThemes.slice(0, 20).map((theme) => {
+                            const active = parseStrengthTokens(memberStrengths).includes(theme.toLowerCase())
+                            return (
+                              <button
+                                key={theme}
+                                type="button"
+                                onClick={() => toggleStrength(theme)}
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                                  active ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
+                                }`}
+                              >
+                                {theme}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
 
-              <div className="ui-action-row mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIntakeMode("manual")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "manual" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
-                >
-                  Paste text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIntakeMode("upload")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "upload" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
-                >
-                  Upload report
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIntakeMode("quick")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${intakeMode === "quick" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"}`}
-                >
-                  Theme picker
-                </button>
-              </div>
-              <p className="mt-1 text-[11px] text-[#64748b]">
-                Use the upload button above for reports. Use these options when you want to paste or edit manually.
-              </p>
-
-              {intakeMode === "upload" ? (
-                <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5 text-xs text-[#475569]">
-                  Upload mode is active. Use the <span className="font-semibold">Upload strengths report</span> button above to choose or replace a file.
+                <div className="rounded-lg border border-[#d8e4f2] bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setMemberIntakePanel("review")}
+                    className="flex w-full items-center justify-between px-2.5 py-2 text-left"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">3. Review + add</span>
+                    <span className="text-xs text-[#64748b]">{canAddMember ? "Ready to save" : "Finish above"}</span>
+                  </button>
+                  {memberIntakePanel === "review" ? (
+                    <div className="space-y-1.5 border-t border-[#e2e8f0] px-2.5 py-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Strengths</label>
+                        <textarea
+                          value={memberStrengths}
+                          onChange={(e) => setMemberStrengths(e.target.value)}
+                          placeholder="Achiever, Relator, Strategic, Learner..."
+                          className="min-h-[74px] w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-[#64748b]">
+                        <span>{memberFileLoading ? "Reading strengths file..." : "Check strengths, then save the member."}</span>
+                        <span>{selectedStrengthCount} strengths captured</span>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={addMember}
+                          disabled={!canAddMember || memberFileLoading}
+                          className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
+                            canAddMember && !memberFileLoading ? "bg-[#1d4ed8] hover:bg-[#1e40af]" : "cursor-not-allowed bg-[#94a3b8]"
+                          }`}
+                        >
+                          Add member to group
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-
-              {intakeMode === "quick" ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {gallupThemes.slice(0, 20).map((theme) => {
-                    const active = parseStrengthTokens(memberStrengths).includes(theme.toLowerCase())
-                    return (
-                      <button
-                        key={theme}
-                        type="button"
-                        onClick={() => toggleStrength(theme)}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                          active ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155] hover:bg-neutral-50"
-                        }`}
-                      >
-                        {theme}
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : null}
-
-              <div className="mt-1.5">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Strengths</label>
-                <textarea
-                  value={memberStrengths}
-                  onChange={(e) => setMemberStrengths(e.target.value)}
-                  placeholder="Achiever, Relator, Strategic, Learner..."
-                   className="min-h-[74px] w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
-                />
-              </div>
-
-              <div className="mt-1.5 flex items-center justify-between text-xs text-[#64748b]">
-                <span>
-                  {memberFileLoading
-                    ? "Reading strengths file..."
-                    : "After upload, review strengths text below, then click Add member to group."}
-                </span>
-                <span>{selectedStrengthCount} strengths captured</span>
-              </div>
-
-              <div className="mt-1.5">
-                <button
-                  type="button"
-                  onClick={addMember}
-                  disabled={!canAddMember || memberFileLoading}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
-                    canAddMember && !memberFileLoading ? "bg-[#1d4ed8] hover:bg-[#1e40af]" : "cursor-not-allowed bg-[#94a3b8]"
-                  }`}
-                >
-                  Add member to group
-                </button>
               </div>
             </div>
 
@@ -5031,11 +5121,22 @@ export function TeamSyncWorkspaceClient() {
                 type="button"
                 onClick={runSimulation}
                 disabled={!canRunSimulation}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
-                  !canRunSimulation ? "cursor-not-allowed bg-[#94a3b8]" : "bg-[#1d4ed8] hover:bg-[#1e40af]"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition ${
+                  !canRunSimulation
+                    ? "cursor-not-allowed bg-[#94a3b8]"
+                    : simulating
+                      ? "bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#1e40af] shadow-[0_0_0_1px_rgba(59,130,246,0.2)] animate-pulse"
+                      : "bg-[#1d4ed8] hover:bg-[#1e40af]"
                 }`}
                 >
-                {simulating ? "Running simulation..." : "Run simulation"}
+                {simulating ? (
+                  <>
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />
+                    Running simulation...
+                  </>
+                ) : (
+                  "Run simulation"
+                )}
               </button>
             </div>
             <p className="mt-1 text-xs text-[#475569]">Output includes behavior patterns, risk signals, and next-step actions.</p>
@@ -5353,50 +5454,76 @@ export function TeamSyncWorkspaceClient() {
                   {latestRun.memberSupportPriorities.length > 0 ? (
                     <div className="mb-2 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2">
                       <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Team signal map</div>
-                      <svg viewBox="0 0 760 320" className="w-full rounded-md border border-[#dbe7f5] bg-white">
+                      <svg viewBox="0 0 760 344" className="w-full rounded-md border border-[#dbe7f5] bg-gradient-to-b from-[#f8fbff] to-white">
                         <defs>
                           <linearGradient id="signalCenter" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor="#dbeafe" />
                             <stop offset="100%" stopColor="#e0e7ff" />
                           </linearGradient>
+                          <filter id="signalCardShadow" x="-40%" y="-40%" width="180%" height="180%">
+                            <feDropShadow dx="0" dy="2" stdDeviation="2.4" floodColor="#0f172a" floodOpacity="0.14" />
+                          </filter>
                         </defs>
-                        <circle cx="380" cy="160" r="72" fill="url(#signalCenter)" stroke="#93c5fd" strokeWidth="2" />
-                        <text x="380" y="148" textAnchor="middle" fontSize="11" fontWeight="700" fill="#1e3a8a">
+                        <circle cx="380" cy="176" r="76" fill="url(#signalCenter)" stroke="#93c5fd" strokeWidth="2.2" filter="url(#signalCardShadow)" />
+                        <text x="380" y="158" textAnchor="middle" fontSize="11" fontWeight="700" fill="#1e3a8a">
                           SCENARIO
                         </text>
-                        <text x="380" y="166" textAnchor="middle" fontSize="12" fontWeight="600" fill="#0f172a">
-                          {truncateWords(latestRun.scenarioTitle, 5)}
+                        <text x="380" y="174" textAnchor="middle" fontSize="12" fontWeight="600" fill="#0f172a">
+                          {wrapTextForCard(latestRun.scenarioTitle, 24, 2).map((line, lineIndex) => (
+                            <tspan key={`scenario-line-${lineIndex}`} x="380" dy={lineIndex === 0 ? 0 : 13}>
+                              {line}
+                            </tspan>
+                          ))}
                         </text>
-                        <text x="380" y="184" textAnchor="middle" fontSize="10" fill="#334155">
+                        <text x="380" y="203" textAnchor="middle" fontSize="10" fill="#334155">
                           Pressure {latestRun.pressureLevel}/5
                         </text>
                         {latestRun.memberSupportPriorities.slice(0, 5).map((item, index) => {
                           const slots = [
-                            { x: 140, y: 62 },
-                            { x: 620, y: 62 },
-                            { x: 620, y: 250 },
-                            { x: 140, y: 250 },
-                            { x: 380, y: 278 },
+                            { x: 134, y: 66 },
+                            { x: 626, y: 66 },
+                            { x: 626, y: 258 },
+                            { x: 134, y: 258 },
+                            { x: 380, y: 294 },
                           ]
                           const slot = slots[index] ?? slots[0]
-                          const tone =
-                            item.level === "high"
-                              ? { stroke: "#ef4444", fill: "#fff1f2" }
-                              : item.level === "medium"
-                                ? { stroke: "#f59e0b", fill: "#fffbeb" }
-                                : { stroke: "#10b981", fill: "#ecfdf5" }
+                          const tone = toneForLevel(item.level, item.score)
+                          const moveLines = wrapTextForCard(item.supportMove, 28, 2)
                           return (
                             <g key={`signal-node-${item.memberId}-${index}`}>
-                              <line x1="380" y1="160" x2={slot.x} y2={slot.y} stroke={tone.stroke} strokeWidth="1.8" strokeDasharray="4 3" />
-                              <rect x={slot.x - 96} y={slot.y - 36} width="192" height="72" rx="12" fill={tone.fill} stroke={tone.stroke} strokeWidth="1.5" />
-                              <text x={slot.x - 84} y={slot.y - 14} fontSize="11" fontWeight="700" fill="#0f172a">
-                                {truncateWords(item.memberName, 2)}
+                              <line
+                                x1="380"
+                                y1="176"
+                                x2={slot.x}
+                                y2={slot.y - 2}
+                                stroke={tone.stroke}
+                                strokeOpacity={tone.edgeOpacity}
+                                strokeWidth={tone.edgeWidth}
+                                strokeDasharray={tone.edgeDash}
+                              />
+                              <rect
+                                x={slot.x - 112}
+                                y={slot.y - 44}
+                                width="224"
+                                height="88"
+                                rx="14"
+                                fill={tone.fill}
+                                stroke={tone.stroke}
+                                strokeWidth="1.7"
+                                filter="url(#signalCardShadow)"
+                              />
+                              <text x={slot.x - 100} y={slot.y - 20} fontSize="11" fontWeight="700" fill="#0f172a">
+                                {truncateWords(item.memberName, 3)}
                               </text>
-                              <text x={slot.x - 84} y={slot.y + 2} fontSize="10" fill="#334155">
+                              <text x={slot.x - 100} y={slot.y - 4} fontSize="10" fill={tone.text}>
                                 {item.level.toUpperCase()} | Score {item.score}
                               </text>
-                              <text x={slot.x - 84} y={slot.y + 18} fontSize="10" fill="#334155">
-                                {truncateWords(item.supportMove, 6)}
+                              <text x={slot.x - 100} y={slot.y + 14} fontSize="10" fill="#334155">
+                                {moveLines.map((line, lineIndex) => (
+                                  <tspan key={`support-line-${item.memberId}-${lineIndex}`} x={slot.x - 100} dy={lineIndex === 0 ? 0 : 12}>
+                                    {line}
+                                  </tspan>
+                                ))}
                               </text>
                             </g>
                           )

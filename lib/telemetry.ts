@@ -30,17 +30,73 @@ function parseNumeric(value: string | undefined) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function estimateOpenAICost(model: string, inputTokens?: number | null, outputTokens?: number | null) {
-  const normalized = model.toUpperCase().replace(/[^A-Z0-9]/g, "_")
-  const inputPrice = parseNumeric(process.env[`OPENAI_PRICE_${normalized}_INPUT_PER_1M`])
-  const outputPrice = parseNumeric(process.env[`OPENAI_PRICE_${normalized}_OUTPUT_PER_1M`])
+type ModelPrice = {
+  inputPer1M: number
+  outputPer1M: number
+}
 
-  if (inputPrice == null || outputPrice == null) {
-    return null
+const FALLBACK_MODEL_PRICES: Record<string, ModelPrice> = {
+  GPT_5: { inputPer1M: 1.25, outputPer1M: 10 },
+  GPT_5_3: { inputPer1M: 1.25, outputPer1M: 10 },
+  GPT_5_4: { inputPer1M: 1.25, outputPer1M: 10 },
+  GPT_5_3_MEDIUM: { inputPer1M: 1.25, outputPer1M: 10 },
+  GPT_5_4_MINI: { inputPer1M: 0.25, outputPer1M: 2 },
+  GPT_5_MINI: { inputPer1M: 0.25, outputPer1M: 2 },
+}
+
+function resolveModelPrice(model: string) {
+  const normalized = model.toUpperCase().replace(/[^A-Z0-9]/g, "_")
+  const directInput = parseNumeric(process.env[`OPENAI_PRICE_${normalized}_INPUT_PER_1M`])
+  const directOutput = parseNumeric(process.env[`OPENAI_PRICE_${normalized}_OUTPUT_PER_1M`])
+  if (directInput != null && directOutput != null) {
+    return { inputPer1M: directInput, outputPer1M: directOutput }
   }
 
-  const inputCost = ((inputTokens ?? 0) / 1_000_000) * inputPrice
-  const outputCost = ((outputTokens ?? 0) / 1_000_000) * outputPrice
+  const familyKey = normalized
+    .split("_")
+    .slice(0, 3)
+    .join("_")
+  const familyInput = parseNumeric(process.env[`OPENAI_PRICE_${familyKey}_INPUT_PER_1M`])
+  const familyOutput = parseNumeric(process.env[`OPENAI_PRICE_${familyKey}_OUTPUT_PER_1M`])
+  if (familyInput != null && familyOutput != null) {
+    return { inputPer1M: familyInput, outputPer1M: familyOutput }
+  }
+
+  const defaultInput = parseNumeric(process.env.OPENAI_PRICE_DEFAULT_INPUT_PER_1M)
+  const defaultOutput = parseNumeric(process.env.OPENAI_PRICE_DEFAULT_OUTPUT_PER_1M)
+  if (defaultInput != null && defaultOutput != null) {
+    return { inputPer1M: defaultInput, outputPer1M: defaultOutput }
+  }
+
+  return FALLBACK_MODEL_PRICES[normalized] ?? FALLBACK_MODEL_PRICES[familyKey] ?? null
+}
+
+export function estimateOpenAICost(
+  model: string,
+  inputTokens?: number | null,
+  outputTokens?: number | null,
+  totalTokens?: number | null
+) {
+  const price = resolveModelPrice(model)
+  if (!price) return null
+
+  let normalizedInputTokens = inputTokens ?? 0
+  let normalizedOutputTokens = outputTokens ?? 0
+
+  if (
+    totalTokens != null &&
+    Number.isFinite(totalTokens) &&
+    totalTokens > 0 &&
+    normalizedInputTokens === 0 &&
+    normalizedOutputTokens === 0
+  ) {
+    // Backfill older telemetry rows that only have total tokens.
+    normalizedInputTokens = Math.round(totalTokens * 0.7)
+    normalizedOutputTokens = Math.max(0, totalTokens - normalizedInputTokens)
+  }
+
+  const inputCost = (normalizedInputTokens / 1_000_000) * price.inputPer1M
+  const outputCost = (normalizedOutputTokens / 1_000_000) * price.outputPer1M
 
   return Number((inputCost + outputCost).toFixed(6))
 }
@@ -73,7 +129,7 @@ export async function logApiUsage(client: TelemetryClient, input: ApiUsageInput)
         input_tokens: input.inputTokens ?? null,
         output_tokens: input.outputTokens ?? null,
         total_tokens: input.totalTokens ?? null,
-        estimated_cost_usd: estimateOpenAICost(input.model, input.inputTokens, input.outputTokens),
+        estimated_cost_usd: estimateOpenAICost(input.model, input.inputTokens, input.outputTokens, input.totalTokens),
         metadata: input.metadata ?? {},
       },
     ])

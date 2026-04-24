@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient, getAdminCapabilities } from "@/lib/admin"
 import { getOpenAIOrganizationUsageSummary } from "@/lib/openai-organization-usage"
 import { getRequestAuth } from "@/lib/supabase/auth"
+import { estimateOpenAICost } from "@/lib/telemetry"
 
 export async function GET(req: Request) {
   try {
@@ -71,7 +72,13 @@ export async function GET(req: Request) {
 
     const activeUsers = new Set(events.map((event) => event.user_id).filter(Boolean)).size
     const totalTokens = logs.reduce((sum, log) => sum + (log.total_tokens ?? 0), 0)
-    const totalEstimatedCost = logs.reduce((sum, log) => sum + Number(log.estimated_cost_usd ?? 0), 0)
+    const totalEstimatedCost = logs.reduce((sum, log) => {
+      const storedCost = Number(log.estimated_cost_usd ?? 0)
+      if (Number.isFinite(storedCost) && storedCost > 0) return sum + storedCost
+      const fallbackCost =
+        estimateOpenAICost(log.model ?? "", log.input_tokens ?? null, log.output_tokens ?? null, log.total_tokens ?? null) ?? 0
+      return sum + fallbackCost
+    }, 0)
 
     const eventsByType = Object.entries(
       events.reduce<Record<string, number>>((accumulator, event) => {
@@ -87,7 +94,10 @@ export async function GET(req: Request) {
         const current = accumulator[log.feature] ?? { requests: 0, tokens: 0, cost: 0 }
         current.requests += 1
         current.tokens += log.total_tokens ?? 0
-        current.cost += Number(log.estimated_cost_usd ?? 0)
+        const storedCost = Number(log.estimated_cost_usd ?? 0)
+        const fallbackCost =
+          estimateOpenAICost(log.model ?? "", log.input_tokens ?? null, log.output_tokens ?? null, log.total_tokens ?? null) ?? 0
+        current.cost += Number.isFinite(storedCost) && storedCost > 0 ? storedCost : fallbackCost
         accumulator[log.feature] = current
         return accumulator
       }, {})
@@ -107,7 +117,10 @@ export async function GET(req: Request) {
       const current = moduleSummaryMap.get(log.module) ?? { events: 0, api_requests: 0, tokens: 0, cost: 0 }
       current.api_requests += 1
       current.tokens += log.total_tokens ?? 0
-      current.cost += Number(log.estimated_cost_usd ?? 0)
+      const storedCost = Number(log.estimated_cost_usd ?? 0)
+      const fallbackCost =
+        estimateOpenAICost(log.model ?? "", log.input_tokens ?? null, log.output_tokens ?? null, log.total_tokens ?? null) ?? 0
+      current.cost += Number.isFinite(storedCost) && storedCost > 0 ? storedCost : fallbackCost
       moduleSummaryMap.set(log.module, current)
     }
 
