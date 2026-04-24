@@ -17,6 +17,7 @@ type ApiUsageInput = {
   module: string
   feature: string
   model: string
+  provider?: "openai" | "codex"
   status: "success" | "error"
   inputTokens?: number | null
   outputTokens?: number | null
@@ -60,12 +61,13 @@ export async function logUsageEvent(client: TelemetryClient, input: UsageEventIn
 
 export async function logApiUsage(client: TelemetryClient, input: ApiUsageInput) {
   try {
+    const inferredProvider = input.provider ?? (input.model.toLowerCase().includes("codex") ? "codex" : "openai")
     await client.from("api_usage_logs").insert([
       {
         user_id: input.userId ?? null,
         module: input.module,
         feature: input.feature,
-        provider: "openai",
+        provider: inferredProvider,
         model: input.model,
         status: input.status,
         input_tokens: input.inputTokens ?? null,

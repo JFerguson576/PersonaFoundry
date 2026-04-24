@@ -160,6 +160,8 @@ type OperationsEconomicsResponse = {
   summary: {
     total_revenue_usd: number
     total_api_cost_usd: number
+    total_openai_api_cost_usd: number
+    total_codex_api_cost_usd: number
     total_margin_usd: number
     unprofitable_users: number
     over_budget_users: number
@@ -173,6 +175,8 @@ type OperationsEconomicsResponse = {
     monthly_subscription_usd: number
     monthly_api_budget_usd: number | null
     monthly_api_cost_usd: number
+    monthly_openai_api_cost_usd: number
+    monthly_codex_api_cost_usd: number
     monthly_api_requests: number
     monthly_tokens: number
     monthly_margin_usd: number
@@ -241,6 +245,18 @@ type CodexBacklogItem = {
   owner: string
   target: string
   notes: string
+}
+
+type BacklogAsset = {
+  label: string
+  href: string
+  type?: "doc" | "pdf" | "md" | "xlsx" | "image"
+}
+
+type BacklogAssetDraft = {
+  label: string
+  href: string
+  type: "doc" | "pdf" | "md" | "xlsx" | "image"
 }
 
 type OperationsMenuGroup =
@@ -413,6 +429,16 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
       "Define the practitioner add-on package: capability scope, pricing model, onboarding flow, enablement assets, rollout milestones, and success metrics so coaches can adopt TeamSync faster and scale client delivery.",
   },
   {
+    id: "p1-teamsync-planning-pack-integration",
+    priority: "P1",
+    status: "planned",
+    title: "Integrate TeamSync planning pack into Operations roadmap",
+    owner: "Product + Operations",
+    target: "1 week",
+    notes:
+      "Load and track the TeamSync planning pack docs in Operations To-Do execution: FUTURE_PATHWAY.md, CODEX_JIRA_BACKLOG_TOKEN_OPTIMIZED_2026-04-24.md, TEAMSYNC_FUNCTIONALITY_IMPLEMENTATION_GUIDE_2026-04-24.md, and CODEX_HANDOFF_TEAMSYNC_2026-04-24.md. Keep progress checkpoints tied to these source documents.",
+  },
+  {
     id: "p1-due-diligence-resources",
     priority: "P1",
     status: "planned",
@@ -442,10 +468,26 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   },
 ]
 
+const EXECUTION_BACKLOG_ASSETS: Record<string, BacklogAsset[]> = {
+  "p1-teamsync-planning-pack-integration": [
+    { label: "Future Pathway", href: "/docs/future-pathway.md", type: "md" },
+    { label: "Codex Jira Backlog", href: "/docs/codex-jira-backlog-token-optimized-2026-04-24.md", type: "md" },
+    { label: "TeamSync Implementation Guide", href: "/docs/teamsync-functionality-implementation-guide-2026-04-24.md", type: "md" },
+    { label: "Codex TeamSync Handoff", href: "/docs/codex-handoff-teamsync-2026-04-24.md", type: "md" },
+  ],
+  "p1-outreach-queue-from-practitioner-data": [
+    { label: "NZ Practitioner Prospect Matrix", href: "/docs/outreach/nz_gallup_practitioner_outreach_codex.xlsx", type: "xlsx" },
+  ],
+  "p1-content-library-cms": [{ label: "Primary To-Do Archive", href: "/docs/todo.md", type: "md" }],
+  "p1-due-diligence-resources": [{ label: "Enterprise SaaS Delivery Review", href: "/docs/Personara_Enterprise_SaaS_Delivery_Review.docx", type: "doc" }],
+  "p0-legal-policies-rollout": [{ label: "Moat Plan + Legal To-Do", href: "/docs/personara-moat-plan-todo.docx", type: "doc" }],
+}
+
 export function OperationsJobsClient() {
   const STALLED_THRESHOLD_MINUTES = 20
   const RECOVERY_LOG_KEY = "personara-operations-recovery-log-v1"
   const OPERATIONS_LAYOUT_PREFS_KEY = "personara-operations-layout-v1"
+  const EXECUTION_BACKLOG_ASSETS_KEY = "personara-operations-execution-assets-v1"
   const [session, setSession] = useState<Session | null>(null)
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [message, setMessage] = useState("")
@@ -514,6 +556,8 @@ export function OperationsJobsClient() {
   const [testerOutreachMessage, setTesterOutreachMessage] = useState(
     "I noticed you have been testing Personara.ai. Thank you.\n\nIf you have 15 minutes this week, I would love to learn what worked well and what should improve.\n\nPlease reply with a suitable time and we will align to your schedule."
   )
+  const [executionBacklogCustomAssets, setExecutionBacklogCustomAssets] = useState<Record<string, BacklogAsset[]>>({})
+  const [backlogAssetDrafts, setBacklogAssetDrafts] = useState<Record<string, BacklogAssetDraft>>({})
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -563,6 +607,18 @@ export function OperationsJobsClient() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    try {
+      const raw = window.localStorage.getItem(EXECUTION_BACKLOG_ASSETS_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Record<string, BacklogAsset[]>
+      if (parsed && typeof parsed === "object") {
+        setExecutionBacklogCustomAssets(parsed)
+      }
+    } catch {}
+  }, [EXECUTION_BACKLOG_ASSETS_KEY])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     window.localStorage.setItem(RECOVERY_LOG_KEY, JSON.stringify(recoveryLogs))
   }, [RECOVERY_LOG_KEY, recoveryLogs])
 
@@ -570,6 +626,58 @@ export function OperationsJobsClient() {
     if (typeof window === "undefined") return
     window.localStorage.setItem(OPERATIONS_LAYOUT_PREFS_KEY, JSON.stringify({ collapsedPanels }))
   }, [OPERATIONS_LAYOUT_PREFS_KEY, collapsedPanels])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(EXECUTION_BACKLOG_ASSETS_KEY, JSON.stringify(executionBacklogCustomAssets))
+  }, [EXECUTION_BACKLOG_ASSETS_KEY, executionBacklogCustomAssets])
+
+  function updateBacklogAssetDraft(itemId: string, patch: Partial<BacklogAssetDraft>) {
+    setBacklogAssetDrafts((current) => ({
+      ...current,
+      [itemId]: {
+        label: current[itemId]?.label ?? "",
+        href: current[itemId]?.href ?? "",
+        type: current[itemId]?.type ?? "doc",
+        ...patch,
+      },
+    }))
+  }
+
+  function addBacklogAsset(itemId: string) {
+    const draft = backlogAssetDrafts[itemId]
+    if (!draft?.label?.trim() || !draft?.href?.trim()) {
+      setMessage("Add both a file label and a file path before saving.")
+      return
+    }
+
+    const cleaned: BacklogAsset = {
+      label: draft.label.trim(),
+      href: draft.href.trim(),
+      type: draft.type,
+    }
+
+    setExecutionBacklogCustomAssets((current) => {
+      const existing = current[itemId] ?? []
+      return { ...current, [itemId]: [...existing, cleaned] }
+    })
+    setBacklogAssetDrafts((current) => ({ ...current, [itemId]: { label: "", href: "", type: draft.type } }))
+    setMessage("File reference added to roadmap item.")
+  }
+
+  function removeBacklogAsset(itemId: string, assetIndex: number) {
+    setExecutionBacklogCustomAssets((current) => {
+      const existing = current[itemId] ?? []
+      const next = existing.filter((_, index) => index !== assetIndex)
+      if (next.length === 0) {
+        const cloned = { ...current }
+        delete cloned[itemId]
+        return cloned
+      }
+      return { ...current, [itemId]: next }
+    })
+    setMessage("File reference removed.")
+  }
 
   const loadOverview = useCallback(async () => {
     setIsRefreshing(true)
@@ -1739,7 +1847,7 @@ export function OperationsJobsClient() {
                   </div>
                 ) : economics ? (
                   <>
-                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-7">
                       <SnapshotStat
                         label="Customer revenue"
                         value={formatUsd(Number(economics.summary.total_revenue_usd || 0))}
@@ -1747,6 +1855,14 @@ export function OperationsJobsClient() {
                       <SnapshotStat
                         label="API spend"
                         value={formatUsd(Number(economics.summary.total_api_cost_usd || 0))}
+                      />
+                      <SnapshotStat
+                        label="OpenAI spend"
+                        value={formatUsd(Number(economics.summary.total_openai_api_cost_usd || 0))}
+                      />
+                      <SnapshotStat
+                        label="Codex spend"
+                        value={formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
                       />
                       <SnapshotStat
                         label="Margin"
@@ -1802,6 +1918,18 @@ export function OperationsJobsClient() {
                       </div>
                       {activeFinancialView === "api" ? (
                         <div className="mt-2 text-xs text-[#36537d]">
+                          <p>
+                            OpenAI spend:{" "}
+                            <span className="font-semibold">
+                              {formatUsd(Number(economics.summary.total_openai_api_cost_usd || 0))}
+                            </span>
+                          </p>
+                          <p className="mt-1">
+                            Codex spend:{" "}
+                            <span className="font-semibold">
+                              {formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
+                            </span>
+                          </p>
                           <p>Users currently over API budget: <span className="font-semibold">{overBudgetRows.length}</span></p>
                           <p className="mt-1">Users in watch range (80%+ budget): <span className="font-semibold">{watchBudgetRows.length}</span></p>
                         </div>
@@ -1890,6 +2018,10 @@ export function OperationsJobsClient() {
                                 Cost: <span className="font-semibold">{formatUsd(row.monthly_api_cost_usd)}</span> | Margin:{" "}
                                 <span className="font-semibold">{formatUsd(row.monthly_margin_usd)}</span>
                               </span>
+                              <span>
+                                OpenAI: <span className="font-semibold">{formatUsd(row.monthly_openai_api_cost_usd || 0)}</span> | Codex:{" "}
+                                <span className="font-semibold">{formatUsd(row.monthly_codex_api_cost_usd || 0)}</span>
+                              </span>
                               {overview.permissions.is_superuser ? (
                                 <button
                                   type="button"
@@ -1935,6 +2067,13 @@ export function OperationsJobsClient() {
                   <div className="mt-2 space-y-2">
                     {CODEX_EXECUTION_BACKLOG.map((item) => (
                       <article key={item.id} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2">
+                        {(() => {
+                          const coreAssets = EXECUTION_BACKLOG_ASSETS[item.id] ?? []
+                          const customAssets = executionBacklogCustomAssets[item.id] ?? []
+                          const allAssets = [...coreAssets, ...customAssets]
+                          const draft = backlogAssetDrafts[item.id] ?? { label: "", href: "", type: "doc" as const }
+                          return (
+                            <>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
                             item.priority === "P0"
@@ -1964,6 +2103,87 @@ export function OperationsJobsClient() {
                         <div className="mt-1.5 text-[11px] text-[#4a6388]">
                           Owner: <span className="font-semibold">{item.owner}</span> | Target: <span className="font-semibold">{item.target}</span>
                         </div>
+                        <div className="mt-2 rounded-lg border border-[#d8e4f2] bg-[#f7fbff] px-2.5 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4b678e]">Attached files</div>
+                            <div className="text-[10px] text-[#59749a]">{allAssets.length} linked</div>
+                          </div>
+                          {allAssets.length > 0 ? (
+                            <div className="mt-1.5 space-y-1">
+                              {allAssets.map((asset, assetIndex) => (
+                                <div key={`${item.id}-asset-${assetIndex}-${asset.href}`} className="flex flex-wrap items-center justify-between gap-1.5 rounded-md border border-[#d2deef] bg-white px-2 py-1.5">
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-semibold text-[#17355e]">{asset.label}</div>
+                                    <div className="truncate text-[11px] text-[#5e779a]">{asset.href}</div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Link
+                                      href={asset.href}
+                                      target="_blank"
+                                      className="rounded-full border border-[#c6d6eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2c4f7c] hover:bg-[#f3f8ff]"
+                                    >
+                                      View
+                                    </Link>
+                                    <a
+                                      href={asset.href}
+                                      download
+                                      className="rounded-full border border-[#c6d6eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#2c4f7c] hover:bg-[#f3f8ff]"
+                                    >
+                                      Download
+                                    </a>
+                                    {assetIndex >= coreAssets.length ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeBacklogAsset(item.id, assetIndex - coreAssets.length)}
+                                        className="rounded-full border border-[#e7c1c9] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a23d55] hover:bg-[#fff3f6]"
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-1.5 text-[11px] text-[#587396]">No files attached yet.</p>
+                          )}
+
+                          <div className="mt-2 grid gap-1.5 md:grid-cols-[1fr_1.2fr_120px_auto]">
+                            <input
+                              value={draft.label}
+                              onChange={(event) => updateBacklogAssetDraft(item.id, { label: event.target.value })}
+                              placeholder="File label"
+                              className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                            />
+                            <input
+                              value={draft.href}
+                              onChange={(event) => updateBacklogAssetDraft(item.id, { href: event.target.value })}
+                              placeholder="/docs/new-file.docx or /resources/library/id"
+                              className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                            />
+                            <select
+                              value={draft.type}
+                              onChange={(event) => updateBacklogAssetDraft(item.id, { type: event.target.value as BacklogAssetDraft["type"] })}
+                              className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                            >
+                              <option value="doc">DOC</option>
+                              <option value="pdf">PDF</option>
+                              <option value="md">MD</option>
+                              <option value="xlsx">XLSX</option>
+                              <option value="image">IMAGE</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => addBacklogAsset(item.id)}
+                              className="rounded-full border border-[#9dbbe3] bg-[#eaf4ff] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1e4f93] hover:bg-[#deedff]"
+                            >
+                              Add file
+                            </button>
+                          </div>
+                        </div>
+                            </>
+                          )
+                        })()}
                       </article>
                     ))}
                   </div>

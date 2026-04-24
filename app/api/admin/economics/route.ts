@@ -24,6 +24,16 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function resolveProvider(provider: unknown, model: unknown) {
+  const providerText = normalizeText(provider).toLowerCase()
+  if (providerText === "codex") return "codex"
+  if (providerText === "openai") return "openai"
+
+  const modelText = normalizeText(model).toLowerCase()
+  if (modelText.includes("codex")) return "codex"
+  return "openai"
+}
+
 function monthWindow() {
   const now = new Date()
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
@@ -50,7 +60,7 @@ export async function GET(request: Request) {
   const [apiLogsResult, subscriptionsResult, usersResponse] = await Promise.all([
     admin
       .from("api_usage_logs")
-      .select("user_id, total_tokens, estimated_cost_usd, created_at")
+      .select("user_id, total_tokens, estimated_cost_usd, created_at, provider, model")
       .gte("created_at", startIso)
       .order("created_at", { ascending: false })
       .limit(20000),
@@ -102,6 +112,8 @@ export async function GET(request: Request) {
       api_requests: number
       total_tokens: number
       api_cost_usd: number
+      openai_api_cost_usd: number
+      codex_api_cost_usd: number
       last_activity_at: string | null
     }
   >()
@@ -112,11 +124,22 @@ export async function GET(request: Request) {
       api_requests: 0,
       total_tokens: 0,
       api_cost_usd: 0,
+      openai_api_cost_usd: 0,
+      codex_api_cost_usd: 0,
       last_activity_at: null,
     }
     current.api_requests += 1
     current.total_tokens += log.total_tokens ?? 0
-    current.api_cost_usd += Number(log.estimated_cost_usd ?? 0)
+    const estimatedCost = Number(log.estimated_cost_usd ?? 0)
+    current.api_cost_usd += estimatedCost
+
+    const provider = resolveProvider((log as Record<string, unknown>).provider, (log as Record<string, unknown>).model)
+    if (provider === "codex") {
+      current.codex_api_cost_usd += estimatedCost
+    } else {
+      current.openai_api_cost_usd += estimatedCost
+    }
+
     if (!current.last_activity_at || new Date(log.created_at).getTime() > new Date(current.last_activity_at).getTime()) {
       current.last_activity_at = log.created_at
     }
@@ -137,6 +160,8 @@ export async function GET(request: Request) {
       api_requests: 0,
       total_tokens: 0,
       api_cost_usd: 0,
+      openai_api_cost_usd: 0,
+      codex_api_cost_usd: 0,
       last_activity_at: null,
     }
     const revenue = subscription.monthly_subscription_usd
@@ -153,6 +178,8 @@ export async function GET(request: Request) {
       monthly_subscription_usd: Number(revenue.toFixed(2)),
       monthly_api_budget_usd: subscription.monthly_api_budget_usd === null ? null : Number(subscription.monthly_api_budget_usd.toFixed(2)),
       monthly_api_cost_usd: Number(usage.api_cost_usd.toFixed(4)),
+      monthly_openai_api_cost_usd: Number(usage.openai_api_cost_usd.toFixed(4)),
+      monthly_codex_api_cost_usd: Number(usage.codex_api_cost_usd.toFixed(4)),
       monthly_api_requests: usage.api_requests,
       monthly_tokens: usage.total_tokens,
       monthly_margin_usd: Number(margin.toFixed(4)),
@@ -169,6 +196,8 @@ export async function GET(request: Request) {
     (acc, row) => {
       acc.total_revenue_usd += row.monthly_subscription_usd
       acc.total_api_cost_usd += row.monthly_api_cost_usd
+      acc.total_openai_api_cost_usd += row.monthly_openai_api_cost_usd
+      acc.total_codex_api_cost_usd += row.monthly_codex_api_cost_usd
       acc.total_margin_usd += row.monthly_margin_usd
       if (row.profitability === "negative") acc.unprofitable_users += 1
       if (row.budget_status === "over_budget") acc.over_budget_users += 1
@@ -178,6 +207,8 @@ export async function GET(request: Request) {
       users: rows.length,
       total_revenue_usd: 0,
       total_api_cost_usd: 0,
+      total_openai_api_cost_usd: 0,
+      total_codex_api_cost_usd: 0,
       total_margin_usd: 0,
       unprofitable_users: 0,
       over_budget_users: 0,
@@ -191,6 +222,8 @@ export async function GET(request: Request) {
       ...summary,
       total_revenue_usd: Number(summary.total_revenue_usd.toFixed(2)),
       total_api_cost_usd: Number(summary.total_api_cost_usd.toFixed(4)),
+      total_openai_api_cost_usd: Number(summary.total_openai_api_cost_usd.toFixed(4)),
+      total_codex_api_cost_usd: Number(summary.total_codex_api_cost_usd.toFixed(4)),
       total_margin_usd: Number(summary.total_margin_usd.toFixed(4)),
     },
     users: rows,
@@ -265,4 +298,3 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ subscription: data })
 }
-
