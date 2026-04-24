@@ -3985,14 +3985,14 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {sourceWizardFocusMode ? (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#c7dcff] bg-[#eef6ff] px-3 py-2 text-xs text-[#0a4a82]">
                   <span>
-              Setup wizard is handling the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
+                    Guided setup is handling the remaining {sourceRemainingCount} source {sourceRemainingCount === 1 ? "step" : "steps"}.
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowSourceSecondaryPanels((current) => !current)}
                     className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
                   >
-                    {showSourceSecondaryPanels ? "Hide extra panels" : "Show extra panels"}
+                    {showSourceSecondaryPanels ? "Hide details" : "Show details"}
                   </button>
                 </div>
               ) : null}
@@ -4001,7 +4001,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <>
               <details className="mt-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
                 <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.14em] text-neutral-600">
-                  Input tips and status
+                  Extra guidance
                 </summary>
                 <div className="mt-2 grid gap-2 lg:grid-cols-4">
                   <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950">

@@ -77,6 +77,12 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const nextActionLabel = sourceSetupComplete
     ? "Go to Step 3: Build profile"
     : `Open next required file: ${nextRecommendedOption?.label || "Continue source setup"}`
+  const saveSuccessMessage = (savedFileName: string) => {
+    if (sourceType === "strengths") {
+      return `Strengths report loaded and mapped: ${savedFileName}. Open My files > Recent files to view it.`
+    }
+    return `${selectedOption.label} loaded and saved: ${savedFileName}. Open My files > Recent files to view it.`
+  }
 
   const activeDraftKey = `${DRAFT_KEY_PREFIX}:${candidateId}:${sourceType}`
 
@@ -178,7 +184,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     }
     setPendingFile(file)
     setSelectedFileName(file.name)
-    setMessage(`File selected for ${selectedOption.label}. Click 'Upload and save' to extract and store it.`)
+    setMessage(`File selected for ${selectedOption.label}. Click 'Upload and save' to continue.`)
     if (event.target) event.target.value = ""
   }
 
@@ -214,11 +220,15 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setContentText("")
       clearActiveDraft()
       markDone(sourceType)
-      setMessage(`${selectedOption.label} uploaded and saved: ${json.file_name || pendingFile.name}. Open My files > Recent files to view it.`)
+      setMessage(saveSuccessMessage(json.file_name || pendingFile.name))
       notifyCareerWorkspaceRefresh()
       router.refresh()
-      setOpenWizardPanel("status")
-      if (wizardMode) moveToNextMissing()
+      if (wizardMode) {
+        moveToNextMissing()
+        setOpenWizardPanel("file")
+      } else {
+        setOpenWizardPanel("status")
+      }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         setMessage("Upload timed out. Please try a smaller file or retry in a moment.")
@@ -294,11 +304,19 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       setSelectedFileName("")
       clearActiveDraft()
       markDone(sourceType)
-      setMessage("Text saved. You can find it in My files > Recent files.")
+      setMessage(
+        sourceType === "strengths"
+          ? "Strengths report text loaded and mapped. You can find it in My files > Recent files."
+          : "Text saved. You can find it in My files > Recent files."
+      )
       notifyCareerWorkspaceRefresh()
       router.refresh()
-      setOpenWizardPanel("status")
-      if (wizardMode) moveToNextMissing()
+      if (wizardMode) {
+        moveToNextMissing()
+        setOpenWizardPanel("file")
+      } else {
+        setOpenWizardPanel("status")
+      }
     } catch (error) {
       setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("save the source material")))
     } finally {
@@ -325,7 +343,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-sky-950">
-            <span className="font-semibold">Next:</span>{" "}
+            <span className="font-semibold">Do next:</span>{" "}
             {sourceSetupComplete ? "Build the profile from these inputs." : "Finish the next source step."}
           </p>
           <button
@@ -421,14 +439,14 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 onClick={() => setShowAdvancedTypeSelector((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {showAdvancedTypeSelector ? "Hide file type list" : "Choose a different file type (optional)"}
+                {showAdvancedTypeSelector ? "Hide source list" : "Choose a different source type"}
               </button>
               {showAdvancedTypeSelector ? (
                 <div className="mt-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">File type chooser</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Source type picker</div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                     <label className="text-xs font-medium text-neutral-700">
-                      Required file type
+                      Source type
                       <select
                         value={sourceType}
                         onChange={(event) => {
@@ -442,7 +460,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                           const isLoaded = completedTypes.has(option.value)
                           return (
                             <option key={option.value} value={option.value}>
-                              {option.label} · {isLoaded ? "Loaded" : "Missing"}
+                              {option.label} - {isLoaded ? "Loaded" : "Missing"}
                             </option>
                           )
                         })}
@@ -564,7 +582,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             openWizardPanel === "status" ? "rounded-t-2xl border-b border-neutral-200 bg-neutral-50" : "rounded-2xl"
           }`}
         >
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">4. Status and next step</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">4. Review and continue</span>
           <span className="text-[11px] text-neutral-500">{hasUploadedSourceForCurrentStep ? "Ready" : "Needs upload"}</span>
         </button>
         {openWizardPanel === "status" ? (
@@ -636,7 +654,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
               </div>
             ) : null}
             <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">What to do next</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Continue with</div>
               {!sourceSetupComplete && nextRecommendedOption ? (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <p className="text-xs text-neutral-600">Continue setup with <span className="font-semibold">{nextRecommendedOption.label}</span>.</p>
