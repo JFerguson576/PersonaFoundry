@@ -76,7 +76,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const sourceSetupComplete = nextRecommendedType === null
   const nextActionLabel = sourceSetupComplete
     ? "Go to Step 3: Build profile"
-    : `Open next step: ${nextRecommendedOption?.label || "Continue source setup"}`
+    : `Open next required file: ${nextRecommendedOption?.label || "Continue source setup"}`
 
   const activeDraftKey = `${DRAFT_KEY_PREFIX}:${candidateId}:${sourceType}`
 
@@ -421,14 +421,14 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 onClick={() => setShowAdvancedTypeSelector((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {showAdvancedTypeSelector ? "Hide type list" : "Change source type"}
+                {showAdvancedTypeSelector ? "Hide file type list" : "Choose a different file type (optional)"}
               </button>
               {showAdvancedTypeSelector ? (
                 <div className="mt-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Type chooser</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">File type chooser</div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                     <label className="text-xs font-medium text-neutral-700">
-                      Source type
+                      Required file type
                       <select
                         value={sourceType}
                         onChange={(event) => {

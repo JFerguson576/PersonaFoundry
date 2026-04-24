@@ -43,9 +43,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Candidate not found" }, { status: 404 })
     }
 
-    const contentText = await extractTextFromCareerUpload(file)
+    let contentText = await extractTextFromCareerUpload(file)
+    let extractionWarning: string | null = null
     if (!contentText) {
-      return NextResponse.json({ error: "We could not extract readable text from that file" }, { status: 400 })
+      contentText = `[Uploaded file: ${file.name}]\n\nReadable text could not be extracted from this file automatically.\nAdd a short summary in the text field if needed.`
+      extractionWarning = "We could not auto-read text from this file, so we saved it as a file reference. Add a short summary manually if needed."
     }
 
     const title = submittedTitle || file.name.replace(/\.[^.]+$/, "")
@@ -84,6 +86,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       document,
       file_name: file.name,
+      warning: extractionWarning,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
