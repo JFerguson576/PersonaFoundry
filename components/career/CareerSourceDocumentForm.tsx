@@ -107,7 +107,6 @@ const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
 
 export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }: Props) {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const contentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [sourceType, setSourceType] = useState("cv")
   const [title, setTitle] = useState("")
@@ -190,7 +189,7 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
 
     setPendingFile(file)
     setSelectedFileName(file.name)
-    setMessage(`File selected for ${selectedSourceType.label}. Click 'Upload and save file' to extract and store it.`)
+    setMessage(`File selected for ${selectedSourceType.label}. Click 'Upload and save file' to save it.`)
     if (event.target) {
       event.target.value = ""
     }
@@ -239,7 +238,8 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
       if (setupWizardSteps.includes(sourceType as SourceTypeValue)) {
         setWizardCompletedTypes((current) => new Set(current).add(sourceType as SourceTypeValue))
       }
-      setMessage(`File uploaded and saved under ${selectedSourceType.label}: ${json.file_name || pendingFile.name}.`)
+      const uploadMessageBase = `File uploaded and saved under ${selectedSourceType.label}: ${json.file_name || pendingFile.name}.`
+      setMessage(typeof json.warning === "string" && json.warning.trim() ? `${uploadMessageBase} ${json.warning}` : uploadMessageBase)
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) {
@@ -438,14 +438,6 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={fileLoading}
-              className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {fileLoading ? "Preparing file..." : "Select file"}
-            </button>
-            <button
-              type="button"
               onClick={() => void handleUploadSelectedFile()}
               disabled={fileLoading || !pendingFile}
               className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
@@ -455,13 +447,25 @@ export function CareerSourceDocumentForm({ candidateId, existingDocuments = [] }
           </div>
         </div>
         <input
-          ref={fileInputRef}
           type="file"
           accept=".txt,.md,.rtf,.docx,.pdf"
           onChange={handleFileChange}
-          className="hidden"
+          disabled={fileLoading}
+          className="block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-700 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:uppercase file:tracking-[0.08em] file:text-white hover:file:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
+        <input
+          type="hidden"
+          value={selectedFileName}
+          readOnly
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+          <span>Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</span>
+          {!pendingFile ? (
+            <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">No file selected yet</span>
+          ) : (
+            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">Ready to upload</span>
+          )}
+        </div>
         {selectedFileName ? (
           <p className="mt-2 text-xs text-neutral-700">
             Latest uploaded file ({selectedSourceType.label}): <span className="font-medium">{selectedFileName}</span>

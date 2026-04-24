@@ -1826,7 +1826,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
   } as const
   const stepContentCompactClass =
-    "mt-1 space-y-1 [&_.rounded-3xl]:rounded-xl [&_.rounded-3xl]:p-2 [&_.rounded-2xl]:p-1.5 [&_h2]:text-[0.96rem] [&_h3]:text-[0.9rem] [&_p]:leading-[1.35] [&_.text-sm]:text-[0.82rem]"
+    "mt-1 space-y-1 [&_.rounded-3xl]:rounded-xl [&_.rounded-3xl]:p-1.5 [&_.rounded-2xl]:p-1.5 [&_.rounded-xl]:p-1.5 [&_h2]:text-[0.94rem] [&_h3]:text-[0.88rem] [&_p]:leading-[1.3] [&_.text-sm]:text-[0.8rem]"
   const urgentSectionKey =
     priorityItems[0]?.sectionKey ||
     todayBoardItems[0]?.sectionKey ||
@@ -2585,7 +2585,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight-soft" : ""
                   }`}
                 >
-                  Setup helper{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
+                  Guided setup{showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}
                 </button>
                 {workflowPrimaryAction ? (
                   <button
@@ -4159,42 +4159,42 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   onClick={() => openAndScroll(documents.length > 0 ? "positioning" : "source", documents.length > 0 ? "#generate-profile" : "#source-material")}
                 />
               ) : (
-                <div className="mt-4 space-y-5">
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-                    <div className="rounded-3xl border border-indigo-200 bg-indigo-50 p-5">
+                <div className="mt-3 space-y-3">
+                  <div className="grid gap-3 lg:grid-cols-[1.2fr,0.8fr]">
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Professional narrative</div>
-                      <div className="mt-3">
+                      <div className="mt-2">
                         <div className="text-sm text-neutral-500">Career identity</div>
-                        <div className="mt-1 text-xl font-semibold text-neutral-900">{latestProfile.career_identity}</div>
+                        <div className="mt-1 text-lg font-semibold text-neutral-900">{latestProfile.career_identity}</div>
                       </div>
-                      <div className="mt-4">
+                      <div className="mt-3">
                         <div className="text-sm text-neutral-500">How the market should read this candidate</div>
                         <p className="mt-1 text-sm leading-6 text-neutral-800">{latestProfile.market_positioning}</p>
                       </div>
                     </div>
-                    <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+                    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Narrative control panel</div>
-                      <div className="mt-4 space-y-3">
-                        <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                      <div className="mt-2 space-y-2">
+                        <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
                           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Seniority level</div>
-                          <div className="mt-2 text-sm font-semibold text-neutral-900">{latestProfile.seniority_level || "Not defined yet"}</div>
+                          <div className="mt-1 text-sm font-semibold text-neutral-900">{latestProfile.seniority_level || "Not defined yet"}</div>
                         </div>
-                        <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                        <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
                           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Primary target direction</div>
-                          <div className="mt-2 text-sm font-semibold text-neutral-900">
+                          <div className="mt-1 text-sm font-semibold text-neutral-900">
                             {latestProfile.recommended_target_roles?.[0] || latestProfile.role_families?.[0] || "Not defined yet"}
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                        <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5">
                           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">What to improve next</div>
-                          <div className="mt-2 text-sm leading-6 text-neutral-700">
+                          <div className="mt-1 text-sm leading-5 text-neutral-700">
                             {positioningGapItems[0] || "Use this brief to generate outward-facing assets and tailor it further with company intelligence."}
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                     <SummaryCard
                       label="Seniority"
                       value={latestProfile.seniority_level || "Set next"}
@@ -4216,92 +4216,89 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       tone={positioningGapItems.length === 0 ? "success" : "warning"}
                     />
                   </div>
-                  <div className="rounded-3xl border border-indigo-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-indigo-200 bg-white p-2.5 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Use this profile next</div>
-                        <h3 className="mt-1 text-base font-semibold text-neutral-900">Move from profile to outputs</h3>
+                        <h3 className="mt-0.5 text-sm font-semibold text-neutral-900">Move from profile to outputs</h3>
                       </div>
-                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                      <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Best next move</div>
-                        <div className="mt-1 text-sm font-semibold text-indigo-950">
+                        <div className="mt-0.5 text-xs font-semibold text-indigo-950">
                           {positioningGapItems.length > 0 ? "Refine the narrative" : "Generate application assets"}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                    <div className="mt-2 grid gap-1.5 md:grid-cols-3">
                       <button
                         type="button"
                         onClick={() => openAndScroll("documents", "#document-actions")}
-                        className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-left transition hover:shadow-sm"
+                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800">Create assets</div>
-                        <div className="mt-1 font-semibold text-neutral-900">Generate CV, LinkedIn, and letters</div>
+                        <div className="mt-0.5 text-[13px] font-semibold text-neutral-900">Generate CV, LinkedIn, and letters</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => openAndScroll("company", "#company-dossier")}
-                        className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-left transition hover:shadow-sm"
+                        className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1.5 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Tailor the story</div>
-                        <div className="mt-1 font-semibold text-neutral-900">Match narrative to target employers</div>
+                        <div className="mt-0.5 text-[13px] font-semibold text-neutral-900">Match narrative to target employers</div>
                       </button>
                       <button
                         type="button"
                         onClick={() => openAndScroll("jobs", "#jobs")}
-                        className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-left transition hover:shadow-sm"
+                        className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 text-left transition hover:shadow-sm"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">Test it in market</div>
-                        <div className="mt-1 font-semibold text-neutral-900">Search live roles from this narrative</div>
+                        <div className="mt-0.5 text-[13px] font-semibold text-neutral-900">Search live roles from this narrative</div>
                       </button>
                     </div>
                   </div>
-                  <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Narrative checklist</div>
-                        <h3 className="mt-2 text-lg font-semibold">What is strong and what still needs work</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                          This turns the profile into a clearer action list so the user can improve the brief before generating more assets.
-                        </p>
+                        <h3 className="mt-1 text-sm font-semibold">What is strong and what still needs work</h3>
                       </div>
-                      <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+                      <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Open gaps</div>
-                        <div className="mt-1 text-2xl font-semibold">{positioningGapItems.length}</div>
+                        <div className="mt-0.5 text-base font-semibold">{positioningGapItems.length}</div>
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <SourceStatusCard
+                    <div className="mt-2 grid gap-1.5 md:grid-cols-2">
+                      <CompactNarrativeStatus
                         label="Career identity"
                         status={latestProfile.career_identity ? "Ready" : "Missing"}
-                        description={latestProfile.career_identity ? "The user has a defined professional identity anchor." : "Create the core professional identity first."}
+                        detail={latestProfile.career_identity ? "Identity anchor is set." : "Create the core identity first."}
                         tone={latestProfile.career_identity ? "success" : "warning"}
                       />
-                      <SourceStatusCard
+                      <CompactNarrativeStatus
                         label="Market positioning"
                         status={latestProfile.market_positioning ? "Ready" : "Missing"}
-                        description={latestProfile.market_positioning ? "The market-facing story is available for reuse in CV and LinkedIn assets." : "Add a clear positioning summary that explains how the candidate should be read."}
+                        detail={latestProfile.market_positioning ? "Positioning story is reusable." : "Add a clear positioning summary."}
                         tone={latestProfile.market_positioning ? "success" : "warning"}
                       />
-                      <SourceStatusCard
+                      <CompactNarrativeStatus
                         label="Role families"
                         status={latestProfile.role_families?.length ? "Ready" : "Missing"}
-                        description={latestProfile.role_families?.length ? "The likely role clusters are defined." : "Clarify the role families before broadening applications."}
+                        detail={latestProfile.role_families?.length ? "Role clusters are mapped." : "Clarify role families."}
                         tone={latestProfile.role_families?.length ? "success" : "warning"}
                       />
-                      <SourceStatusCard
+                      <CompactNarrativeStatus
                         label="Recommended roles"
                         status={latestProfile.recommended_target_roles?.length ? "Ready" : "Missing"}
-                        description={latestProfile.recommended_target_roles?.length ? "Specific target roles are already suggested." : "Add target-role recommendations so search and tailoring become more focused."}
+                        detail={latestProfile.recommended_target_roles?.length ? "Role targets are suggested." : "Add role recommendations."}
                         tone={latestProfile.recommended_target_roles?.length ? "success" : "warning"}
                       />
                     </div>
                     {positioningGapItems.length > 0 ? (
-                      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-800">Refine next</div>
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-1.5 space-y-1">
                           {positioningGapItems.map((item) => (
-                            <div key={item} className="text-sm leading-6 text-neutral-700">
+                            <div key={item} className="text-xs leading-5 text-neutral-700">
                               {item}
                             </div>
                           ))}
@@ -6153,7 +6150,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
                     }`}
                   >
-                    {isGuidedMode ? "Hints on" : "Hints off"}
+                    {isGuidedMode ? "Agent tips on" : "Agent tips off"}
                   </button>
                 ) : null}
                 <div className="flex gap-1">
@@ -6169,7 +6166,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     onClick={() => setShowCompletedLeftSteps((current) => !current)}
                     className="flex-1 rounded-full border border-neutral-300 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                   >
-                    {showCompletedLeftSteps ? "Hide done" : "Show done"}
+                    {showCompletedLeftSteps ? "Hide completed" : "Show completed"}
                   </button>
                 </div>
               </div>
@@ -6523,8 +6520,8 @@ function SummaryCard({
   const content = (
     <>
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">{label}</div>
-      <div className="mt-1.5 text-lg font-semibold">{value}</div>
-      {actionLabel ? <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-600">{actionLabel}</div> : null}
+      <div className="mt-1 text-base font-semibold">{value}</div>
+      {actionLabel ? <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-600">{actionLabel}</div> : null}
     </>
   )
 
@@ -6533,14 +6530,14 @@ function SummaryCard({
       <button
         type="button"
         onClick={onClick}
-        className={`rounded-2xl border px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${toneClass}`}
+        className={`rounded-xl border px-2.5 py-2 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${toneClass}`}
       >
         {content}
       </button>
     )
   }
 
-  return <div className={`rounded-2xl border px-3 py-2.5 ${toneClass}`}>{content}</div>
+  return <div className={`rounded-xl border px-2.5 py-2 ${toneClass}`}>{content}</div>
 }
 
 function WorkspaceCampaignLane({
@@ -6670,11 +6667,15 @@ function formatAssetType(assetType: string | null | undefined) {
 }
 
 function cleanWorkflowLabel(label: string) {
-  return label
+  const cleaned = label
     .replace(/^[✓✔]\s*/, "")
     .replace(/^\[[^\]]+\]\s*/, "")
     .replace(/^\d+\.\s*/, "")
     .trim()
+
+  if (cleaned.toLowerCase() === "step guide") return "Overview"
+  if (cleaned.toLowerCase() === "saved files") return "Files"
+  return cleaned
 }
 
 function formatRunStatus(status: string | null | undefined) {
@@ -6693,16 +6694,63 @@ function formatBackgroundJobType(jobType: string | null | undefined) {
 
 function ListBlock({ title, items }: { title: string; items: string[] | null | undefined }) {
   if (!items || items.length === 0) return null
+  const preview = items.slice(0, 2)
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{title}</div>
-      <ul className="mt-3 space-y-2 text-sm text-neutral-800">
-        {items.map((item, index) => (
-          <li key={`${title}-${index}`} className="rounded-xl bg-white px-3 py-2 leading-6 shadow-sm">
+    <details className="group rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">{title}</div>
+        <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
+          {items.length}
+        </span>
+      </summary>
+      <ul className="mt-2 space-y-1.5 text-sm text-neutral-800 group-open:hidden">
+        {preview.map((item, index) => (
+          <li key={`${title}-preview-${index}`} className="rounded-lg bg-white px-2.5 py-1.5 leading-5 shadow-sm">
             {item}
           </li>
         ))}
       </ul>
+      {items.length > 2 ? (
+        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500 group-open:hidden">
+          Open to view all
+        </div>
+      ) : null}
+      <ul className="mt-2 hidden space-y-1.5 text-sm text-neutral-800 group-open:block">
+        {items.map((item, index) => (
+          <li key={`${title}-${index}`} className="rounded-lg bg-white px-2.5 py-1.5 leading-5 shadow-sm">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+function CompactNarrativeStatus({
+  label,
+  status,
+  detail,
+  tone,
+}: {
+  label: string
+  status: "Ready" | "Missing"
+  detail: string
+  tone: "success" | "warning"
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : "border-amber-200 bg-amber-50 text-amber-900"
+
+  return (
+    <div className={`rounded-xl border px-2.5 py-2 ${toneClass}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.12em]">{label}</div>
+        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]">
+          {status}
+        </span>
+      </div>
+      <div className="mt-1 text-xs leading-5">{detail}</div>
     </div>
   )
 }
@@ -6772,13 +6820,15 @@ function CurrentTargetBriefCard({
     }
     return value
   }
-  const rows = [
+  const primaryRows = [
     { label: "Role", value: brief.jobTitle || "Not set yet" },
     { label: "Company", value: brief.companyName || "Not set yet" },
     { label: "Location", value: brief.location || "Not set yet" },
-    { label: "Website", value: brief.companyWebsite || "Optional" },
-    { label: "Job link", value: brief.jobUrl || "Optional" },
   ]
+  const secondaryRows = [
+    { label: "Website", value: brief.companyWebsite || "" },
+    { label: "Job link", value: brief.jobUrl || "" },
+  ].filter((item) => item.value)
 
   return (
     <section className="rounded-2xl border border-[#d7e8f0] bg-[linear-gradient(180deg,#ffffff_0%,#f5fbfd_100%)] p-2.5 shadow-sm">
@@ -6786,22 +6836,34 @@ function CurrentTargetBriefCard({
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e]">Shared target brief</div>
           <h3 className="mt-0.5 text-sm font-semibold text-[#0f172a]">{title}</h3>
-          {description ? <p className="mt-1 text-xs leading-5 text-neutral-600">{description}</p> : null}
+          {description ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-600">{description}</p> : null}
         </div>
         <div className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
           {statusBadge || "Editable in each tool"}
         </div>
       </div>
-      <dl className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
-        {rows.map((row) => (
-          <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2 py-1.5">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}</dt>
-            <dd className="mt-1 line-clamp-2 break-words text-xs font-semibold text-neutral-900" title={row.value}>
+      <dl className="mt-2 flex flex-wrap gap-1.5">
+        {primaryRows.map((row) => (
+          <div key={`${title}-${row.label}`} className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white px-2.5 py-1">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}:</dt>
+            <dd className="max-w-[220px] truncate text-xs font-semibold text-neutral-900" title={row.value}>
               {formatBriefValue(row.label, row.value)}
             </dd>
           </div>
         ))}
       </dl>
+      {secondaryRows.length > 0 ? (
+        <dl className="mt-2 grid gap-1.5 sm:grid-cols-2">
+          {secondaryRows.map((row) => (
+            <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2 py-1.5">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}</dt>
+              <dd className="mt-0.5 truncate text-xs font-semibold text-neutral-900" title={row.value}>
+                {formatBriefValue(row.label, row.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </section>
   )
 }

@@ -317,9 +317,6 @@ export function CareerHomeClient() {
               <Link href="/career-test?mode=dummy" className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100">
                 Test as new user
               </Link>
-              <Link href="/admin" className="rounded-lg border border-[#cbd5e1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0f172a] hover:bg-[#f8fafc]">
-                Open admin dashboard
-              </Link>
             </div>
           </div>
 

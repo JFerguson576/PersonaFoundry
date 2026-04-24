@@ -15,11 +15,106 @@ The long-term direction is to make Career Copilot feel premium, strategic, and v
 
 ### Immediate Next Todo
 
+#### TeamSync Planning Pack (Operations + Roadmap Source of Truth)
+
+The following planning documents are now part of the official TeamSync execution pack and should be tracked in Operations (`Execution roadmap`) as active reference inputs:
+
+- `FUTURE_PATHWAY.md`
+- `CODEX_JIRA_BACKLOG_TOKEN_OPTIMIZED_2026-04-24.md`
+- `TEAMSYNC_FUNCTIONALITY_IMPLEMENTATION_GUIDE_2026-04-24.md`
+- `CODEX_HANDOFF_TEAMSYNC_2026-04-24.md`
+
 #### Codex Execution Queue (Prioritized)
 
 This is the active execution queue Codex should use in Operations (`Execution roadmap`), ordered by business impact and risk.
 
-1. P0 - Reduce first-session onboarding drop-off
+1. P0 - Mandatory instruction-pack refresh before any implementation
+- Owner: Platform + Operations
+- Target: Immediate (before each implementation cycle)
+- Why first: Prevents stale assumptions, merge friction, and incorrect implementation against outdated routes/schema.
+- Codex action focus:
+  - rescan the current repo for OpenAI touchpoints, telemetry schema usage, admin reporting surfaces, and user action hooks
+  - regenerate `CODEX_ONE_STEP_INSTRUCTION_PACK.md` from latest code state
+  - regenerate `CODEX_ONE_STEP_INSTRUCTION_PACK.docx` from the refreshed `.md`
+  - output a short refresh summary (what changed) before starting implementation
+  - if drift is detected, implement only against refreshed instructions
+
+2. P0 - AI Value & Readiness Dashboard (graphical + guided)
+- Owner: Operations + Product + AI
+- Target: 2 weeks
+- Why now: Creates immediate operational visibility, shows whether enhancements are working, and provides buyer-grade evidence for enterprise/partner diligence (including Gallup conversations).
+- Codex action focus:
+  - create backend route: `app/api/admin/value-readiness/route.ts`
+  - extend telemetry schema in `supabase/admin_telemetry.sql` with:
+    - `interaction_key text`
+    - `quality_score_total integer`
+    - `user_action_after_output text`
+    - `time_to_first_action_ms integer`
+    - `schema_version text`
+  - extend logger in `lib/telemetry.ts` to write the above fields
+  - add dashboard section in `components/admin/AdminDashboardClient.tsx` named `AI Value & Readiness`
+  - add concise “What this means” helper text for every chart/card
+  - integrate contextual help with agent guidance:
+    - add “Explain this metric” action to launch `ExperienceAgentWidget` with metric context
+    - include recommended next action per weak metric (for example high regenerate-without-save)
+- Graphical components (must be chart-first where possible):
+  - Line chart: `Useful Output Rate` trend (7d/30d)
+  - Funnel chart: Generated -> Viewed -> Saved -> Used in next step
+  - Stacked bar: action-after-output mix (`saved`, `copied`, `regenerated`, `dismissed`)
+  - Heatmap/table: quality score by `interaction_key`
+  - Dual-axis chart: spend vs useful outputs (efficiency view)
+  - Risk tiles: budget burn status, low-quality hotspots, friction hotspots
+- TeamSync-specific coverage (required, not optional):
+  - include TeamSync endpoints in `interaction_key` reporting:
+    - `teamsync.simulate`
+    - `teamsync.conversation`
+    - `teamsync.resources`
+  - add TeamSync funnel views:
+    - run started -> run completed -> run saved -> share/export used
+  - add TeamSync quality views:
+    - quality score trend by scenario type (custom/library/executive)
+    - friction hotspots by TeamSync step (member load, simulate, save/share)
+  - add TeamSync business indicators:
+    - saved-run conversion rate
+    - export/share activation rate (Slack/Teams/email/docx/csv)
+    - repeat simulation rate per workspace
+    - coach-outreach readiness signal (high-intent TeamSync users)
+- Required API payload shape:
+  - `window_days`
+  - `kpis`:
+    - `useful_output_rate`
+    - `regenerate_without_save_rate`
+    - `time_to_first_action_p50_ms`
+    - `cost_per_useful_output_usd`
+    - `source_coverage_rate`
+  - `trends`:
+    - `daily_useful_output_rate[]`
+    - `daily_cost_vs_useful_outputs[]`
+  - `funnel`
+  - `teamsync_funnel`
+  - `teamsync_kpis`
+  - `quality_by_interaction[]`
+  - `teamsync_quality_by_scenario[]`
+  - `friction_hotspots[]`
+  - `teamsync_friction_hotspots[]`
+  - `business_readiness`:
+    - `ops_maturity_score`
+    - `white_label_readiness_score`
+    - `enterprise_readiness_score`
+    - `buyer_diligence_flags[]`
+- Business-value indicators to include:
+  - cost per useful output
+  - cost per completed workflow
+  - quality trend stability
+  - repeat-usage lift by module
+  - tenant-level performance (direct vs reseller vs white-label)
+  - governance readiness (auditability + policy compliance)
+- Outcome:
+  - New users can interpret performance quickly from visual summaries.
+  - Teams get clear next actions from in-context agent guidance.
+  - Leadership gets sale-ready evidence of operational maturity and ROI.
+
+3. P0 - Reduce first-session onboarding drop-off
 - Owner: Product + UX
 - Target: 2 weeks
 - Why first: Activation is the highest-leverage growth metric; if users do not reach first value, all downstream conversion suffers.
@@ -28,7 +123,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - enforce one clear “next action” path per module
   - instrument completion checkpoints for first session
 
-2. P0 - Enforce margin guardrails per user
+4. P0 - Enforce margin guardrails per user
 - Owner: Operations + Data
 - Target: 2 weeks
 - Why first: Protects unit economics by ensuring API spend does not silently exceed subscription value.
@@ -37,7 +132,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - flag and surface negative-margin accounts
   - gate or throttle premium automations on guardrail breach
 
-3. P0 - Security + authorization hardening pass
+5. P0 - Security + authorization hardening pass
 - Owner: Platform
 - Target: 3 weeks
 - Why first: Enterprise readiness and trust depend on strict access controls and auditable operations.
@@ -55,7 +150,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - superuser-only write access for cash ledger insertions
   - operations dashboard panel: security hardening audit (write-route coverage + remaining admin-write endpoints)
 
-4. P1 - Referral + discount attribution engine
+6. P1 - Referral + discount attribution engine
 - Owner: Growth
 - Target: 3 weeks
 - Codex action focus:
@@ -63,7 +158,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - invite-to-signup attribution
   - conversion leaderboard for reward experiments
 
-5. P0 - Privacy-safe feedback and tester forms
+7. P0 - Privacy-safe feedback and tester forms
 - Owner: Platform + Security
 - Target: 1 week
 - Why first: Internal/admin addresses should never leak in public-facing UI.
@@ -72,7 +167,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - use role-based sender aliases and masked support identities in UI
   - enforce server-side validation so only approved sender identities are used
 
-6. P0 - New user sign-in flow redesign (homepage + first-run path)
+8. P0 - New user sign-in flow redesign (homepage + first-run path)
 - Owner: Product + UX
 - Target: 2 weeks
 - Why first: Faster account activation improves conversion and reduces support overhead.
@@ -82,7 +177,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - route first-time users directly into a guided module selection + onboarding
   - instrument funnel steps: landing -> auth start -> auth complete -> first module opened
 
-7. P1 - Operations manager mailboxes and sender setup
+9. P1 - Operations manager mailboxes and sender setup
 - Owner: Operations + Platform
 - Target: 2 weeks
 - Codex action focus:
@@ -91,7 +186,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - add failover sender policy + verification status panel in Operations
   - log sender usage by workflow for compliance and QA
 
-8. P1 - TeamSync coach outreach automation
+10. P1 - TeamSync coach outreach automation
 - Owner: Marketing Ops
 - Target: 3 weeks
 - Codex action focus:
@@ -99,14 +194,14 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - campaign templates + response tracking
   - booked-call and conversion reporting
 
-9. P1 - Ad campaign manager integration
+11. P1 - Ad campaign manager integration
 - Owner: Marketing Ops
 - Target: 2 weeks
 - Codex action focus:
   - surface LinkedIn/Google/Meta controls in Operations
   - show spend + lead quality snapshots in one view
 
-10. P1 - Context-aware Agent (module + section intelligence)
+12. P1 - Context-aware Agent (module + section intelligence)
 - Owner: Product + AI
 - Target: 2 weeks
 - Codex action focus:
@@ -115,7 +210,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - prioritize “next best action” guidance from live section state, not generic copy
   - add admin telemetry for context-match quality and stuck-state interventions
 
-11. P1 - Enterprise outreach program functionality
+13. P1 - Enterprise outreach program functionality
 - Owner: Marketing Ops + Platform
 - Target: 4 weeks
 - Codex action focus:
@@ -128,7 +223,7 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - compliance controls (consent state, unsubscribe handling, audit logs, role-based approvals)
   - operations reporting for conversion, ROI, and per-segment performance
 
-12. P1 - Content Library (CMS) management in Operations
+14. P1 - Content Library (CMS) management in Operations
 - Owner: Platform + Content Ops
 - Target: 3 weeks
 - Codex action focus:
@@ -140,11 +235,11 @@ This is the active execution queue Codex should use in Operations (`Execution ro
   - include search, filtering, and lightweight metadata (title, tags, summary, file type, size, updated by)
   - log content changes for governance/audit use
 
-13. P2 - Organization accounts + role matrix
+15. P2 - Organization accounts + role matrix
 - Owner: Platform
 - Target: 6 weeks
 
-14. P2 - Enterprise audit and governance reporting
+16. P2 - Enterprise audit and governance reporting
 - Owner: Platform + Compliance
 - Target: 6 weeks
 
@@ -613,3 +708,4 @@ When `personara.ai` is purchased and we are ready to go live:
 - persist share records by user (`codes_created`, `codes_redeemed`, `signups_from_shares`)
 - add attribution dashboard panel for high-volume sharers
 - define optional rewards policy for top referral contributors
+

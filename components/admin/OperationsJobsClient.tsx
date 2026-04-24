@@ -155,6 +155,20 @@ type TesterFeedbackNoteRow = {
   status: "open" | "in_review" | "resolved"
 }
 
+type RevenueLinePoint = {
+  label: string
+  revenue_usd: number
+}
+
+type RevenueLineSeries = {
+  key: string
+  label: string
+  monthly_revenue_usd: number
+  daily: RevenueLinePoint[]
+  weekly: RevenueLinePoint[]
+  monthly: RevenueLinePoint[]
+}
+
 type OperationsEconomicsResponse = {
   month_label: string
   summary: {
@@ -165,6 +179,35 @@ type OperationsEconomicsResponse = {
     total_margin_usd: number
     unprofitable_users: number
     over_budget_users: number
+  }
+  trends?: {
+    daily: {
+      label: string
+      revenue_usd: number
+      api_cost_usd: number
+      openai_api_cost_usd: number
+      codex_api_cost_usd: number
+      margin_usd: number
+    }[]
+    weekly: {
+      label: string
+      revenue_usd: number
+      api_cost_usd: number
+      openai_api_cost_usd: number
+      codex_api_cost_usd: number
+      margin_usd: number
+    }[]
+    monthly: {
+      label: string
+      revenue_usd: number
+      api_cost_usd: number
+      openai_api_cost_usd: number
+      codex_api_cost_usd: number
+      margin_usd: number
+    }[]
+    module_lines?: RevenueLineSeries[]
+    tier_lines?: RevenueLineSeries[]
+    seeded_weekly_revenue_usd?: number
   }
   users: {
     user_id: string
@@ -257,6 +300,13 @@ type BacklogAssetDraft = {
   label: string
   href: string
   type: "doc" | "pdf" | "md" | "xlsx" | "image"
+}
+
+type ExecutionBacklogState = {
+  order: string[]
+  archivedIds: string[]
+  deletedIds: string[]
+  statusOverrides: Record<string, CodexBacklogItem["status"]>
 }
 
 type OperationsMenuGroup =
@@ -488,6 +538,7 @@ export function OperationsJobsClient() {
   const RECOVERY_LOG_KEY = "personara-operations-recovery-log-v1"
   const OPERATIONS_LAYOUT_PREFS_KEY = "personara-operations-layout-v1"
   const EXECUTION_BACKLOG_ASSETS_KEY = "personara-operations-execution-assets-v1"
+  const EXECUTION_BACKLOG_STATE_KEY = "personara-operations-execution-state-v1"
   const [session, setSession] = useState<Session | null>(null)
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [message, setMessage] = useState("")
@@ -509,6 +560,8 @@ export function OperationsJobsClient() {
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
   const [executionRoadmapMenuOpen, setExecutionRoadmapMenuOpen] = useState(false)
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
+  const [activeFinancialRange, setActiveFinancialRange] = useState<"daily" | "weekly" | "monthly">("weekly")
+  const [activeFinancialRevenueLines, setActiveFinancialRevenueLines] = useState<"total" | "module" | "tier">("total")
   const [activeMarketingView, setActiveMarketingView] = useState<
     "overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager" | "practitioner_outreach_data"
   >("overview")
@@ -558,6 +611,11 @@ export function OperationsJobsClient() {
   )
   const [executionBacklogCustomAssets, setExecutionBacklogCustomAssets] = useState<Record<string, BacklogAsset[]>>({})
   const [backlogAssetDrafts, setBacklogAssetDrafts] = useState<Record<string, BacklogAssetDraft>>({})
+  const [executionBacklogOrder, setExecutionBacklogOrder] = useState<string[]>(CODEX_EXECUTION_BACKLOG.map((item) => item.id))
+  const [executionBacklogArchivedIds, setExecutionBacklogArchivedIds] = useState<string[]>([])
+  const [executionBacklogDeletedIds, setExecutionBacklogDeletedIds] = useState<string[]>([])
+  const [executionBacklogStatusOverrides, setExecutionBacklogStatusOverrides] = useState<Record<string, CodexBacklogItem["status"]>>({})
+  const [showArchivedBacklog, setShowArchivedBacklog] = useState(false)
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -619,6 +677,27 @@ export function OperationsJobsClient() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    try {
+      const raw = window.localStorage.getItem(EXECUTION_BACKLOG_STATE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Partial<ExecutionBacklogState>
+      if (Array.isArray(parsed.order)) {
+        setExecutionBacklogOrder(parsed.order.filter((id): id is string => typeof id === "string" && id.length > 0))
+      }
+      if (Array.isArray(parsed.archivedIds)) {
+        setExecutionBacklogArchivedIds(parsed.archivedIds.filter((id): id is string => typeof id === "string" && id.length > 0))
+      }
+      if (Array.isArray(parsed.deletedIds)) {
+        setExecutionBacklogDeletedIds(parsed.deletedIds.filter((id): id is string => typeof id === "string" && id.length > 0))
+      }
+      if (parsed.statusOverrides && typeof parsed.statusOverrides === "object") {
+        setExecutionBacklogStatusOverrides(parsed.statusOverrides as Record<string, CodexBacklogItem["status"]>)
+      }
+    } catch {}
+  }, [EXECUTION_BACKLOG_STATE_KEY])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     window.localStorage.setItem(RECOVERY_LOG_KEY, JSON.stringify(recoveryLogs))
   }, [RECOVERY_LOG_KEY, recoveryLogs])
 
@@ -631,6 +710,23 @@ export function OperationsJobsClient() {
     if (typeof window === "undefined") return
     window.localStorage.setItem(EXECUTION_BACKLOG_ASSETS_KEY, JSON.stringify(executionBacklogCustomAssets))
   }, [EXECUTION_BACKLOG_ASSETS_KEY, executionBacklogCustomAssets])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const payload: ExecutionBacklogState = {
+      order: executionBacklogOrder,
+      archivedIds: executionBacklogArchivedIds,
+      deletedIds: executionBacklogDeletedIds,
+      statusOverrides: executionBacklogStatusOverrides,
+    }
+    window.localStorage.setItem(EXECUTION_BACKLOG_STATE_KEY, JSON.stringify(payload))
+  }, [
+    EXECUTION_BACKLOG_STATE_KEY,
+    executionBacklogOrder,
+    executionBacklogArchivedIds,
+    executionBacklogDeletedIds,
+    executionBacklogStatusOverrides,
+  ])
 
   function updateBacklogAssetDraft(itemId: string, patch: Partial<BacklogAssetDraft>) {
     setBacklogAssetDrafts((current) => ({
@@ -678,6 +774,82 @@ export function OperationsJobsClient() {
     })
     setMessage("File reference removed.")
   }
+
+  function archiveBacklogItem(itemId: string) {
+    setExecutionBacklogArchivedIds((current) => (current.includes(itemId) ? current : [...current, itemId]))
+    setMessage("Roadmap item archived.")
+  }
+
+  function unarchiveBacklogItem(itemId: string) {
+    setExecutionBacklogArchivedIds((current) => current.filter((id) => id !== itemId))
+    setMessage("Roadmap item restored from archive.")
+  }
+
+  function deleteBacklogItem(itemId: string) {
+    setExecutionBacklogDeletedIds((current) => (current.includes(itemId) ? current : [...current, itemId]))
+    setExecutionBacklogArchivedIds((current) => current.filter((id) => id !== itemId))
+    setMessage("Roadmap item deleted.")
+  }
+
+  function moveBacklogItem(itemId: string, direction: "up" | "down") {
+    setExecutionBacklogOrder((current) => {
+      const ids = current.length > 0 ? [...current] : CODEX_EXECUTION_BACKLOG.map((item) => item.id)
+      const index = ids.indexOf(itemId)
+      if (index === -1) return ids
+      const swapWith = direction === "up" ? index - 1 : index + 1
+      if (swapWith < 0 || swapWith >= ids.length) return ids
+      const [moved] = ids.splice(index, 1)
+      ids.splice(swapWith, 0, moved)
+      return ids
+    })
+  }
+
+  async function runBacklogItemInCodex(item: CodexBacklogItem, assets: BacklogAsset[]) {
+    const prompt = [
+      `Execute roadmap item: ${item.title}`,
+      `Priority: ${item.priority}`,
+      `Owner: ${item.owner}`,
+      `Target: ${item.target}`,
+      `Status: ${item.status}`,
+      `Notes: ${item.notes}`,
+      assets.length > 0
+        ? `Attached files:\n${assets.map((asset) => `- ${asset.label}: ${asset.href}`).join("\n")}`
+        : "Attached files: none",
+      "Deliverables: implementation, validation, and a short completion report with risks + next steps.",
+    ].join("\n\n")
+
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "in_progress" }))
+      setMessage("Codex handoff copied to clipboard. Paste it into Codex to run execution.")
+    } catch {
+      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "in_progress" }))
+      setMessage("Codex handoff prepared. Clipboard access failed in this browser session.")
+    }
+  }
+
+  const orderedBacklogItems = useMemo(() => {
+    const ids = executionBacklogOrder.length > 0 ? executionBacklogOrder : CODEX_EXECUTION_BACKLOG.map((item) => item.id)
+    const idSet = new Set(ids)
+    const completedOrder = [...ids, ...CODEX_EXECUTION_BACKLOG.map((item) => item.id).filter((id) => !idSet.has(id))]
+    const byId = new Map(CODEX_EXECUTION_BACKLOG.map((item) => [item.id, item]))
+
+    return completedOrder
+      .map((id) => byId.get(id))
+      .filter((item): item is CodexBacklogItem => Boolean(item))
+      .filter((item) => !executionBacklogDeletedIds.includes(item.id))
+      .filter((item) => (showArchivedBacklog ? true : !executionBacklogArchivedIds.includes(item.id)))
+      .map((item) => ({
+        ...item,
+        status: executionBacklogStatusOverrides[item.id] ?? item.status,
+      }))
+  }, [
+    executionBacklogOrder,
+    executionBacklogDeletedIds,
+    showArchivedBacklog,
+    executionBacklogArchivedIds,
+    executionBacklogStatusOverrides,
+  ])
 
   const loadOverview = useCallback(async () => {
     setIsRefreshing(true)
@@ -1108,6 +1280,44 @@ export function OperationsJobsClient() {
   }, [securityAudit])
 
   const economicsRows = useMemo(() => economics?.users ?? [], [economics])
+  const financialTrendSeries = useMemo(() => {
+    if (!economics?.trends) return []
+    if (activeFinancialRange === "daily") return economics.trends.daily
+    if (activeFinancialRange === "monthly") return economics.trends.monthly
+    return economics.trends.weekly
+  }, [economics, activeFinancialRange])
+  const moduleRevenueTrendSeries = useMemo(() => {
+    const rows = economics?.trends?.module_lines ?? []
+    return rows.map((series) => ({
+      key: series.key,
+      label: series.label,
+      points:
+        activeFinancialRange === "daily"
+          ? series.daily
+          : activeFinancialRange === "monthly"
+            ? series.monthly
+            : series.weekly,
+    }))
+  }, [economics, activeFinancialRange])
+  const tierRevenueTrendSeries = useMemo(() => {
+    const rows = economics?.trends?.tier_lines ?? []
+    return rows.map((series) => ({
+      key: series.key,
+      label: series.label,
+      points:
+        activeFinancialRange === "daily"
+          ? series.daily
+          : activeFinancialRange === "monthly"
+            ? series.monthly
+            : series.weekly,
+    }))
+  }, [economics, activeFinancialRange])
+  const visibleRevenueTrendSeries = useMemo(() => {
+    if (activeFinancialRevenueLines === "module") return moduleRevenueTrendSeries
+    if (activeFinancialRevenueLines === "tier") return tierRevenueTrendSeries
+    return []
+  }, [activeFinancialRevenueLines, moduleRevenueTrendSeries, tierRevenueTrendSeries])
+  const seededWeeklyRevenue = useMemo(() => Number(economics?.trends?.seeded_weekly_revenue_usd || 100), [economics])
   const negativeMarginRows = useMemo(
     () => economicsRows.filter((row) => row.profitability === "negative"),
     [economicsRows]
@@ -1881,6 +2091,92 @@ export function OperationsJobsClient() {
                       Use this panel to keep API and outreach spend below subscription revenue.
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Revenue vs spend trend</div>
+                          <div className="mt-0.5 text-xs text-[#4a6388]">
+                            Seeded baseline includes <span className="font-semibold">{formatUsd(seededWeeklyRevenue)}</span> per week revenue while live billing data ramps up.
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setActiveFinancialRange("daily")}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                              activeFinancialRange === "daily"
+                                ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                : "border-[#cbd8eb] bg-white text-[#36537d]"
+                            }`}
+                          >
+                            Daily
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveFinancialRange("weekly")}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                              activeFinancialRange === "weekly"
+                                ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                : "border-[#cbd8eb] bg-white text-[#36537d]"
+                            }`}
+                          >
+                            Weekly
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveFinancialRange("monthly")}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                              activeFinancialRange === "monthly"
+                                ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                : "border-[#cbd8eb] bg-white text-[#36537d]"
+                            }`}
+                          >
+                            Monthly
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialRevenueLines("total")}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialRevenueLines === "total"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          Total revenue line
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialRevenueLines("module")}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialRevenueLines === "module"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          Module lines
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFinancialRevenueLines("tier")}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                            activeFinancialRevenueLines === "tier"
+                              ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                              : "border-[#cbd8eb] bg-white text-[#36537d]"
+                          }`}
+                        >
+                          Tier lines
+                        </button>
+                      </div>
+                      <FinancialTrendChart
+                        points={financialTrendSeries}
+                        label={activeFinancialRange}
+                        revenueSeries={visibleRevenueTrendSeries}
+                        revenueMode={activeFinancialRevenueLines}
+                      />
+                    </div>
+                    <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
                           type="button"
@@ -2061,11 +2357,23 @@ export function OperationsJobsClient() {
               </div>
               {!collapsedPanels.executionBacklog ? (
                 <>
-                  <p className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
-                    This list converts the enterprise review into an execution sequence. Work P0 top to bottom before expanding P1/P2.
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                    <p>This list converts the enterprise review into an execution sequence. Work P0 top to bottom before expanding P1/P2.</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowArchivedBacklog((current) => !current)}
+                      className="rounded-full border border-[#b7cce9] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#244a7b] hover:bg-[#edf4ff]"
+                    >
+                      {showArchivedBacklog ? "Hide archived" : "Show archived"}
+                    </button>
+                  </div>
                   <div className="mt-2 space-y-2">
-                    {CODEX_EXECUTION_BACKLOG.map((item) => (
+                    {orderedBacklogItems.length === 0 ? (
+                      <div className="rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                        No roadmap items in this view.
+                      </div>
+                    ) : null}
+                    {orderedBacklogItems.map((item, itemIndex) => (
                       <article key={item.id} className="rounded-xl border border-[#cbd8eb] bg-white px-3 py-2">
                         {(() => {
                           const coreAssets = EXECUTION_BACKLOG_ASSETS[item.id] ?? []
@@ -2098,6 +2406,55 @@ export function OperationsJobsClient() {
                             {item.status.replace("_", " ")}
                           </span>
                           <h3 className="text-sm font-semibold text-[#142c4f]">{item.title}</h3>
+                          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => moveBacklogItem(item.id, "up")}
+                              disabled={itemIndex === 0}
+                              className="rounded-full border border-[#c6d6eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#315784] hover:bg-[#f1f7ff] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Move up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveBacklogItem(item.id, "down")}
+                              disabled={itemIndex === orderedBacklogItems.length - 1}
+                              className="rounded-full border border-[#c6d6eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#315784] hover:bg-[#f1f7ff] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Move down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void runBacklogItemInCodex(item, allAssets)}
+                              className="rounded-full border border-[#9ec1ee] bg-[#e8f3ff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1c4d92] hover:bg-[#ddecff]"
+                            >
+                              Run in Codex
+                            </button>
+                            {executionBacklogArchivedIds.includes(item.id) ? (
+                              <button
+                                type="button"
+                                onClick={() => unarchiveBacklogItem(item.id)}
+                                className="rounded-full border border-[#d2dce9] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#415f85] hover:bg-[#f6f9ff]"
+                              >
+                                Unarchive
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => archiveBacklogItem(item.id)}
+                                className="rounded-full border border-[#d2dce9] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#415f85] hover:bg-[#f6f9ff]"
+                              >
+                                Archive
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deleteBacklogItem(item.id)}
+                              className="rounded-full border border-[#e7c1c9] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a23d55] hover:bg-[#fff3f6]"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                         <p className="mt-1 text-xs text-[#36537d]">{item.notes}</p>
                         <div className="mt-1.5 text-[11px] text-[#4a6388]">
@@ -2894,6 +3251,109 @@ function SnapshotStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-[#cfdced] bg-[#f7fbff] px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4c668c]">{label}</div>
       <div className="mt-1 text-sm font-semibold text-[#132b4d]">{value}</div>
+    </div>
+  )
+}
+
+function FinancialTrendChart({
+  points,
+  label,
+  revenueSeries,
+  revenueMode,
+}: {
+  points: {
+    label: string
+    revenue_usd: number
+    api_cost_usd: number
+    openai_api_cost_usd: number
+    codex_api_cost_usd: number
+    margin_usd: number
+  }[]
+  label: "daily" | "weekly" | "monthly"
+  revenueSeries?: { key: string; label: string; points: { label: string; revenue_usd: number }[] }[]
+  revenueMode?: "total" | "module" | "tier"
+}) {
+  const width = 760
+  const height = 220
+  const padding = { top: 16, right: 20, bottom: 38, left: 46 }
+  const innerWidth = width - padding.left - padding.right
+  const innerHeight = height - padding.top - padding.bottom
+
+  const safePoints = points.length > 0 ? points : [{ label: "-", revenue_usd: 0, api_cost_usd: 0, openai_api_cost_usd: 0, codex_api_cost_usd: 0, margin_usd: 0 }]
+  const xAt = (index: number) =>
+    safePoints.length <= 1 ? padding.left + innerWidth / 2 : padding.left + (index / (safePoints.length - 1)) * innerWidth
+
+  const normalizedRevenueSeries =
+    revenueMode && revenueMode !== "total" ? revenueSeries ?? [] : []
+
+  const revenueValues =
+    normalizedRevenueSeries.length > 0
+      ? normalizedRevenueSeries.flatMap((series) => series.points.map((point) => point.revenue_usd))
+      : safePoints.map((point) => point.revenue_usd)
+  const allValues = [...revenueValues, ...safePoints.map((point) => point.api_cost_usd), ...safePoints.map((point) => point.margin_usd), 0]
+  const maxValue = Math.max(...allValues, 1)
+  const yAt = (value: number) => padding.top + innerHeight - (value / maxValue) * innerHeight
+
+  const revenuePath =
+    normalizedRevenueSeries.length === 0
+      ? safePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.revenue_usd)}`).join(" ")
+      : ""
+  const apiPath = safePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.api_cost_usd)}`).join(" ")
+  const marginPath = safePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.margin_usd)}`).join(" ")
+  const seriesPalette = ["#2563eb", "#7c3aed", "#0f766e", "#ea580c", "#dc2626", "#334155", "#16a34a", "#be185d"]
+
+  return (
+    <div className="mt-2 rounded-xl border border-[#dbe6f4] bg-[#fafdff] px-2.5 py-2">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[220px] w-full">
+        <rect x={0} y={0} width={width} height={height} fill="transparent" />
+
+        {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          const value = maxValue * fraction
+          const y = yAt(value)
+          return (
+            <g key={`grid-${fraction}`}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#e6eef9" strokeWidth={1} />
+              <text x={8} y={y + 4} fontSize={10} fill="#5d769c">
+                {Math.round(value)}
+              </text>
+            </g>
+          )
+        })}
+
+        {normalizedRevenueSeries.length > 0
+          ? normalizedRevenueSeries.map((series, seriesIndex) => {
+              const seriesPath = series.points
+                .map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.revenue_usd)}`)
+                .join(" ")
+              const stroke = seriesPalette[seriesIndex % seriesPalette.length]
+              return <path key={`series-${series.key}`} d={seriesPath} fill="none" stroke={stroke} strokeWidth={2.2} />
+            })
+          : <path d={revenuePath} fill="none" stroke="#2563eb" strokeWidth={2.5} />}
+
+        <path d={apiPath} fill="none" stroke="#dc2626" strokeWidth={2} strokeDasharray="5 4" />
+        <path d={marginPath} fill="none" stroke="#16a34a" strokeWidth={2} strokeDasharray="8 4" />
+
+        {safePoints.map((point, index) => (
+          <text key={`x-${point.label}-${index}`} x={xAt(index)} y={height - 10} textAnchor="middle" fontSize={10} fill="#4a6388">
+            {point.label}
+          </text>
+        ))}
+      </svg>
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">
+        <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">{label} trend</span>
+        {normalizedRevenueSeries.length === 0 ? (
+          <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[#1f4f99]">Revenue (total)</span>
+        ) : (
+          normalizedRevenueSeries.slice(0, 6).map((series, index) => (
+            <span key={`legend-${series.key}`} className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">
+              <span style={{ color: seriesPalette[index % seriesPalette.length] }}>{series.label}</span>
+            </span>
+          ))
+        )}
+        <span className="rounded-full border border-[#f2cccc] bg-[#fff5f5] px-2 py-0.5 text-[#a12626]">API cost</span>
+        <span className="rounded-full border border-[#ccebd8] bg-[#f2fff6] px-2 py-0.5 text-[#1d7f4b]">Margin</span>
+      </div>
     </div>
   )
 }

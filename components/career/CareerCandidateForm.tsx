@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { getAuthHeaders, toCareerUserMessage } from "@/lib/career-client"
 import { extractLinkedInProfile } from "@/lib/linkedin-profile"
@@ -14,11 +14,15 @@ export function CareerCandidateForm() {
   const [city, setCity] = useState("Auckland")
   const [primaryGoal, setPrimaryGoal] = useState("new_role")
   const [cvText, setCvText] = useState("")
+  const [pendingCvFile, setPendingCvFile] = useState<File | null>(null)
+  const [selectedCvFileName, setSelectedCvFileName] = useState("")
+  const [cvFileLoading, setCvFileLoading] = useState(false)
   const [linkedInSummary, setLinkedInSummary] = useState("")
   const [linkedInImported, setLinkedInImported] = useState(false)
   const [useLinkedInImport, setUseLinkedInImport] = useState(true)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     async function loadSession() {
@@ -54,6 +58,61 @@ export function CareerCandidateForm() {
     }
     setLinkedInImported(true)
   }, [city, fullName, linkedInImported, linkedInSummary, session?.user])
+
+  function handleCvFilePick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setPendingCvFile(file)
+    setSelectedCvFileName(file.name)
+    setMessage(`Selected file: ${file.name}. Click 'Load file text' to continue.`)
+    if (event.target) event.target.value = ""
+  }
+
+  async function handleLoadCvFromFile() {
+    if (!pendingCvFile || cvFileLoading) {
+      if (!pendingCvFile) {
+        setMessage("Choose a CV file first.")
+      }
+      return
+    }
+
+    setCvFileLoading(true)
+    setMessage("")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", pendingCvFile)
+
+      const headers = await getAuthHeaders()
+      delete headers["Content-Type"]
+
+      const response = await fetch("/api/career/parse-upload", {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+      const json = await response.json()
+
+      if (!response.ok) {
+        throw new Error(json.error || "Could not read the uploaded CV file")
+      }
+
+      const parsedText = typeof json.content_text === "string" ? json.content_text.trim() : ""
+      if (!parsedText) {
+        throw new Error("We could not extract readable text from that file.")
+      }
+
+      setCvText(parsedText)
+      setSelectedCvFileName(json.file_name || pendingCvFile.name)
+      setPendingCvFile(null)
+      setMessage("CV file loaded. Review the text below, then create candidate workspace.")
+    } catch (error) {
+      setMessage(toCareerUserMessage(error instanceof Error ? error.message : null))
+    } finally {
+      setCvFileLoading(false)
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -209,6 +268,35 @@ export function CareerCandidateForm() {
 
       <div>
         <label className="mb-1 block text-sm font-medium">Paste one starting document now</label>
+        <div className="mb-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.rtf,.md"
+            onChange={handleCvFilePick}
+            className="hidden"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-100"
+            >
+              Upload CV from computer
+            </button>
+            <button
+              type="button"
+              onClick={handleLoadCvFromFile}
+              disabled={!pendingCvFile || cvFileLoading}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {cvFileLoading ? "Loading..." : "Load file text"}
+            </button>
+            <span className="text-xs text-neutral-600">
+              {pendingCvFile ? `Selected: ${pendingCvFile.name}` : selectedCvFileName ? `Loaded: ${selectedCvFileName}` : "No file selected"}
+            </span>
+          </div>
+        </div>
         <textarea
           value={cvText}
           onChange={(event) => setCvText(event.target.value)}
