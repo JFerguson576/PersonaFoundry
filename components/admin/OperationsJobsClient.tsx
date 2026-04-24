@@ -336,6 +336,16 @@ function formatUsd(value: number) {
 
 const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
   {
+    id: "p0-operations-dashboard-handover",
+    priority: "P0",
+    status: "planned",
+    title: "Implement Operations dashboard handover pack",
+    owner: "Platform + Operations",
+    target: "2 weeks",
+    notes:
+      "Implement the Operations dashboard handover pack end-to-end: data model and APIs, status workflow, section modules, Codex execution flow, and seeded backlog import from the provided spec bundle.",
+  },
+  {
     id: "p0-onboarding",
     priority: "P0",
     status: "in_progress",
@@ -519,6 +529,12 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
 ]
 
 const EXECUTION_BACKLOG_ASSETS: Record<string, BacklogAsset[]> = {
+  "p0-operations-dashboard-handover": [
+    { label: "Operations Handover", href: "/docs/operations/codex-handover-operations-dashboard.md", type: "md" },
+    { label: "Detailed Operations Spec", href: "/docs/operations/operations-dashboard-detailed-codex-spec.md", type: "md" },
+    { label: "Operational Menu Playbook", href: "/docs/operations/operational-menu-codex-playbook.md", type: "md" },
+    { label: "Operations Tasks Seed", href: "/docs/operations/operations-tasks-seed.json", type: "md" },
+  ],
   "p1-teamsync-planning-pack-integration": [
     { label: "Future Pathway", href: "/docs/future-pathway.md", type: "md" },
     { label: "Codex Jira Backlog", href: "/docs/codex-jira-backlog-token-optimized-2026-04-24.md", type: "md" },
