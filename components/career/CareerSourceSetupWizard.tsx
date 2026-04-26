@@ -35,7 +35,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const [fileLoading, setFileLoading] = useState(false)
   const [message, setMessage] = useState("")
   const [localCompletions, setLocalCompletions] = useState<Set<CareerSourceTypeValue>>(new Set())
-  const [openWizardPanel, setOpenWizardPanel] = useState<"progress" | "file" | "paste" | "status">("progress")
+  const [openWizardPanel, setOpenWizardPanel] = useState<"progress" | "file" | "paste" | "status">("file")
 
   const completedTypes = useMemo(() => {
     const completed = new Set<CareerSourceTypeValue>()
@@ -92,13 +92,14 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     setSourceType(nextType)
     setPendingFile(null)
     setSelectedFileName("")
+    setOpenWizardPanel("file")
   }
 
   function openStep(type: CareerSourceTypeValue) {
     const nextIndex = CAREER_SOURCE_WIZARD_STEPS.indexOf(type)
     if (nextIndex >= 0) setStepIndex(nextIndex)
     setSourceType(type)
-    setOpenWizardPanel("progress")
+    setOpenWizardPanel("file")
   }
 
   function jumpToCreateProfileStep() {
@@ -439,7 +440,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 onClick={() => setShowAdvancedTypeSelector((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {showAdvancedTypeSelector ? "Hide file-type list" : "Switch file type"}
+                {showAdvancedTypeSelector ? "Hide file-type list" : "Change source type"}
               </button>
               {showAdvancedTypeSelector ? (
                 <div className="mt-3">
@@ -453,6 +454,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                           setSourceType(event.target.value as CareerSourceTypeValue)
                           setPendingFile(null)
                           setSelectedFileName("")
+                          setOpenWizardPanel("file")
                         }}
                         className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
                       >
