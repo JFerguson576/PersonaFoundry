@@ -1,0 +1,24 @@
+﻿{
+  "scenarioId": "corp-change-rollout-001",
+  "title": "Quarterly Operating Model Reset",
+  "industry": "Professional Services",
+  "companyContext": "A mid-size services company is moving from ad-hoc execution to a standardized cross-functional operating rhythm.",
+  "triggerEvent": "Leadership committed to a 90-day performance improvement plan after missed delivery targets.",
+  "constraints": [
+    "No headcount increase for this quarter",
+    "Budget pressure requires 10% efficiency gain",
+    "Two critical client projects cannot be delayed"
+  ],
+  "successCriteria": [
+    "Clear ownership for every major workflow handoff",
+    "Weekly coordination cycle adopted by all functions",
+    "At least 80% sprint commitment reliability by week 6"
+  ],
+  "simulationOutputs": [
+    "Facilitator timeline",
+    "Role-play dialogue",
+    "Decision log",
+    "Workflow change impact summary",
+    "Next-cycle recommendations"
+  ]
+}

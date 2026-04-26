@@ -439,14 +439,14 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 onClick={() => setShowAdvancedTypeSelector((current) => !current)}
                 className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
-                {showAdvancedTypeSelector ? "Hide source list" : "Choose a different source type"}
+                {showAdvancedTypeSelector ? "Hide file-type list" : "Switch file type"}
               </button>
               {showAdvancedTypeSelector ? (
                 <div className="mt-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Source type picker</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">File type</div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                     <label className="text-xs font-medium text-neutral-700">
-                      Source type
+                      Choose file type
                       <select
                         value={sourceType}
                         onChange={(event) => {

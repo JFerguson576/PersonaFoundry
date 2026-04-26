@@ -1733,6 +1733,45 @@ function extractGallupStrengths(text: string) {
   return Array.from(new Set(matches)).slice(0, 10)
 }
 
+function guessMemberNameFromText(text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return ""
+  const namedLine = trimmed.match(/(?:member\s*name|name)\s*[:\-]\s*([A-Za-z][A-Za-z\s'.-]{1,80})/i)
+  if (namedLine?.[1]) return namedLine[1].trim()
+  const reportFor = trimmed.match(/(?:report\s*for|cliftonstrengths\s*for)\s*[:\-]?\s*([A-Za-z][A-Za-z\s'.-]{1,80})/i)
+  if (reportFor?.[1]) return reportFor[1].trim()
+  return ""
+}
+
+function guessMemberNameFromFileName(fileName: string) {
+  const base = fileName.replace(/\.[^/.]+$/, "")
+  const cleaned = base
+    .replace(/[_-]+/g, " ")
+    .replace(/\b(clifton|strengths|gallup|report|profile|summary|top|themes|results|assessment|test)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!cleaned) return ""
+  const parts = cleaned
+    .split(" ")
+    .filter(Boolean)
+    .filter((part) => !/^\d+$/.test(part))
+  if (parts.length === 0) return ""
+  const picked = parts.slice(0, 3).join(" ")
+  return picked.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function uniqueMemberName(base: string, existingMembers: TeamMember[]) {
+  const trimmed = base.trim()
+  if (!trimmed) return "New Member"
+  const existing = new Set(existingMembers.map((member) => member.name.trim().toLowerCase()))
+  if (!existing.has(trimmed.toLowerCase())) return trimmed
+  let counter = 2
+  while (existing.has(`${trimmed} (${counter})`.toLowerCase())) {
+    counter += 1
+  }
+  return `${trimmed} (${counter})`
+}
+
 function buildResourceLinks(run: RunResult | null): ResourceLink[] {
   const baseResources: ResourceLink[] = [
     {
@@ -1871,6 +1910,7 @@ export function TeamSyncWorkspaceClient() {
   const customScenariosRef = useRef<ScenarioTemplate[]>([])
   const insightsPanelsRef = useRef<HTMLDivElement | null>(null)
   const memberUploadInputRef = useRef<HTMLInputElement | null>(null)
+  const memberBulkUploadInputRef = useRef<HTMLInputElement | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [activeStep, setActiveStep] = useState("overview")
   const [isFocusMode, setIsFocusMode] = useState(true)
@@ -1885,6 +1925,8 @@ export function TeamSyncWorkspaceClient() {
   const [memberStrengths, setMemberStrengths] = useState("")
   const [memberIntakePanel, setMemberIntakePanel] = useState<"name" | "strengths" | "review">("name")
   const [memberFileLoading, setMemberFileLoading] = useState(false)
+  const [memberBulkLoading, setMemberBulkLoading] = useState(false)
+  const [memberUploadNeedsAuth, setMemberUploadNeedsAuth] = useState(false)
   const [lastUploadedFileName, setLastUploadedFileName] = useState("")
   const [lastUploadSummary, setLastUploadSummary] = useState("")
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -2759,7 +2801,7 @@ export function TeamSyncWorkspaceClient() {
       setIsMenuRolledUp(true)
     }
     if (typeof window === "undefined") return
-    scrollToSelectorWithOffset(href, { offsetPx: 156 })
+    scrollToSelectorWithOffset(href, { offsetPx: 196 })
   }
 
   function resetWorkspaceView() {
@@ -2858,6 +2900,7 @@ export function TeamSyncWorkspaceClient() {
 
   async function handleStrengthFileUpload(file: File) {
     setMemberFileLoading(true)
+    setMemberUploadNeedsAuth(false)
     setLastUploadedFileName(file.name)
     setLastUploadSummary("Reading file...")
     try {
@@ -2871,22 +2914,44 @@ export function TeamSyncWorkspaceClient() {
       })
       const payload = await response.json()
       if (!response.ok) {
-        setMessage(payload.error || "Upload failed. Could not read the strengths report.")
+        const uploadError = payload.error || "Upload failed. Could not read the strengths report."
+        if (/auth|session|unauthor/i.test(uploadError)) {
+          setMemberUploadNeedsAuth(true)
+          setMessage("Auth session missing. Sign in again, then retry this upload.")
+        } else {
+          setMessage(uploadError)
+        }
         setLastUploadSummary("Upload failed. Please try another strengths report.")
         return
       }
       const extractedText = typeof payload.content_text === "string" ? payload.content_text : ""
       const detected = extractGallupStrengths(extractedText)
+      let resolvedMemberName = memberName.trim()
+      if (!resolvedMemberName) {
+        resolvedMemberName = guessMemberNameFromText(extractedText) || guessMemberNameFromFileName(file.name)
+        if (resolvedMemberName) setMemberName(resolvedMemberName)
+      }
+      const hasMemberName = resolvedMemberName.trim().length > 0
       if (detected.length > 0) {
         setMemberStrengths(detected.join(", "))
         setMessage(`Strengths report loaded and mapped: ${detected.length} strengths captured. Click Add member to save.`)
-        setLastUploadSummary(`Strengths report loaded and mapped. ${detected.length} strengths detected. Next step: review + add member.`)
+        setLastUploadSummary(
+          hasMemberName
+            ? `Strengths report loaded and mapped. ${detected.length} strengths detected. Next step: review + add member.`
+            : `Strengths report loaded and mapped. ${detected.length} strengths detected. Add a member name, then review + add.`
+        )
       } else {
         setMemberStrengths(extractedText.slice(0, 800))
         setMessage("Report loaded. No direct Gallup themes were auto-detected. Review extracted text, then click Add member.")
-        setLastUploadSummary("Report loaded. Review extracted text and confirm strengths before adding the member.")
+        setLastUploadSummary(
+          hasMemberName
+            ? "Report loaded. Review extracted text and confirm strengths before adding the member."
+            : "Report loaded. Add a member name, then review extracted strengths before adding the member."
+        )
       }
-      setMemberIntakePanel("review")
+      if (!hasMemberName) {
+        setMemberIntakePanel("name")
+      }
     } catch {
       setMessage("Upload failed. Please try again.")
       setLastUploadSummary("Upload failed. Please try again.")
@@ -2924,6 +2989,77 @@ export function TeamSyncWorkspaceClient() {
     setLastUploadSummary("")
     setLastUploadedFileName("")
     setMessage(`Member saved to ${groupName || "your group"}.`)
+  }
+
+  async function handleStrengthFilesBulkUpload(fileList: FileList) {
+    const files = Array.from(fileList)
+    if (files.length === 0) return
+    setMemberBulkLoading(true)
+    setMemberUploadNeedsAuth(false)
+    setMessage(`Processing ${files.length} strengths report${files.length === 1 ? "" : "s"}...`)
+    const createdMembers: TeamMember[] = []
+    const skippedFiles: string[] = []
+    try {
+      const headers = await getAuthHeaders()
+      for (const file of files) {
+        const formData = new FormData()
+        formData.append("file", file)
+        const response = await fetch("/api/career/parse-upload", {
+          method: "POST",
+          headers: headers.Authorization ? { Authorization: headers.Authorization } : undefined,
+          body: formData,
+        })
+        const payload = await response.json()
+        if (!response.ok) {
+          if ((payload?.error as string | undefined) && /auth|session|unauthor/i.test(String(payload.error))) {
+            setMemberUploadNeedsAuth(true)
+          }
+          skippedFiles.push(file.name)
+          continue
+        }
+        const extractedText = typeof payload.content_text === "string" ? payload.content_text : ""
+        const detected = extractGallupStrengths(extractedText)
+        if (detected.length === 0) {
+          skippedFiles.push(file.name)
+          continue
+        }
+        const baseName = guessMemberNameFromText(extractedText) || guessMemberNameFromFileName(file.name)
+        const safeName = uniqueMemberName(baseName || "New Member", [...membersRef.current, ...createdMembers])
+        createdMembers.push({
+          id: uid("member"),
+          name: safeName,
+          role: "",
+          strengths: detected.join(", "),
+        })
+      }
+
+      if (createdMembers.length > 0) {
+        const nextMembers = [...createdMembers, ...membersRef.current]
+        membersRef.current = nextMembers
+        setMembers(nextMembers)
+        void persistWorkspace(nextMembers, runHistoryRef.current, groupName)
+        setMembersListExpanded(true)
+      }
+
+      if (createdMembers.length > 0 && skippedFiles.length > 0) {
+        setMessage(`Added ${createdMembers.length} members. Skipped ${skippedFiles.length} file(s) with no readable strengths.`)
+      } else if (createdMembers.length > 0) {
+        setMessage(`Added ${createdMembers.length} members from bulk import.`)
+      } else {
+        setMessage("No members were added. We could not detect strengths in the selected files.")
+      }
+      setLastUploadSummary(createdMembers.length > 0 ? `Bulk import added ${createdMembers.length} member(s).` : "Bulk import did not add any members.")
+      setLastUploadedFileName(createdMembers.length > 0 ? `${createdMembers.length} files imported` : "")
+      setMemberIntakePanel("name")
+      setMemberName("")
+      setMemberRole("")
+      setMemberStrengths("")
+    } catch {
+      setMemberUploadNeedsAuth(true)
+      setMessage("Bulk upload failed. Sign in again, then retry.")
+    } finally {
+      setMemberBulkLoading(false)
+    }
   }
 
   function removeMember(memberId: string) {
@@ -4560,7 +4696,7 @@ export function TeamSyncWorkspaceClient() {
         <div className="mt-3 grid gap-3">
           <section
             id="teamsync-overview"
-            className={`rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm ${activeStep === "overview" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "overview" ? "" : "hidden"}`}
           >
             <h2 className="text-base font-semibold">Step 1: Overview</h2>
             <p className="mt-0.5 text-sm text-[#475569]">
@@ -4618,7 +4754,7 @@ export function TeamSyncWorkspaceClient() {
 
           <section
             id="teamsync-intake"
-            className={`rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm ${activeStep === "intake" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm md:scroll-mt-60 ${activeStep === "intake" ? "" : "hidden"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -4641,16 +4777,23 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
 
-            <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Loaded members</div>
-                <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                  {members.length} loaded
-                </span>
+            {members.length === 0 ? (
+              <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] text-[#64748b]">No members loaded yet. Start by entering the member name below, then upload the strengths report.</p>
+                  <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                    0 loaded
+                  </span>
+                </div>
               </div>
-              {members.length === 0 ? (
-                <p className="mt-1 text-[11px] text-[#64748b]">No members loaded yet. Upload a strengths file, then add the member below.</p>
-              ) : (
+            ) : (
+              <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Loaded members</div>
+                  <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
+                    {members.length} loaded
+                  </span>
+                </div>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {members.slice(0, 8).map((member) => (
                     <span key={`loaded-pill-${member.id}`} className="rounded-full border border-[#c7d2fe] bg-white px-2 py-0.5 text-[10px] font-medium text-[#334155]">
@@ -4663,8 +4806,8 @@ export function TeamSyncWorkspaceClient() {
                     </span>
                   ) : null}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             <input
               ref={memberUploadInputRef}
@@ -4674,6 +4817,19 @@ export function TeamSyncWorkspaceClient() {
                 const file = event.target.files?.[0]
                 if (!file) return
                 void handleStrengthFileUpload(file)
+                event.currentTarget.value = ""
+              }}
+              className="hidden"
+            />
+            <input
+              ref={memberBulkUploadInputRef}
+              type="file"
+              accept=".txt,.pdf,.doc,.docx"
+              multiple
+              onChange={(event) => {
+                const files = event.target.files
+                if (!files || files.length === 0) return
+                void handleStrengthFilesBulkUpload(files)
                 event.currentTarget.value = ""
               }}
               className="hidden"
@@ -4763,34 +4919,71 @@ export function TeamSyncWorkspaceClient() {
               </div>
             </details>
 
-            <div className="mt-1 rounded-lg border border-neutral-200 p-1.5">
+            <div className="mt-1 rounded-lg border border-neutral-200 p-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">Add one member</div>
-                  <p className="mt-0.5 text-[11px] text-[#64748b]">Name, review strengths, then add.</p>
-                </div>
+                  <div>
+                    <div className="text-sm font-semibold">Add one member</div>
+                    <p className="mt-0.5 text-[11px] text-[#64748b]">One path: name, upload report, review strengths, then add.</p>
+                  </div>
                 <span className="rounded-full border border-[#d8e4f2] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
                   {memberIntakePanel === "name" ? "Step 1 of 3" : memberIntakePanel === "strengths" ? "Step 2 of 3" : "Step 3 of 3"}
                 </span>
               </div>
 
               <div className="mt-1.5 space-y-1.5">
-                <div className="rounded-lg border border-[#d8e4f2] bg-white">
+                <div className="flex flex-wrap items-center gap-1 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1">
                   <button
                     type="button"
                     onClick={() => setMemberIntakePanel("name")}
-                    className="flex w-full items-center justify-between px-2 py-1.5 text-left"
+                    className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                      memberIntakePanel === "name"
+                        ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
+                        : "border border-transparent bg-white text-[#64748b] hover:border-[#d8e4f2]"
+                    }`}
                   >
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">1. Member details</span>
-                    <span className="text-xs text-[#64748b]">{memberName.trim() ? "Ready" : "Required"}</span>
+                    1. Name
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setMemberIntakePanel("strengths")}
+                    disabled={!memberName.trim()}
+                    className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                      memberIntakePanel === "strengths"
+                        ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
+                        : "border border-transparent bg-white text-[#64748b] hover:border-[#d8e4f2]"
+                    } ${!memberName.trim() ? "cursor-not-allowed opacity-60" : ""}`}
+                  >
+                    2. Strengths
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMemberIntakePanel("review")}
+                    disabled={selectedStrengthCount === 0}
+                    className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                      memberIntakePanel === "review"
+                        ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]"
+                        : "border border-transparent bg-white text-[#64748b] hover:border-[#d8e4f2]"
+                    } ${selectedStrengthCount === 0 ? "cursor-not-allowed opacity-60" : ""}`}
+                  >
+                    3. Review
+                  </button>
+                </div>
+
+                <div className="rounded-lg border border-[#d8e4f2] bg-white p-2">
                   {memberIntakePanel === "name" ? (
-                    <div className="grid gap-1.5 border-t border-[#e2e8f0] px-2.5 py-2 md:grid-cols-2">
+                    <div className="grid gap-1 md:grid-cols-2">
                       <div>
                         <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Member Name</label>
                         <input
                           value={memberName}
-                          onChange={(e) => setMemberName(e.target.value)}
+                          onFocus={() => setMemberIntakePanel("name")}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onKeyUp={(event) => event.stopPropagation()}
+                          onKeyPress={(event) => event.stopPropagation()}
+                          onChange={(e) => {
+                            setMemberName(e.target.value)
+                            setMemberIntakePanel("name")
+                          }}
                           placeholder="Full name"
                           className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                         />
@@ -4799,7 +4992,14 @@ export function TeamSyncWorkspaceClient() {
                         <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Role (Optional)</label>
                         <input
                           value={memberRole}
-                          onChange={(e) => setMemberRole(e.target.value)}
+                          onFocus={() => setMemberIntakePanel("name")}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onKeyUp={(event) => event.stopPropagation()}
+                          onKeyPress={(event) => event.stopPropagation()}
+                          onChange={(e) => {
+                            setMemberRole(e.target.value)
+                            setMemberIntakePanel("name")
+                          }}
                           placeholder="Role or relationship"
                           className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                         />
@@ -4815,39 +5015,61 @@ export function TeamSyncWorkspaceClient() {
                               : "cursor-not-allowed border border-neutral-300 bg-neutral-100 text-[#64748b]"
                           }`}
                         >
-                          Continue to upload strengths
+                          Continue to upload
                         </button>
                       </div>
                     </div>
                   ) : null}
-                </div>
 
-                <div className="rounded-lg border border-[#d8e4f2] bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setMemberIntakePanel("strengths")}
-                    className="flex w-full items-center justify-between px-2 py-1.5 text-left"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">2. Upload strengths report</span>
-                    <span className="text-xs text-[#64748b]">{selectedStrengthCount > 0 ? `${selectedStrengthCount} captured` : "Needed"}</span>
-                  </button>
                   {memberIntakePanel === "strengths" ? (
-                    <div className="space-y-1.5 border-t border-[#e2e8f0] px-2.5 py-2">
+                    <div className="space-y-1.5">
+                      {memberUploadNeedsAuth ? (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+                          <div className="font-semibold">Session expired</div>
+                          <p className="mt-0.5">Sign in again, then retry upload.</p>
+                          <a
+                            href="/platform"
+                            className="mt-1 inline-flex rounded-md border border-amber-400 bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:bg-amber-100"
+                          >
+                            Go to sign in
+                          </a>
+                        </div>
+                      ) : null}
                       <div className="rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1e3a8a]">Upload strengths report</div>
-                            <p className="mt-0.5 text-[11px] text-[#1e3a8a]">Upload once, then continue to review + add. Manual edits happen in Step 3.</p>
+                            <p className="mt-0.5 text-[11px] text-[#1e3a8a]">Upload once, then continue to review + add.</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => {
                               memberUploadInputRef.current?.click()
                             }}
-                            className="rounded-md border border-[#1d4ed8] bg-[#1d4ed8] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#1e40af]"
+                            disabled={!memberName.trim() || memberFileLoading || memberBulkLoading}
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
+                              !memberName.trim() || memberFileLoading || memberBulkLoading
+                                ? "cursor-not-allowed border border-neutral-300 bg-neutral-100 text-[#64748b]"
+                                : "border border-[#1d4ed8] bg-[#1d4ed8] text-white hover:bg-[#1e40af]"
+                            }`}
                           >
-                            {memberFileLoading ? "Reading file..." : "Upload report"}
+                            {!memberName.trim() ? "Enter name first" : memberFileLoading ? "Reading file..." : "Upload report"}
                           </button>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => memberBulkUploadInputRef.current?.click()}
+                            disabled={memberFileLoading || memberBulkLoading}
+                            className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold ${
+                              memberFileLoading || memberBulkLoading
+                                ? "cursor-not-allowed border-neutral-300 bg-neutral-100 text-[#64748b]"
+                                : "border-[#93c5fd] bg-white text-[#1e40af] hover:bg-[#dbeafe]"
+                            }`}
+                          >
+                            {memberBulkLoading ? "Bulk importing..." : "Bulk import reports"}
+                          </button>
+                          <span className="text-[11px] text-[#475569]">Adds multiple members at once, auto-named from report content/file name.</span>
                         </div>
                         {lastUploadedFileName ? (
                           <div className="mt-1 rounded-lg border border-[#bfdbfe] bg-white px-2 py-1 text-[11px] text-[#334155]">
@@ -4855,7 +5077,7 @@ export function TeamSyncWorkspaceClient() {
                               <span className="font-semibold">Latest report:</span> {lastUploadedFileName}
                               {!memberFileLoading && selectedStrengthCount > 0 ? (
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-                                  Ready to add
+                                  Ready to review
                                 </span>
                               ) : null}
                             </div>
@@ -4868,6 +5090,13 @@ export function TeamSyncWorkspaceClient() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
                           type="button"
+                          onClick={() => setMemberIntakePanel("name")}
+                          className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#475569] hover:bg-neutral-50"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setMemberIntakePanel("review")}
                           disabled={memberFileLoading || selectedStrengthCount === 0}
                           className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
@@ -4876,27 +5105,16 @@ export function TeamSyncWorkspaceClient() {
                               : "border border-[#1d4ed8] bg-[#1d4ed8] text-white hover:bg-[#1e40af]"
                           }`}
                         >
-                          Continue to review
+                          Continue
                         </button>
-                        <span className="text-[10px] text-[#64748b]">Need changes? Edit strengths text in Step 3 before saving.</span>
                       </div>
                     </div>
                   ) : null}
-                </div>
 
-                <div className="rounded-lg border border-[#d8e4f2] bg-white">
-                  <button
-                    type="button"
-                    onClick={() => setMemberIntakePanel("review")}
-                    className="flex w-full items-center justify-between px-2 py-1.5 text-left"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#475569]">3. Review + add</span>
-                    <span className="text-xs text-[#64748b]">{canAddMember ? "Ready to save" : "Finish above"}</span>
-                  </button>
                   {memberIntakePanel === "review" ? (
-                    <div className="space-y-1.5 border-t border-[#e2e8f0] px-2.5 py-2">
+                    <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2 py-1.5 text-[11px] text-[#334155]">
-                        <span>Review strengths and save this member to the current group.</span>
+                        <span>Final step: confirm strengths, then save this member to the current group.</span>
                         <button
                           type="button"
                           onClick={() => setMemberIntakePanel("strengths")}
@@ -4910,6 +5128,9 @@ export function TeamSyncWorkspaceClient() {
                         <textarea
                           value={memberStrengths}
                           onChange={(e) => setMemberStrengths(e.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onKeyUp={(event) => event.stopPropagation()}
+                          onKeyPress={(event) => event.stopPropagation()}
                           placeholder="Achiever, Relator, Strategic, Learner..."
                           className="min-h-[74px] w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                         />
@@ -4918,7 +5139,14 @@ export function TeamSyncWorkspaceClient() {
                         <span>{memberFileLoading ? "Reading strengths file..." : "Check strengths, then save the member."}</span>
                         <span>{selectedStrengthCount} strengths captured</span>
                       </div>
-                      <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setMemberIntakePanel("strengths")}
+                          className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#475569] hover:bg-neutral-50"
+                        >
+                          Back
+                        </button>
                         <button
                           type="button"
                           onClick={addMember}
@@ -5029,10 +5257,10 @@ export function TeamSyncWorkspaceClient() {
 
           <section
             id="teamsync-scenario"
-            className={`rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm ${activeStep === "scenario" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "scenario" ? "" : "hidden"}`}
           >
-            <h2 className="text-lg font-semibold">Step 3: Scenario Setup</h2>
-            <p className="mt-1 text-xs text-[#475569]">Choose one scenario path, then move to Run simulation.</p>
+            <h2 className="text-lg font-semibold">Step 3: Scenario setup</h2>
+            <p className="mt-0.5 text-xs text-[#475569]">Pick a scenario path, then run.</p>
             {!scenarioReady ? <p className="mt-1 text-xs font-medium text-[#b45309]">Pick or write one scenario before you run.</p> : null}
             <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] px-2.5 py-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -5048,22 +5276,22 @@ export function TeamSyncWorkspaceClient() {
                 </span>
               </div>
             </div>
-            <details className="mt-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">More info</summary>
+            <details className="mt-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
+              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">How to choose</summary>
               <div className="mt-1.5 space-y-1 text-xs text-[#334155]">
                 <p>
-                  <span className="font-semibold">Library:</span> choose a ready-made scenario to run quickly.
+                  <span className="font-semibold">Saved:</span> use a ready scenario for speed.
                 </p>
                 <p>
-                  <span className="font-semibold">Executive:</span> run premium executive and boardroom prompt packs.
+                  <span className="font-semibold">Executive:</span> premium board and leadership scenarios.
                 </p>
                 <p>
-                  <span className="font-semibold">Custom:</span> write your own context and desired outcome.
+                  <span className="font-semibold">Custom:</span> write and save your own scenario.
                 </p>
               </div>
             </details>
 
-            <div className="ui-action-row mt-1.5">
+            <div className="ui-action-row mt-1">
               <button
                 type="button"
                 onClick={() => setScenarioMode("library")}
@@ -5071,7 +5299,7 @@ export function TeamSyncWorkspaceClient() {
                   scenarioMode === "library" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"
                 }`}
               >
-                Use saved scenario
+                Saved scenarios
               </button>
               <button
                 type="button"
@@ -5080,7 +5308,7 @@ export function TeamSyncWorkspaceClient() {
                   scenarioMode === "executive" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"
                 }`}
               >
-                Executive prompt pack
+                Executive pack
               </button>
               <button
                 type="button"
@@ -5089,7 +5317,7 @@ export function TeamSyncWorkspaceClient() {
                   scenarioMode === "custom" ? "border border-[#1d4ed8] bg-[#dbeafe] text-[#1e3a8a]" : "border border-neutral-300 bg-white text-[#334155]"
                 }`}
               >
-                Write custom scenario
+                Custom scenario
               </button>
             </div>
 
@@ -5405,12 +5633,12 @@ export function TeamSyncWorkspaceClient() {
 
           <section
             id="teamsync-run"
-            className={`rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm ${activeStep === "run" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "run" ? "" : "hidden"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Step 4: Run Simulation</h2>
-                <p className="mt-0.5 text-xs text-[#64748b]">Generate behavior, risk, and action outputs for this scenario.</p>
+                <p className="mt-0.5 text-xs text-[#64748b]">Generate behavior, risk, and next-step outputs.</p>
                 {!canRunSimulation ? (
                   <p className="mt-1 text-xs font-medium text-[#b45309]">
                     {simulating ? "Simulation in progress..." : runBlockers.length > 0 ? `Before running: ${runBlockers.join(" | ")}` : "Complete setup before running."}
@@ -5441,31 +5669,33 @@ export function TeamSyncWorkspaceClient() {
                 )}
               </button>
             </div>
-            <p className="mt-1 text-xs text-[#475569]">Output includes behavior patterns, risk signals, and next-step actions.</p>
+            <p className="mt-0.5 text-xs text-[#475569]">Profile balance preview before you run.</p>
 
-            <div className="mt-1.5 grid gap-1.5 md:grid-cols-4">
-              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Executor</div>
-                <div className="mt-0.5 text-lg font-semibold">{teamScores.executor}</div>
-              </div>
-              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Relationship</div>
-                <div className="mt-0.5 text-lg font-semibold">{teamScores.relationship}</div>
-              </div>
-              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Strategy</div>
-                <div className="mt-0.5 text-lg font-semibold">{teamScores.strategy}</div>
-              </div>
-              <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
-                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Influence</div>
-                <div className="mt-0.5 text-lg font-semibold">{teamScores.influence}</div>
+            <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
+              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-[#cfe0f7] bg-white px-2 py-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Executor</div>
+                  <div className="text-base font-semibold text-[#0f172a]">{teamScores.executor}</div>
+                </div>
+                <div className="rounded-lg border border-[#cfe0f7] bg-white px-2 py-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Relationship</div>
+                  <div className="text-base font-semibold text-[#0f172a]">{teamScores.relationship}</div>
+                </div>
+                <div className="rounded-lg border border-[#cfe0f7] bg-white px-2 py-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Strategy</div>
+                  <div className="text-base font-semibold text-[#0f172a]">{teamScores.strategy}</div>
+                </div>
+                <div className="rounded-lg border border-[#cfe0f7] bg-white px-2 py-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Influence</div>
+                  <div className="text-base font-semibold text-[#0f172a]">{teamScores.influence}</div>
+                </div>
               </div>
             </div>
           </section>
 
           <section
             id="teamsync-insights"
-            className={`rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm ${activeStep === "insights" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "insights" ? "" : "hidden"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -6428,7 +6658,7 @@ export function TeamSyncWorkspaceClient() {
 
           <section
             id="teamsync-history"
-            className={`rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm ${activeStep === "history" ? "" : "hidden"}`}
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "history" ? "" : "hidden"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

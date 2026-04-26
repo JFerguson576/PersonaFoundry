@@ -1,0 +1,65 @@
+﻿{
+  "teamName": "TeamSync Demo Squad",
+  "participants": [
+    {
+      "name": "Winter Martyn",
+      "role": "Operations Lead",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\Winter-Martyn-ALL_34.pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add communication style",
+        "TODO: add known friction triggers"
+      ]
+    },
+    {
+      "name": "Rachelle Ferguson",
+      "role": "People & Culture Partner",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\Rachelle Ferguson Cliftons Strengths.pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add motivation profile",
+        "TODO: add collaboration preferences"
+      ]
+    },
+    {
+      "name": "Liam Ferguson",
+      "role": "Program Manager",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\Liam Ferguson - Gallup Strengths.pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add decision-making style",
+        "TODO: add stress pattern"
+      ]
+    },
+    {
+      "name": "Charlie Ferguson",
+      "role": "Delivery Coordinator",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\Charlie Ferguson Cliftons Strengths.pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add preferred work rhythm",
+        "TODO: add support needs"
+      ]
+    },
+    {
+      "name": "John Ferguson",
+      "role": "Executive Sponsor",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\John Ferguson rerport Clifton Strengths (1).pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add leadership tendencies",
+        "TODO: add risk appetite"
+      ]
+    },
+    {
+      "name": "Nigel Jones",
+      "role": "Commercial Lead",
+      "sourcePdf": "C:\\Users\\johnf\\Downloads\\Clifton Report - Nigel Jones (1).pdf",
+      "strengthsSummary": [
+        "TODO: add top 5 strengths",
+        "TODO: add client-facing strengths",
+        "TODO: add conflict style"
+      ]
+    }
+  ]
+}

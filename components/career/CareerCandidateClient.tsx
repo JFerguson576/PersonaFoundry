@@ -6842,7 +6842,7 @@ function CurrentTargetBriefCard({
           {statusBadge || "Editable in each tool"}
         </div>
       </div>
-      <dl className="mt-2 flex flex-wrap gap-1.5">
+      <dl className="mt-1.5 flex flex-wrap gap-1.5">
         {primaryRows.map((row) => (
           <div key={`${title}-${row.label}`} className="inline-flex items-center gap-1 rounded-full border border-white/80 bg-white px-2.5 py-1">
             <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}:</dt>
@@ -6853,11 +6853,11 @@ function CurrentTargetBriefCard({
         ))}
       </dl>
       {secondaryRows.length > 0 ? (
-        <dl className="mt-2 grid gap-1.5 sm:grid-cols-2">
+        <dl className="mt-1.5 flex flex-wrap gap-1.5">
           {secondaryRows.map((row) => (
-            <div key={`${title}-${row.label}`} className="rounded-lg border border-white/80 bg-white px-2 py-1.5">
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}</dt>
-              <dd className="mt-0.5 truncate text-xs font-semibold text-neutral-900" title={row.value}>
+            <div key={`${title}-${row.label}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-white/80 bg-white px-2.5 py-1">
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">{row.label}:</dt>
+              <dd className="max-w-[220px] truncate text-xs font-semibold text-neutral-900" title={row.value}>
                 {formatBriefValue(row.label, row.value)}
               </dd>
             </div>

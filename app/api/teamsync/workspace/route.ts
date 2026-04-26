@@ -46,9 +46,31 @@ type TeamSyncRunPayload = {
   }>
 }
 
+type TeamSyncSavedScenarioPayload = {
+  id?: string
+  title?: string
+  category?: string
+  focus?: string
+  promptText?: string
+  visibility?: string
+}
+
 function normalizeText(value: unknown) {
   if (typeof value !== "string") return ""
   return value.trim()
+}
+
+function normalizeScenarioCategory(value: unknown) {
+  const normalized = normalizeText(value)
+  if (["Professional", "Family", "Learning", "Executive", "Boardroom"].includes(normalized)) {
+    return normalized
+  }
+  return "Professional"
+}
+
+function normalizeScenarioVisibility(value: unknown) {
+  const normalized = normalizeText(value).toLowerCase()
+  return normalized === "shared" ? "shared" : "private"
 }
 
 function normalizeRoleReactions(value: unknown) {
@@ -158,7 +180,7 @@ export async function GET(req: Request) {
 
     const activeGroup = groups.find((group) => group.id === requestedGroupId) ?? groups[0]
 
-    const [membersResult, runsResult] = await Promise.all([
+    const [membersResult, runsResult, scenariosResult] = await Promise.all([
       supabase
         .from("teamsync_members")
         .select("id, full_name, role_title, strengths_text")
@@ -171,6 +193,11 @@ export async function GET(req: Request) {
         .eq("workspace_id", activeGroup.id)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("teamsync_saved_scenarios")
+        .select("id, user_id, title, category, focus, prompt_text, visibility, updated_at")
+        .or(`user_id.eq.${user.id},visibility.eq.shared`)
+        .order("updated_at", { ascending: false }),
     ])
 
     if (membersResult.error) {
@@ -179,6 +206,11 @@ export async function GET(req: Request) {
 
     if (runsResult.error) {
       return NextResponse.json({ error: runsResult.error.message }, { status: 400 })
+    }
+
+    const scenarioQueryFailed = Boolean(scenariosResult.error && scenariosResult.error.code !== "42P01")
+    if (scenarioQueryFailed) {
+      return NextResponse.json({ error: scenariosResult.error?.message || "Could not load saved scenarios" }, { status: 400 })
     }
 
     const members = (membersResult.data ?? []).map((row) => ({
@@ -211,12 +243,27 @@ export async function GET(req: Request) {
       }
     })
 
+    const customScenarios =
+      scenariosResult.error?.code === "42P01"
+        ? []
+        : (scenariosResult.data ?? []).map((row) => ({
+            id: row.id,
+            title: row.title ?? "",
+            category: normalizeScenarioCategory(row.category),
+            focus: row.focus ?? "Saved TeamSync scenario",
+            promptText: row.prompt_text ?? "",
+            visibility: normalizeScenarioVisibility(row.visibility),
+            ownerUserId: row.user_id ?? "",
+            updatedAt: row.updated_at ?? null,
+          }))
+
     return NextResponse.json({
       groups,
       active_group_id: activeGroup.id,
       group_name: activeGroup.group_name ?? "",
       members,
       runs,
+      custom_scenarios: customScenarios,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
@@ -237,6 +284,7 @@ export async function PUT(req: Request) {
     const groupName = normalizeText(body?.group_name)
     const incomingMembers = Array.isArray(body?.members) ? (body.members as TeamSyncMemberPayload[]) : []
     const incomingRuns = Array.isArray(body?.runs) ? (body.runs as TeamSyncRunPayload[]) : []
+    const incomingCustomScenarios = Array.isArray(body?.custom_scenarios) ? (body.custom_scenarios as TeamSyncSavedScenarioPayload[]) : []
     const normalizedGroupName = groupName || "My Team"
 
     const supabase = createRouteClient(accessToken ?? undefined)
@@ -358,12 +406,48 @@ export async function PUT(req: Request) {
       }
     }
 
+    const removeSavedScenarios = await supabase
+      .from("teamsync_saved_scenarios")
+      .delete()
+      .eq("user_id", user.id)
+    const missingSavedScenariosTable = removeSavedScenarios.error?.code === "42P01"
+    if (removeSavedScenarios.error && !missingSavedScenariosTable) {
+      return NextResponse.json({ error: removeSavedScenarios.error.message }, { status: 400 })
+    }
+
+    if (!missingSavedScenariosTable) {
+      const scenarioRows = incomingCustomScenarios
+        .slice(0, 120)
+        .map((scenario, index) => {
+          const title = normalizeText(scenario.title)
+          const promptText = normalizeText(scenario.promptText)
+          if (!title || !promptText) return null
+          return {
+            user_id: user.id,
+            title,
+            category: normalizeScenarioCategory(scenario.category),
+            focus: normalizeText(scenario.focus) || "Saved TeamSync scenario",
+            prompt_text: promptText,
+            visibility: normalizeScenarioVisibility(scenario.visibility),
+          }
+        })
+        .filter(Boolean)
+
+      if (scenarioRows.length > 0) {
+        const { error: insertScenariosError } = await supabase.from("teamsync_saved_scenarios").insert(scenarioRows)
+        if (insertScenariosError) {
+          return NextResponse.json({ error: insertScenariosError.message }, { status: 400 })
+        }
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       workspace_id: workspaceId,
       group_name: normalizedGroupName,
       member_count: memberRows.length,
       run_count: runRows.length,
+      custom_scenario_count: incomingCustomScenarios.length,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"

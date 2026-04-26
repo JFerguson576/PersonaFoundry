@@ -1,0 +1,42 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TeamSync Workflow Schema",
+  "type": "object",
+  "required": ["workflowVersion", "phases", "decisionGates"],
+  "properties": {
+    "workflowVersion": { "type": "string" },
+    "operatingMode": {
+      "type": "string",
+      "enum": ["pilot", "standard", "accelerated"],
+      "default": "standard"
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "objective", "inputs", "outputs"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "objective": { "type": "string" },
+          "inputs": { "type": "array", "items": { "type": "string" } },
+          "outputs": { "type": "array", "items": { "type": "string" } },
+          "adaptationRules": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "decisionGates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "condition", "ifTrue", "ifFalse"],
+        "properties": {
+          "id": { "type": "string" },
+          "condition": { "type": "string" },
+          "ifTrue": { "type": "string" },
+          "ifFalse": { "type": "string" }
+        }
+      }
+    }
+  }
+}

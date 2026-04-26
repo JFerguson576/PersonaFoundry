@@ -1,0 +1,64 @@
+﻿{
+  "workflowVersion": "1.0.0",
+  "operatingMode": "standard",
+  "phases": [
+    {
+      "id": "discover",
+      "name": "Discovery",
+      "objective": "Surface current team friction and role-level constraints.",
+      "inputs": ["participant strengths", "current KPIs", "team pain points"],
+      "outputs": ["top 3 bottlenecks", "risk map"],
+      "adaptationRules": [
+        "If new workflow steps appear, attach them as sub-steps instead of replacing existing phases.",
+        "If priorities shift, re-rank bottlenecks but keep traceability to prior choices."
+      ]
+    },
+    {
+      "id": "align",
+      "name": "Alignment",
+      "objective": "Create shared priorities and clear ownership.",
+      "inputs": ["risk map", "team goals", "stakeholder expectations"],
+      "outputs": ["team charter", "decision rights matrix"],
+      "adaptationRules": [
+        "When stakeholders change, regenerate ownership map with minimal role disruption.",
+        "When deadlines compress, convert low-impact tasks to asynchronous actions."
+      ]
+    },
+    {
+      "id": "execute",
+      "name": "Execution Sprint",
+      "objective": "Run a 2-week sprint with explicit handoffs.",
+      "inputs": ["team charter", "sprint backlog"],
+      "outputs": ["progress report", "handoff quality score"],
+      "adaptationRules": [
+        "If a blocker exceeds 24 hours, trigger an escalation micro-ritual.",
+        "If workload imbalance >20%, rebalance using strengths-fit assignments."
+      ]
+    },
+    {
+      "id": "retrospective",
+      "name": "Retrospective",
+      "objective": "Capture learning and propose workflow refinements.",
+      "inputs": ["progress report", "qualitative feedback"],
+      "outputs": ["improvement backlog", "next-cycle experiment plan"],
+      "adaptationRules": [
+        "If a workflow change is approved, version it and track expected impact.",
+        "Carry forward only changes with clear owner and metric."
+      ]
+    }
+  ],
+  "decisionGates": [
+    {
+      "id": "gate-1",
+      "condition": "Is team clarity score >= 7/10 after alignment?",
+      "ifTrue": "Proceed to execution.",
+      "ifFalse": "Run a focused role-clarity workshop before execution."
+    },
+    {
+      "id": "gate-2",
+      "condition": "Did sprint achieve at least 80% committed outcomes?",
+      "ifTrue": "Proceed to retrospective and scaling plan.",
+      "ifFalse": "Run root-cause analysis and adjust sprint sizing assumptions."
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+﻿TEAMSYNC SIMULATION PACKET
+Generated: 2026-04-25 15:10:37
+
+=== SYSTEM PROMPT ===
+You are TeamSync Simulation Engine, running a configurable team simulation for organizational workflow design.
+
+Core behavior:
+1. Treat workflow configuration as source of truth.
+2. Treat participant strengths as behavioral signals, not hard limits.
+3. If the workflow changes mid-simulation, adapt by:
+   - preserving existing decisions where still valid,
+   - re-mapping ownership and handoffs,
+   - logging all changes with rationale.
+4. Keep output practical for real teams: concise, specific, and action-oriented.
+
+Simulation operating rules:
+- Never invent personal data not provided by source summaries.
+- When strengths are missing, mark assumptions explicitly.
+- Keep role-play realistic for a corporate context: priorities, tradeoffs, deadlines, and stakeholder pressure.
+- Include both human dynamics and process mechanics.
+
+Required output sections:
+1. Simulation Setup Snapshot
+2. Phase-by-Phase Walkthrough
+3. Decision Gates and Outcomes
+4. Workflow Change Adaptation Notes
+5. Facilitator Debrief and Next Experiments
+
+Facilitation style:
+- Use clear labels for speakers and roles.
+- Highlight moments where strengths help or create friction.
+- Recommend low-cost adjustments before high-disruption change.
+- End with a 30/60/90-day action cadence.
+
+
+=== SCENARIO MODULE ===
+Scenario module: Common corporate environment
+
+Context:
+A professional services company is experiencing missed handoffs, uneven accountability, and delayed decisions during cross-functional delivery. Leadership wants a practical simulation before changing operating cadence company-wide.
+
+Use case for demo:
+- Walk stakeholders through a safe, realistic rehearsal.
+- Show how role strengths can reduce conflict and increase throughput.
+- Demonstrate how TeamSync handles workflow changes without restarting the process.
+
+Facilitator objective:
+Run one full simulation cycle across discovery, alignment, execution sprint, and retrospective.
+
+Realistic friction injects:
+- A high-priority client escalates a timeline concern in week 2.
+- One leader requests an urgent workflow shortcut that bypasses approvals.
+- Team clarity score drops below target after ownership reshuffle.
+
+Expected simulation outcomes:
+- A revised handoff map with explicit owners.
+- A meeting cadence that balances speed with decision quality.
+- A shortlist of workflow experiments with measurable success metrics.
+
+
+=== SCENARIO CONFIG ===
+Title: Quarterly Operating Model Reset
+Industry: Professional Services
+Context: A mid-size services company is moving from ad-hoc execution to a standardized cross-functional operating rhythm.
+Trigger Event: Leadership committed to a 90-day performance improvement plan after missed delivery targets.
+Constraints: No headcount increase for this quarter; Budget pressure requires 10% efficiency gain; Two critical client projects cannot be delayed
+Success Criteria: Clear ownership for every major workflow handoff; Weekly coordination cycle adopted by all functions; At least 80% sprint commitment reliability by week 6
+Expected Outputs: Facilitator timeline; Role-play dialogue; Decision log; Workflow change impact summary; Next-cycle recommendations
+
+=== WORKFLOW CONFIG ===
+Version: 1.0.0
+Operating Mode: standard
+
+Phases:
+- [discover] Discovery
+  Objective: Surface current team friction and role-level constraints.
+  Inputs: participant strengths, current KPIs, team pain points
+  Outputs: top 3 bottlenecks, risk map
+  Adaptation Rules: If new workflow steps appear, attach them as sub-steps instead of replacing existing phases. | If priorities shift, re-rank bottlenecks but keep traceability to prior choices.
+
+- [align] Alignment
+  Objective: Create shared priorities and clear ownership.
+  Inputs: risk map, team goals, stakeholder expectations
+  Outputs: team charter, decision rights matrix
+  Adaptation Rules: When stakeholders change, regenerate ownership map with minimal role disruption. | When deadlines compress, convert low-impact tasks to asynchronous actions.
+
+- [execute] Execution Sprint
+  Objective: Run a 2-week sprint with explicit handoffs.
+  Inputs: team charter, sprint backlog
+  Outputs: progress report, handoff quality score
+  Adaptation Rules: If a blocker exceeds 24 hours, trigger an escalation micro-ritual. | If workload imbalance >20%, rebalance using strengths-fit assignments.
+
+- [retrospective] Retrospective
+  Objective: Capture learning and propose workflow refinements.
+  Inputs: progress report, qualitative feedback
+  Outputs: improvement backlog, next-cycle experiment plan
+  Adaptation Rules: If a workflow change is approved, version it and track expected impact. | Carry forward only changes with clear owner and metric.
+
+Decision Gates:
+- gate-1: Is team clarity score >= 7/10 after alignment?
+  If true: Proceed to execution.
+  If false: Run a focused role-clarity workshop before execution.
+
+- gate-2: Did sprint achieve at least 80% committed outcomes?
+  If true: Proceed to retrospective and scaling plan.
+  If false: Run root-cause analysis and adjust sprint sizing assumptions.
+
+=== PARTICIPANT CONFIG ===
+Team: TeamSync Demo Squad
+- Name: Winter Martyn
+  Role: Operations Lead
+  Source PDF: C:\Users\johnf\Downloads\Winter-Martyn-ALL_34.pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add communication style; TODO: add known friction triggers
+
+- Name: Rachelle Ferguson
+  Role: People & Culture Partner
+  Source PDF: C:\Users\johnf\Downloads\Rachelle Ferguson Cliftons Strengths.pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add motivation profile; TODO: add collaboration preferences
+
+- Name: Liam Ferguson
+  Role: Program Manager
+  Source PDF: C:\Users\johnf\Downloads\Liam Ferguson - Gallup Strengths.pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add decision-making style; TODO: add stress pattern
+
+- Name: Charlie Ferguson
+  Role: Delivery Coordinator
+  Source PDF: C:\Users\johnf\Downloads\Charlie Ferguson Cliftons Strengths.pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add preferred work rhythm; TODO: add support needs
+
+- Name: John Ferguson
+  Role: Executive Sponsor
+  Source PDF: C:\Users\johnf\Downloads\John Ferguson rerport Clifton Strengths (1).pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add leadership tendencies; TODO: add risk appetite
+
+- Name: Nigel Jones
+  Role: Commercial Lead
+  Source PDF: C:\Users\johnf\Downloads\Clifton Report - Nigel Jones (1).pdf
+  Strengths Summary: TODO: add top 5 strengths; TODO: add client-facing strengths; TODO: add conflict style
+
+=== RUN INSTRUCTIONS FOR CODEX ===
+1) Simulate a full walkthrough using the above configuration.
+2) If any strengths entries remain TODO, make conservative assumptions and tag them as ASSUMPTION.
+3) Include adaptation behavior when any workflow step changes mid-run.
+4) Produce facilitator-ready output in the required section structure.

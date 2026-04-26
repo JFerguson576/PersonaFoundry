@@ -308,14 +308,12 @@ export function CareerApplicationTracker({
   }
 
   return (
-    <div className="space-y-3">
-      <form onSubmit={handleSubmit} className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+    <div className="space-y-2.5">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold">Add a target role</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-600">
-              Start with company, role, location, and stage. Open optional fields only when needed.
-            </p>
+            <p className="mt-0.5 max-w-2xl text-xs leading-5 text-neutral-600">Start with company, role, location, and stage.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
@@ -331,13 +329,13 @@ export function CareerApplicationTracker({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="mt-2.5 grid gap-2 md:grid-cols-2">
           <Field label="Company">
             <input
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
               placeholder="e.g. Fletcher Building"
-              className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+              className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5"
             />
           </Field>
           <Field label="Job title">
@@ -345,7 +343,7 @@ export function CareerApplicationTracker({
               value={jobTitle}
               onChange={(event) => setJobTitle(event.target.value)}
               placeholder="e.g. Product Manager"
-              className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+              className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5"
             />
           </Field>
           <Field label="Location">
@@ -353,56 +351,56 @@ export function CareerApplicationTracker({
               value={location}
               onChange={(event) => setLocation(event.target.value)}
               placeholder="e.g. Auckland"
-              className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+              className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5"
             />
           </Field>
           <Field label="Status">
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+            <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5">
               {applicationStatuses.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-[11px] leading-4 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">{applicationStatusGuidance[status] || "Choose the stage that best matches this role right now."}</p>
           </Field>
         </div>
 
         {!showAdvancedRoleEntry ? (
-          <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+          <div className="mt-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-600">
             Optional fields hidden: job URL, follow-up date, next action, notes, and linked assets.
           </div>
         ) : null}
 
         {showAdvancedRoleEntry ? (
           <>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="mt-2.5 grid gap-2 md:grid-cols-2">
               <Field label="Job URL">
                 <input
                   value={jobUrl}
                   onChange={(event) => setJobUrl(event.target.value)}
                   placeholder="Paste role link (optional)"
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2"
+                  className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5"
                 />
               </Field>
               <Field label="Follow-up date">
-                <input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2" />
+                <input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5" />
               </Field>
               <Field label="Next action">
                 <input
                   value={nextAction}
                   onChange={(event) => setNextAction(event.target.value)}
                   placeholder="What should happen next?"
-                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
                 />
               </Field>
               <Field label="Notes">
-                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[56px] w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm leading-5" />
+                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-[52px] w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm leading-5" />
               </Field>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-2.5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
               <Field label="Linked cover letter">
-                <select value={coverLetterAssetId} onChange={(event) => setCoverLetterAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+                <select value={coverLetterAssetId} onChange={(event) => setCoverLetterAssetId(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5">
                   <option value="">No linked cover letter</option>
                   {coverLetterOptions.map((asset) => (
                     <option key={asset.id} value={asset.id}>
@@ -412,7 +410,7 @@ export function CareerApplicationTracker({
                 </select>
               </Field>
               <Field label="Linked company dossier">
-                <select value={companyDossierAssetId} onChange={(event) => setCompanyDossierAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+                <select value={companyDossierAssetId} onChange={(event) => setCompanyDossierAssetId(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5">
                   <option value="">No linked dossier</option>
                   {companyDossierOptions.map((asset) => (
                     <option key={asset.id} value={asset.id}>
@@ -422,7 +420,7 @@ export function CareerApplicationTracker({
                 </select>
               </Field>
               <Field label="Linked salary analysis">
-                <select value={salaryAnalysisAssetId} onChange={(event) => setSalaryAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+                <select value={salaryAnalysisAssetId} onChange={(event) => setSalaryAnalysisAssetId(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5">
                   <option value="">No linked salary analysis</option>
                   {salaryAnalysisOptions.map((asset) => (
                     <option key={asset.id} value={asset.id}>
@@ -432,7 +430,7 @@ export function CareerApplicationTracker({
                 </select>
               </Field>
               <Field label="Linked fit analysis">
-                <select value={fitAnalysisAssetId} onChange={(event) => setFitAnalysisAssetId(event.target.value)} className="w-full rounded-xl border border-neutral-300 px-3 py-2">
+                <select value={fitAnalysisAssetId} onChange={(event) => setFitAnalysisAssetId(event.target.value)} className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5">
                   <option value="">No linked fit analysis</option>
                   {fitAnalysisOptions.map((asset) => (
                     <option key={asset.id} value={asset.id}>
@@ -446,29 +444,29 @@ export function CareerApplicationTracker({
         ) : null}
 
         {showAdvancedRoleEntry && (suggestedCoverLetter || suggestedDossier || suggestedOutreachStrategy || suggestedRecruiterMatchSearch) ? (
-          <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3">
+          <div className="mt-2.5 rounded-xl border border-sky-200 bg-sky-50 p-2.5">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Suggested links</div>
-            <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-1.5 grid gap-1.5 md:grid-cols-2 xl:grid-cols-4">
               {suggestedCoverLetter ? (
-                <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                <div className="rounded-xl border border-sky-200 bg-white p-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested cover letter</div>
                   <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedCoverLetter.title || "Untitled cover letter"}</div>
                 </div>
               ) : null}
               {suggestedDossier ? (
-                <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                <div className="rounded-xl border border-sky-200 bg-white p-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested dossier</div>
                   <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedDossier.title || "Untitled company dossier"}</div>
                 </div>
               ) : null}
               {suggestedOutreachStrategy ? (
-                <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                <div className="rounded-xl border border-sky-200 bg-white p-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested outreach plan</div>
                   <div className="mt-2 text-sm font-semibold text-neutral-900">{suggestedOutreachStrategy.title || "Untitled outreach strategy"}</div>
                 </div>
               ) : null}
               {suggestedRecruiterMatchSearch ? (
-                <div className="rounded-2xl border border-sky-200 bg-white p-3">
+                <div className="rounded-xl border border-sky-200 bg-white p-2">
                   <div className="text-xs font-semibold uppercase tracking-[0.08em] text-sky-700">Suggested recruiter route</div>
                   <div className="mt-2 text-sm font-semibold text-neutral-900">
                     {suggestedRecruiterMatchSearch.title || "Untitled recruiter route"}
@@ -476,7 +474,7 @@ export function CareerApplicationTracker({
                 </div>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               {suggestedOutreachStrategy ? (
                 <button
                   type="button"
@@ -529,11 +527,11 @@ export function CareerApplicationTracker({
           </div>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <button
             type="submit"
             disabled={loading || !companyName.trim() || !jobTitle.trim()}
-            className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-black px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Saving..." : status === "shortlisted" ? "Save to shortlist" : "Save role"}
           </button>
@@ -541,8 +539,8 @@ export function CareerApplicationTracker({
         </div>
       </form>
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm">
-        <div className="mb-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm">
+        <div className="mb-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-5">
           <TrackerMetricCard label="Active roles" value={String(activeApplications.length)} tone="neutral" />
           <TrackerMetricCard label="Shortlisted" value={String(shortlistedApplications.length)} tone={shortlistedApplications.length > 0 ? "success" : "neutral"} />
           <TrackerMetricCard label="Overdue follow-ups" value={String(overdueApplications.length)} tone={overdueApplications.length > 0 ? "danger" : "neutral"} />
@@ -550,11 +548,11 @@ export function CareerApplicationTracker({
           <TrackerMetricCard label="Offers" value={String(applications.filter((application) => application.status === "offer").length)} tone="success" />
         </div>
 
-        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+        <div className="mb-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1.5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role stages</div>
-              <p className="mt-1 text-xs text-neutral-600">Use one status per role so the user always knows what to do next.</p>
+              <p className="mt-0.5 text-xs text-neutral-600">One status per role keeps next actions clear.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
@@ -569,7 +567,7 @@ export function CareerApplicationTracker({
               </button>
             </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-neutral-800">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] font-semibold text-neutral-800">
             <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Considering</span>
             <span className="text-neutral-400">{"->"}</span>
             <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Priority shortlist</span>
@@ -586,12 +584,17 @@ export function CareerApplicationTracker({
             </div>
           ) : null}
           {showStageMeanings ? (
-            <div className="mt-2 rounded-lg border border-neutral-200 bg-white p-2">
-              <div className="grid gap-1.5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-1.5 rounded-lg border border-neutral-200 bg-white p-1.5">
+              <div className="space-y-0.5">
                 {applicationStatuses.map((statusOption) => (
-                  <div key={`guide-meaning-${statusOption.value}`} className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                  <div
+                    key={`guide-meaning-${statusOption.value}`}
+                    className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5"
+                  >
                     <div className="text-[11px] font-semibold text-neutral-900">{statusOption.label}</div>
-                    <div className="mt-0.5 text-[10px] leading-4 text-neutral-600">{compactStageGuidance(applicationStatusGuidance[statusOption.value])}</div>
+                    <div className="max-w-xl text-[10px] leading-4 text-neutral-600">
+                      {compactStageGuidance(applicationStatusGuidance[statusOption.value])}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -912,7 +915,7 @@ export function CareerApplicationTracker({
                       items.length === 0 ? (
                         <p className="mt-2 text-xs leading-5 text-neutral-500">No applications in this stage.</p>
                       ) : (
-                        <div className="mt-2 space-y-2">
+                        <div className="mt-2 space-y-1.5">
                       {items.map((application) => {
                         const followUpState = getFollowUpState(application.follow_up_date || "", application.status || "")
                         const linkedCoverLetterTitle = application.cover_letter_asset_id ? coverLetterTitleById.get(application.cover_letter_asset_id) : null
@@ -932,10 +935,10 @@ export function CareerApplicationTracker({
                           hasFollowUp: Boolean(application.follow_up_date),
                         })
                         return (
-                          <div key={`board-${application.id}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5">
+                          <div key={`board-${application.id}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
                             <div className="font-semibold text-neutral-900">{application.company_name || "Untitled company"}</div>
-                            <div className="mt-1 text-sm text-neutral-600">{application.job_title || "Untitled role"}</div>
-                            <div className="mt-2">
+                            <div className="mt-0.5 text-sm text-neutral-600">{application.job_title || "Untitled role"}</div>
+                            <div className="mt-1.5">
                               <CampaignLane steps={campaignLane} compact />
                             </div>
                             {fitDecision ? (

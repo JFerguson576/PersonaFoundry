@@ -1,174 +1,71 @@
 # To Do
 
-- [ ] Review and execute prioritized roadmap in CODEX_EXECUTION_PLAN.md and CODEX_EXECUTION_PLAN.docx.
-- [ ] Publish competitor comparison assets in Resources (website table + source matrix).
-- [ ] Add and maintain moat planning doc in Operations execution roadmap attachments.
+## TeamSync Demo (Personara.ai)
 
-## Foundational Asset: OpenAI Logic and Enrichment Map
+- Finalize and operationalize TeamSync simulation demo framework:
+  - Location: `teamsync-demo/`
+  - Use linked Clifton/Gallup PDFs in `teamsync-demo/config/participants.json`.
+  - Fill `strengthsSummary` TODO fields for all six participants.
+  - Keep workflow adaptable by updating `teamsync-demo/config/workflow.json` as process changes.
+  - Generate updated Codex run packet with:
+    - `powershell -ExecutionPolicy Bypass -File .\teamsync-demo\scripts\build-simulation-prompt.ps1`
+  - Use output packet from `teamsync-demo/runs/teamsync-simulation-prompt.txt` for demo walkthroughs.
 
-- [ ] Build a single "AI interaction map" of every OpenAI call path and keep it versioned as a core platform asset.
-- [ ] Treat each interaction like a value conveyor belt: raw input in, signal extraction in the middle, decision-ready output out.
-- [ ] For each interaction below, document: input sources, transformation logic, output format, trust checks, and where value is realized.
+## Foundational Asset: OpenAI Interaction Logic & Value Expansion Audit
 
-## Current OpenAI Interactions (Plain-English)
+- Map every OpenAI touchpoint in the product like tracing a river system:
+  - Identify each entry point (where data enters AI flows).
+  - Identify each transformation step (how raw input becomes enriched output).
+  - Identify each output destination (where enriched content appears for users/admins/resellers).
 
-- [ ] `app/api/analyze-profile-ai/route.ts` and `app/api/chat-sandbox/route.ts` and `app/api/agent/respond/route.ts`:
-  - What it does: turns user-entered profile/context and prompts into structured insight and response text.
-  - Metaphor: "translator + strategist" that converts messy story data into useful next moves.
-  - Core transformation: free-form text to normalized, actionable guidance.
+- For each OpenAI API interaction, produce a plain-language explanation:
+  - What goes in (user text, profile data, job data, etc.).
+  - What the model does (classify, summarize, rewrite, infer traits, score fit, generate actions).
+  - What comes out (structured fields, narrative content, recommendations, rankings).
+  - Why it matters (decision speed, confidence, personalization, monetizable differentiation).
 
-- [ ] `app/api/career/generate-profile/route.ts`:
-  - What it does: compiles source documents into a coherent candidate profile.
-  - Metaphor: "ore to steel" refinement from scattered resume artifacts into a strong professional narrative.
-  - Core transformation: fragmented evidence to profile synthesis.
+- Explain enrichment using simple metaphors:
+  - "Refinery": raw user data is refined into decision-grade insights.
+  - "Translator": complex signals become understandable guidance.
+  - "GPS": static profiles become dynamic next-step navigation.
 
-- [ ] `app/api/career/generate-assets/route.ts`:
-  - What it does: generates career assets (for example CV/LinkedIn style outputs) from profile + docs.
-  - Metaphor: "content factory line" that turns one profile core into multiple fit-for-purpose assets.
-  - Core transformation: one profile context to multi-channel deliverables.
+- Define transformation quality criteria for each API call:
+  - Accuracy and relevance.
+  - Consistency of tone and format.
+  - Actionability (can the user do something immediately?).
+  - Trust signals (explanations, confidence framing, source/context cues).
 
-- [ ] `app/api/career/generate-cover-letter/route.ts`:
-  - What it does: creates role-targeted cover letters using profile and role context.
-  - Metaphor: "tailor" that cuts a custom suit for each application.
-  - Core transformation: generic career history to role-specific persuasion.
+- Identify future enrichment opportunities to increase value for each buyer type:
+  - User value:
+    - Progress memory (resume where they left off, with momentum cues).
+    - Personalized weekly "next best action" plans.
+    - Adaptive coaching based on behavior and outcomes.
+  - Reseller value:
+    - Configurable prompt packs by industry/segment.
+    - Co-branded insight templates and ROI dashboards.
+    - Multi-client orchestration with benchmark comparisons.
+  - White-label/new owner value:
+    - Brand voice overlays and policy packs.
+    - Domain-specific enrichment modules (recruiting, education, coaching, etc.).
+    - Plug-in architecture for new model tasks without core rewrites.
 
-- [ ] `app/api/career/generate-interview-prep/route.ts`:
-  - What it does: builds interview prep material from profile + role signals.
-  - Metaphor: "sparring coach" turning background into rehearsable talking points.
-  - Core transformation: background evidence to interview-ready narratives.
+- Add human-behavior retention loops to increase return usage:
+  - Goal-gradient effect: show visible progress bars and "one step left" nudges.
+  - Variable reward: rotate insight depth/angle so each return visit feels fresh.
+  - Endowed progress: pre-fill early wins to reduce startup friction.
+  - Identity reinforcement: reflect user identity growth ("you are becoming...").
+  - Commitment consistency: prompt micro-commitments and revisit them in follow-ups.
+  - Zeigarnik effect: leave meaningful open loops ("next best step pending").
+  - Habit triggers: time-based reminders linked to user routines and prior success windows.
 
-- [ ] `app/api/career/generate-strategy-document/route.ts`:
-  - What it does: composes strategy docs from latest generated assets and goals.
-  - Metaphor: "game planner" combining player stats and match conditions.
-  - Core transformation: multiple assets to cohesive tactical plan.
+- Specify instrumentation needed to learn and improve:
+  - Track which enrichments drive repeat sessions.
+  - Track completion of suggested actions and downstream outcomes.
+  - Track confidence and satisfaction feedback after key AI outputs.
+  - Build cohort analysis by user, reseller tenant, and white-label deployment.
 
-- [ ] `app/api/career/generate-company-dossier/route.ts` and `app/api/career/generate-target-company-workflow/route.ts` and `lib/career-live-jobs.ts`:
-  - What it does: uses OpenAI web search tooling plus reasoning to gather and synthesize company/job intelligence with sources.
-  - Metaphor: "research analyst" that scouts the field and returns a structured brief.
-  - Core transformation: web signals to vetted, source-aware dossier/opportunity outputs.
-
-- [ ] `app/api/career/generate-target-company-workflow/route.ts`:
-  - What it does: chains multiple model calls (dossier -> cover letter -> interview prep) in one workflow.
-  - Metaphor: "assembly line" where each station upgrades the artifact before passing it on.
-  - Core transformation: multi-step pipeline that compounds value.
-
-- [ ] `app/api/teamsync/conversation/route.ts` and `app/api/teamsync/simulate/route.ts` and `app/api/teamsync/resources/route.ts`:
-  - What it does: powers team communication simulation, scenario response generation, and support resources.
-  - Metaphor: "flight simulator" for difficult workplace conversations.
-  - Core transformation: interpersonal context to practical response playbooks.
-
-- [ ] `lib/career-background-jobs.ts`:
-  - What it does: orchestrates background AI jobs across profile generation, assets, dossier research, fit analysis, salary and outreach strategy, course recommendations, and premium autopilot runs.
-  - Metaphor: "back-office AI operations center" running high-value tasks while the user is offline.
-  - Core transformation: asynchronous workflow automation from queued intent to saved assets and recommendations.
-
-- [ ] `lib/openai-organization-usage.ts` and admin overview routes:
-  - What it does: calls OpenAI organization usage/cost endpoints for budget visibility and governance.
-  - Metaphor: "fuel gauge + dashboard" showing burn rate before the engine overheats.
-  - Core transformation: raw usage telemetry to budget guardrails and executive signals.
-
-- [ ] `lib/telemetry.ts`:
-  - What it does: estimates cost and logs API usage for product analytics and margin monitoring.
-  - Metaphor: "black box recorder" for model economics and reliability learning.
-  - Core transformation: token-level events to unit-economics intelligence.
-
-## Future Enrichment Opportunities (Higher Value for User, Reseller, White Label, New Owner)
-
-- [ ] User enrichment:
-  - Persistent memory of goals, blockers, and wins with "continue where you left off" flows.
-  - Outcome-linked personalization: adjust prompts based on interview callbacks, replies, and placement outcomes.
-  - Confidence calibration: show why guidance is suggested and how certain the system is.
-
-- [ ] Reseller enrichment:
-  - Segment-specific prompt packs and rubric templates per industry.
-  - Tenant-level benchmarking so partners can show comparative performance lift.
-  - Packaged reporting exports that translate AI output into client-ready ROI narratives.
-
-- [ ] White-label/new owner enrichment:
-  - Brand voice overlays, compliance packs, and policy constraints per deployment.
-  - Swappable workflow modules (career, coaching, education, recruiting) using shared orchestration.
-  - Admin knobs for quality/cost tradeoffs by product tier.
-
-## Human Behavior Research: Keep Users Coming Back
-
-- [ ] Goal-gradient effect: show visible progress ladders so users accelerate near completion.
-- [ ] Endowed progress: pre-seed early wins to reduce start friction and boost continuation.
-- [ ] Variable reward scheduling: alternate high-utility insights and surprise-value insights to sustain curiosity.
-- [ ] Zeigarnik effect: preserve meaningful unfinished next steps so users return to close loops.
-- [ ] Commitment and consistency: capture micro-commitments and remind users of prior stated goals.
-- [ ] Identity reinforcement: reflect growth narrative ("you are becoming interview-ready") to build intrinsic motivation.
-- [ ] Habit timing: schedule nudges around each user's proven active windows rather than generic reminders.
-- [ ] Social proof where appropriate: anonymized benchmarks to normalize effort and reduce dropout.
-
-## Measurement and Experimentation
-
-- [ ] Define a scorecard for every OpenAI interaction: usefulness, action completion rate, repeat usage, and downstream outcomes.
-- [ ] Add A/B testing for prompt strategies, output formats, and follow-up timing.
-- [ ] Track retention by feature cluster (generation, simulation, live job intelligence, autopilot).
-- [ ] Tie model spend to revenue impact by segment (direct user, reseller tenant, white-label deployment).
-- [ ] Set quality guardrails: hallucination rate, source coverage rate, and edit-before-use rate.
-
-
-## TeamSync Workstream: Resilience, Scenario Testing, and Digital Twin
-
-Primary references:
-- [ ] Read and use `TEAMSYNC_DEEP_RESEARCH_BRIEF_2026-04-24.md` for strategy context.
-- [ ] Read and use `TEAMSYNC_FUNCTIONALITY_IMPLEMENTATION_GUIDE_2026-04-24.md` for build instructions.
-- [ ] Execute tickets from `CODEX_JIRA_BACKLOG_TOKEN_OPTIMIZED_2026-04-24.md`.
-- [ ] Use `FUTURE_PATHWAY.md` as the sequence guide for long-range TeamSync pathway decisions.
-- [ ] Use `CODEX_HANDOFF_TEAMSYNC_2026-04-24.md` as the handoff pack for continuity and execution transfer.
-
-Execution mode (token-optimized):
-- [ ] Use ticket ID references in updates (`Done / In progress / Blocked / Next`) instead of restating full scope.
-- [ ] Treat `TS-DOD-001`, `TS-NFR-001`, `TS-AI-001`, and `TS-SEC-001` as global gates on all TeamSync tickets.
-
-### Phase 1: Foundation (Schema + Ingestion + Scenario Runtime)
-- [ ] Complete `TS-101` canonical TeamSync schema + indexes.
-- [ ] Complete `TS-102` ingestion API + validation.
-- [ ] Complete `TS-103` normalization + confidence scoring.
-- [ ] Complete `TS-104` ingestion job runner (retry/resume).
-- [ ] Complete `TS-201` scenario CRUD.
-- [ ] Complete `TS-202` scenario run endpoint with strict output schema.
-- [ ] Complete `TS-203` tolerance breach evaluator.
-- [ ] Complete `TS-204` 30/60/90 action plan generation.
-
-### Phase 2: Digital Twin MVP (Priority)
-- [ ] Complete `TS-301` twin snapshot service.
-- [ ] Complete `TS-302` twin scoring model v1.
-- [ ] Complete `TS-303` twin overview UI.
-- [ ] Complete `TS-304` what-if simulation API (role/reporting/cadence deltas).
-- [ ] Complete `TS-305` twin narrative generation with strict schema.
-- [ ] Validate MVP acceptance: twin snapshot speed, confidence bands, assumption trace, export-ready summary.
-
-### Phase 3: Board + Evidence + Action Assurance
-- [ ] Complete `TS-401` board cockpit API aggregator.
-- [ ] Complete `TS-402` board cockpit UI.
-- [ ] Complete `TS-403` board packet export service.
-- [ ] Complete `TS-404` evidence workspace + lineage view.
-- [ ] Complete `TS-501` action CRUD + transitions.
-- [ ] Complete `TS-502` action update feed + progress tracking.
-- [ ] Complete `TS-503` action impact recalculation.
-
-### Phase 4: Practitioner Growth Workspace
-- [ ] Complete `TS-601` practitioner portfolio dashboard.
-- [ ] Complete `TS-602` playbook runner (Alignment Sprint / Quarterly Simulation / Board Review).
-- [ ] Complete `TS-603` commercial output templates.
-
-### Readiness and Launch Gates
-- [ ] Run full DoD check against `TS-DOD-001` for all completed tickets.
-- [ ] Run NFR hardening pass from `TS-NFR-001`.
-- [ ] Run AI guardrail verification from `TS-AI-001`.
-- [ ] Run security + RLS verification from `TS-SEC-001`.
-- [ ] Confirm Board Resilience Cockpit + Digital Twin + Scenario Engine + Action Tracker work end-to-end.
-
-### Weekly Operating Cadence (Execution Discipline)
-- [ ] Monday: set `In progress` ticket IDs and sprint targets.
-- [ ] Wednesday: review blockers and dependency tickets.
-- [ ] Friday: publish `Done / In progress / Blocked / Next` ticket summary.
-
-### Start Here This Week (Sprint 1)
-- [ ] Open and review `CODEX_JIRA_BACKLOG_TOKEN_OPTIMIZED_2026-04-24.md`.
-- [ ] Complete shared gates: `TS-DOD-001`, `TS-AI-001`.
-- [ ] Build foundation: `TS-101`, `TS-102`.
-- [ ] Build scenario runtime core: `TS-201`, `TS-202`.
-- [ ] End-of-week checkpoint: publish `Done / In progress / Blocked / Next` by ticket ID.
+- Define output artifact format (foundational internal asset):
+  - System map of all OpenAI interactions.
+  - Plain-language interaction catalog.
+  - Enrichment backlog with impact/effort scoring.
+  - Retention strategy playbook with experimentation roadmap.
