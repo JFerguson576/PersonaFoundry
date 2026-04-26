@@ -185,13 +185,15 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     }
     setPendingFile(file)
     setSelectedFileName(file.name)
-    setMessage(`File selected for ${selectedOption.label}. Click 'Upload and save' to continue.`)
+    setMessage(`Uploading ${selectedOption.label} now...`)
     if (event.target) event.target.value = ""
+    await handleUploadSelectedFile(file)
   }
 
-  async function handleUploadSelectedFile() {
+  async function handleUploadSelectedFile(fileOverride?: File) {
     if (fileLoading) return
-    if (!pendingFile) {
+    const fileToUpload = fileOverride ?? pendingFile
+    if (!fileToUpload) {
       setMessage("Choose a file first.")
       return
     }
@@ -203,7 +205,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
 
     try {
       const formData = new FormData()
-      formData.append("file", pendingFile)
+      formData.append("file", fileToUpload)
       formData.append("candidate_id", candidateId)
       formData.append("source_type", sourceType)
       if (title.trim()) formData.append("title", title.trim())
@@ -215,13 +217,13 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       const json = await response.json()
       if (!response.ok) throw new Error(json.error || "Failed to upload file")
 
-      setSelectedFileName(json.file_name || pendingFile.name)
+      setSelectedFileName(json.file_name || fileToUpload.name)
       setPendingFile(null)
       setTitle("")
       setContentText("")
       clearActiveDraft()
       markDone(sourceType)
-      setMessage(saveSuccessMessage(json.file_name || pendingFile.name))
+      setMessage(saveSuccessMessage(json.file_name || fileToUpload.name))
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) {
@@ -517,15 +519,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                 <label className="block text-sm font-medium">Upload from your computer</label>
                 <div className="flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => fileInputRef.current?.click()} disabled={fileLoading} className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
-                    {fileLoading ? "Preparing..." : "Select file"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleUploadSelectedFile()}
-                    disabled={fileLoading || !pendingFile}
-                    className="rounded-xl border border-[#0a66c2] bg-[#0a66c2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0958a8] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {fileLoading ? "Uploading..." : "Upload and save"}
+                    {fileLoading ? "Uploading..." : "Select file"}
                   </button>
                 </div>
               </div>
@@ -533,7 +527,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
               <p className="text-xs text-neutral-500">Supported: `.txt`, `.md`, `.rtf`, `.docx`, `.pdf` (up to 10MB).</p>
               {pendingFile ? (
                 <p className="mt-1 text-xs text-amber-800">
-                  Selected (not uploaded yet): <span className="font-medium">{pendingFile.name}</span>
+                  Upload in progress: <span className="font-medium">{pendingFile.name}</span>
                 </p>
               ) : null}
               {selectedFileName && !pendingFile ? (
