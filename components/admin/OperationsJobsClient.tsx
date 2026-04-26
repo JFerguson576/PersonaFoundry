@@ -315,7 +315,26 @@ type OperationsMenuGroup =
   | "candidateManagement"
   | "financials"
   | "executionRoadmap"
+  | "contentLibrary"
   | "quickActions"
+
+type ContentLibraryItem = {
+  id: string
+  title: string
+  href: string
+  type: "doc" | "pdf" | "md" | "xlsx" | "image" | "video" | "audio"
+  section: "career" | "persona" | "teamsync" | "operations" | "platform"
+  notes?: string
+  created_at: string
+}
+
+type ContentLibraryDraft = {
+  title: string
+  href: string
+  type: ContentLibraryItem["type"]
+  section: ContentLibraryItem["section"]
+  notes: string
+}
 
 
 function toneForStatus(status: string) {
@@ -555,6 +574,7 @@ export function OperationsJobsClient() {
   const OPERATIONS_LAYOUT_PREFS_KEY = "personara-operations-layout-v1"
   const EXECUTION_BACKLOG_ASSETS_KEY = "personara-operations-execution-assets-v1"
   const EXECUTION_BACKLOG_STATE_KEY = "personara-operations-execution-state-v1"
+  const CONTENT_LIBRARY_ITEMS_KEY = "personara-operations-content-library-v1"
   const [session, setSession] = useState<Session | null>(null)
   const [overview, setOverview] = useState<OverviewResponse | null>(null)
   const [message, setMessage] = useState("")
@@ -575,6 +595,7 @@ export function OperationsJobsClient() {
   const [financialMenuOpen, setFinancialMenuOpen] = useState(false)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
   const [executionRoadmapMenuOpen, setExecutionRoadmapMenuOpen] = useState(false)
+  const [contentLibraryMenuOpen, setContentLibraryMenuOpen] = useState(false)
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
   const [activeFinancialRange, setActiveFinancialRange] = useState<"daily" | "weekly" | "monthly">("weekly")
   const [activeFinancialRevenueLines, setActiveFinancialRevenueLines] = useState<"total" | "module" | "tier">("total")
@@ -593,6 +614,7 @@ export function OperationsJobsClient() {
     live: false,
     financials: false,
     executionBacklog: false,
+    contentLibrary: false,
     securityAudit: false,
   })
   const [teamsyncOutreachQueue, setTeamsyncOutreachQueue] = useState<TeamSyncOutreachQueueRow[]>([])
@@ -632,6 +654,14 @@ export function OperationsJobsClient() {
   const [executionBacklogDeletedIds, setExecutionBacklogDeletedIds] = useState<string[]>([])
   const [executionBacklogStatusOverrides, setExecutionBacklogStatusOverrides] = useState<Record<string, CodexBacklogItem["status"]>>({})
   const [showArchivedBacklog, setShowArchivedBacklog] = useState(false)
+  const [contentLibraryItems, setContentLibraryItems] = useState<ContentLibraryItem[]>([])
+  const [contentLibraryDraft, setContentLibraryDraft] = useState<ContentLibraryDraft>({
+    title: "",
+    href: "",
+    type: "doc",
+    section: "operations",
+    notes: "",
+  })
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -667,6 +697,7 @@ export function OperationsJobsClient() {
             live: true,
             financials: true,
             executionBacklog: false,
+            contentLibrary: false,
             securityAudit: false,
           })
         }
@@ -714,6 +745,28 @@ export function OperationsJobsClient() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
+    try {
+      const raw = window.localStorage.getItem(CONTENT_LIBRARY_ITEMS_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as ContentLibraryItem[]
+      if (Array.isArray(parsed)) {
+        setContentLibraryItems(
+          parsed.filter(
+            (item) =>
+              item &&
+              typeof item.id === "string" &&
+              typeof item.title === "string" &&
+              typeof item.href === "string" &&
+              typeof item.type === "string" &&
+              typeof item.section === "string"
+          )
+        )
+      }
+    } catch {}
+  }, [CONTENT_LIBRARY_ITEMS_KEY])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     window.localStorage.setItem(RECOVERY_LOG_KEY, JSON.stringify(recoveryLogs))
   }, [RECOVERY_LOG_KEY, recoveryLogs])
 
@@ -743,6 +796,11 @@ export function OperationsJobsClient() {
     executionBacklogDeletedIds,
     executionBacklogStatusOverrides,
   ])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(CONTENT_LIBRARY_ITEMS_KEY, JSON.stringify(contentLibraryItems))
+  }, [CONTENT_LIBRARY_ITEMS_KEY, contentLibraryItems])
 
   function updateBacklogAssetDraft(itemId: string, patch: Partial<BacklogAssetDraft>) {
     setBacklogAssetDrafts((current) => ({
@@ -1614,6 +1672,7 @@ export function OperationsJobsClient() {
       candidateManagement: candidateMenuOpen,
       financials: financialMenuOpen,
       executionRoadmap: executionRoadmapMenuOpen,
+      contentLibrary: contentLibraryMenuOpen,
       quickActions: quickActionsMenuOpen,
     }
     const nextOpen = !current[group]
@@ -1622,7 +1681,39 @@ export function OperationsJobsClient() {
     setCandidateMenuOpen(group === "candidateManagement" ? nextOpen : false)
     setFinancialMenuOpen(group === "financials" ? nextOpen : false)
     setExecutionRoadmapMenuOpen(group === "executionRoadmap" ? nextOpen : false)
+    setContentLibraryMenuOpen(group === "contentLibrary" ? nextOpen : false)
     setQuickActionsMenuOpen(group === "quickActions" ? nextOpen : false)
+  }
+
+  function addContentLibraryItem() {
+    const title = contentLibraryDraft.title.trim()
+    const href = contentLibraryDraft.href.trim()
+    if (!title || !href) {
+      setMessage("Content Library: add both title and file path/link.")
+      return
+    }
+    const item: ContentLibraryItem = {
+      id: crypto.randomUUID(),
+      title,
+      href,
+      type: contentLibraryDraft.type,
+      section: contentLibraryDraft.section,
+      notes: contentLibraryDraft.notes.trim() || undefined,
+      created_at: new Date().toISOString(),
+    }
+    setContentLibraryItems((current) => [item, ...current])
+    setContentLibraryDraft({
+      title: "",
+      href: "",
+      type: contentLibraryDraft.type,
+      section: contentLibraryDraft.section,
+      notes: "",
+    })
+    setMessage("Content Library item added.")
+  }
+
+  function removeContentLibraryItem(id: string) {
+    setContentLibraryItems((current) => current.filter((item) => item.id !== id))
   }
 
   function focusPanel(panel: keyof typeof collapsedPanels) {
