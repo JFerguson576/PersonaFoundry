@@ -1944,6 +1944,32 @@ export function OperationsJobsClient() {
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
                 <button
                   type="button"
+                  onClick={() => toggleOperationsMenu("contentLibrary")}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                  aria-expanded={contentLibraryMenuOpen}
+                >
+                  Site content
+                  <span>{contentLibraryMenuOpen ? "-" : "+"}</span>
+                </button>
+                {contentLibraryMenuOpen ? (
+                  <div className="px-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => focusPanel("contentLibrary")}
+                      className={`w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                        activePanel === "contentLibrary"
+                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                      }`}
+                    >
+                      Content library
+                    </button>
+                  </div>
+                ) : null}
+              </section>
+              <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                <button
+                  type="button"
                   onClick={() => toggleOperationsMenu("quickActions")}
                   className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
                   aria-expanded={quickActionsMenuOpen}
@@ -2657,6 +2683,148 @@ export function OperationsJobsClient() {
                           )
                         })()}
                       </article>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </section>
+            <section id="operations-contentLibrary" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("contentLibrary") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Site content</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Content Library manager</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => togglePanel("contentLibrary")}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                >
+                  {collapsedPanels.contentLibrary ? "Expand" : "Collapse"}
+                </button>
+              </div>
+              {!collapsedPanels.contentLibrary ? (
+                <>
+                  <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f7fbff] px-3 py-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">Add item</div>
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                        Title
+                        <input
+                          value={contentLibraryDraft.title}
+                          onChange={(event) =>
+                            setContentLibraryDraft((current) => ({ ...current, title: event.target.value }))
+                          }
+                          placeholder="Career Intelligence Blueprint"
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
+                        />
+                      </label>
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                        File path or URL
+                        <input
+                          value={contentLibraryDraft.href}
+                          onChange={(event) =>
+                            setContentLibraryDraft((current) => ({ ...current, href: event.target.value }))
+                          }
+                          placeholder="/docs/new-file.pdf or https://..."
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
+                        />
+                      </label>
+                    </div>
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-[150px_180px_1fr_auto]">
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                        Type
+                        <select
+                          value={contentLibraryDraft.type}
+                          onChange={(event) =>
+                            setContentLibraryDraft((current) => ({
+                              ...current,
+                              type: event.target.value as ContentLibraryItem["type"],
+                            }))
+                          }
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
+                        >
+                          <option value="doc">DOC</option>
+                          <option value="pdf">PDF</option>
+                          <option value="md">MD</option>
+                          <option value="xlsx">XLSX</option>
+                          <option value="image">IMAGE</option>
+                          <option value="video">VIDEO</option>
+                          <option value="audio">AUDIO</option>
+                        </select>
+                      </label>
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                        Section
+                        <select
+                          value={contentLibraryDraft.section}
+                          onChange={(event) =>
+                            setContentLibraryDraft((current) => ({
+                              ...current,
+                              section: event.target.value as ContentLibraryItem["section"],
+                            }))
+                          }
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
+                        >
+                          <option value="career">Career</option>
+                          <option value="persona">Persona</option>
+                          <option value="teamsync">TeamSync</option>
+                          <option value="operations">Operations</option>
+                          <option value="platform">Platform</option>
+                        </select>
+                      </label>
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                        Notes
+                        <input
+                          value={contentLibraryDraft.notes}
+                          onChange={(event) =>
+                            setContentLibraryDraft((current) => ({ ...current, notes: event.target.value }))
+                          }
+                          placeholder="Optional note"
+                          className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
+                        />
+                      </label>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={addContentLibraryItem}
+                          className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                        >
+                          Add content
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 space-y-1.5">
+                    {contentLibraryItems.length === 0 ? (
+                      <div className="rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
+                        No content items yet.
+                      </div>
+                    ) : null}
+                    {contentLibraryItems.map((item) => (
+                      <div key={item.id} className="rounded-xl border border-[#d8e4f2] bg-white px-3 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-[#142c4f]">{item.title}</div>
+                            <div className="truncate text-[11px] text-[#4a6388]">{item.href}</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="rounded-full border border-[#cbd8eb] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#456189]">
+                              {item.section}
+                            </span>
+                            <span className="rounded-full border border-[#cbd8eb] bg-[#f8fbff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#456189]">
+                              {item.type}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeContentLibraryItem(item.id)}
+                              className="rounded-full border border-[#e7c1c9] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a23d55] hover:bg-[#fff3f6]"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        {item.notes ? <p className="mt-1 text-xs text-[#36537d]">{item.notes}</p> : null}
+                      </div>
                     ))}
                   </div>
                 </>
