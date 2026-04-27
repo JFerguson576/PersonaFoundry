@@ -336,6 +336,23 @@ type ContentLibraryDraft = {
   notes: string
 }
 
+function inferContentLibraryType(fileName: string): ContentLibraryItem["type"] {
+  const lower = fileName.toLowerCase()
+  if (lower.endsWith(".pdf")) return "pdf"
+  if (lower.endsWith(".md")) return "md"
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv")) return "xlsx"
+  if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif")) {
+    return "image"
+  }
+  if (lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".webm")) return "video"
+  if (lower.endsWith(".mp3") || lower.endsWith(".wav") || lower.endsWith(".m4a")) return "audio"
+  return "doc"
+}
+
+function titleFromFileName(fileName: string) {
+  return fileName.replace(/\.[^/.]+$/, "").trim()
+}
+
 
 function toneForStatus(status: string) {
   if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-800"
@@ -477,6 +494,16 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     target: "3 weeks",
     notes:
       "Add a CMS-style Operations section to create/edit/delete Resources items, support docs/images/video/audio, manage draft/published/archive states, and keep a reusable media asset library for future content.",
+  },
+  {
+    id: "p1-content-library-save-delete-filepicker",
+    priority: "P1",
+    status: "planned",
+    title: "Content Library save/delete + file-system picker",
+    owner: "Platform + Content Ops",
+    target: "2 weeks",
+    notes:
+      "Add explicit save/update/delete actions for content items and wire the add-content flow to a native file-system picker for uploads (instead of manual path entry), with clear success/error states and permission-safe handling.",
   },
   {
     id: "p1-context-aware-agent",
@@ -662,6 +689,9 @@ export function OperationsJobsClient() {
     section: "operations",
     notes: "",
   })
+  const [contentLibrarySelectedFileName, setContentLibrarySelectedFileName] = useState("")
+  const [loadingContentLibraryFile, setLoadingContentLibraryFile] = useState(false)
+  const contentLibraryFileInputRef = useRef<HTMLInputElement | null>(null)
   const hasRunAutoRecovery = useRef(false)
 
   useEffect(() => {
@@ -1689,7 +1719,7 @@ export function OperationsJobsClient() {
     const title = contentLibraryDraft.title.trim()
     const href = contentLibraryDraft.href.trim()
     if (!title || !href) {
-      setMessage("Content Library: add both title and file path/link.")
+      setMessage("Content Library: add a title and either choose a file or enter a file path/link.")
       return
     }
     const item: ContentLibraryItem = {
@@ -1709,11 +1739,49 @@ export function OperationsJobsClient() {
       section: contentLibraryDraft.section,
       notes: "",
     })
+    setContentLibrarySelectedFileName("")
     setMessage("Content Library item added.")
   }
 
   function removeContentLibraryItem(id: string) {
     setContentLibraryItems((current) => current.filter((item) => item.id !== id))
+  }
+
+  function openContentLibraryFilePicker() {
+    contentLibraryFileInputRef.current?.click()
+  }
+
+  async function onContentLibraryFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setLoadingContentLibraryFile(true)
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "")
+        reader.onerror = () => reject(new Error("Could not read the selected file."))
+        reader.readAsDataURL(file)
+      })
+      if (!dataUrl) {
+        throw new Error("Selected file could not be converted for upload.")
+      }
+      const nextType = inferContentLibraryType(file.name)
+      setContentLibraryDraft((current) => ({
+        ...current,
+        title: current.title.trim().length > 0 ? current.title : titleFromFileName(file.name),
+        href: dataUrl,
+        type: nextType,
+      }))
+      setContentLibrarySelectedFileName(file.name)
+      setMessage(`Content Library: ${file.name} selected. Click Add content to save it.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not process selected file.")
+    } finally {
+      setLoadingContentLibraryFile(false)
+      if (event.currentTarget) {
+        event.currentTarget.value = ""
+      }
+    }
   }
 
   function focusPanel(panel: keyof typeof collapsedPanels) {
@@ -2725,10 +2793,38 @@ export function OperationsJobsClient() {
                           onChange={(event) =>
                             setContentLibraryDraft((current) => ({ ...current, href: event.target.value }))
                           }
-                          placeholder="/docs/new-file.pdf or https://..."
+                          placeholder="Choose a file below, or enter /docs/file.pdf or https://..."
                           className="mt-1 w-full rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs text-[#163159]"
                         />
                       </label>
+                    </div>
+                    <div className="mt-1.5 rounded-lg border border-[#cfe0f4] bg-white px-2 py-1.5">
+                      <input
+                        ref={contentLibraryFileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={onContentLibraryFilePicked}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">
+                            Upload from computer
+                          </div>
+                          <div className="mt-0.5 text-xs text-[#2e4b74]">
+                            {contentLibrarySelectedFileName
+                              ? `Selected: ${contentLibrarySelectedFileName}`
+                              : "Select a local file to auto-fill title, type, and file link."}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openContentLibraryFilePicker}
+                          disabled={loadingContentLibraryFile}
+                          className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#edf5ff] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {loadingContentLibraryFile ? "Reading file..." : "Choose file"}
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-1.5 grid gap-1.5 md:grid-cols-[150px_180px_1fr_auto]">
                       <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4a6388]">

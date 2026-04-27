@@ -4782,7 +4782,7 @@ export function TeamSyncWorkspaceClient() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] text-[#64748b]">No members loaded yet. Start by entering the member name below, then upload the strengths report.</p>
                   <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                    0 loaded
+                    no members yet
                   </span>
                 </div>
               </div>
@@ -4791,7 +4791,7 @@ export function TeamSyncWorkspaceClient() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Loaded members</div>
                   <span className="rounded-full border border-[#d8e4f2] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#475569]">
-                    {members.length} loaded
+                    {members.length} member{members.length === 1 ? "" : "s"}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -5073,8 +5073,25 @@ export function TeamSyncWorkspaceClient() {
                         </div>
                         {lastUploadedFileName ? (
                           <div className="mt-1 rounded-lg border border-[#bfdbfe] bg-white px-2 py-1 text-[11px] text-[#334155]">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold">Latest report:</span> {lastUploadedFileName}
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                <span className="font-semibold">Latest report:</span>
+                                <span className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap" title={lastUploadedFileName}>
+                                  {lastUploadedFileName}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLastUploadedFileName("")
+                                  setLastUploadSummary("")
+                                  setMemberStrengths("")
+                                  setMessage("Latest report cleared. Upload the correct report to continue.")
+                                }}
+                                className="rounded-md border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 hover:bg-rose-100"
+                              >
+                                Clear report
+                              </button>
                               {!memberFileLoading && selectedStrengthCount > 0 ? (
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
                                   Ready to review
@@ -5670,6 +5687,7 @@ export function TeamSyncWorkspaceClient() {
               </button>
             </div>
             <p className="mt-0.5 text-xs text-[#475569]">Profile balance preview before you run.</p>
+            {simulating ? <p className="mt-0.5 text-xs text-[#1e3a8a]">This usually takes around a minute. You can stay on this step while it runs.</p> : null}
 
             <div className="mt-1.5 rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-1.5">
               <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">

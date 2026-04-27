@@ -734,6 +734,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const hasGallupStrengths = documents.some((doc) => doc.source_type === "gallup_strengths" || doc.source_type === "strengths")
   const hasLinkedIn = documents.some((doc) => doc.source_type === "linkedin")
   const hasCoverLetterExamples = documents.some((doc) => doc.source_type === "cover_letter")
+  const latestCvName = documents.find((doc) => doc.source_type === "cv")?.title?.trim() || ""
+  const latestStrengthsName =
+    documents.find((doc) => doc.source_type === "gallup_strengths" || doc.source_type === "strengths")?.title?.trim() || ""
+  const latestLinkedInName = documents.find((doc) => doc.source_type === "linkedin")?.title?.trim() || ""
+  const keySourceNames = [latestCvName, latestStrengthsName, latestLinkedInName].filter((name): name is string => Boolean(name))
+  const fallbackRecentSourceNames = documents
+    .map((doc) => doc.title?.trim() || "")
+    .filter((name): name is string => Boolean(name))
+  const loadedSourceNames = keySourceNames.length > 0 ? keySourceNames : fallbackRecentSourceNames
+  const loadedSourceSummaryLabel =
+    loadedSourceNames.length === 0
+      ? `${documents.length} loaded`
+      : loadedSourceNames.length <= 2
+        ? loadedSourceNames.join(" | ")
+        : `${loadedSourceNames.slice(0, 2).join(" | ")} +${loadedSourceNames.length - 2}`
+  const loadedSourceSummaryTitle = loadedSourceNames.length > 0 ? loadedSourceNames.join(" | ") : ""
   const strengthSourceText = documents
     .filter((doc) => doc.source_type === "gallup_strengths" || doc.source_type === "strengths")
     .map((doc) => doc.content_text || "")
@@ -3972,8 +3988,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700">
                   Core inputs first: CV, Gallup Strengths, LinkedIn, and supporting proof.
-                  <span className="ml-2 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                    {documents.length} loaded
+                  <span
+                    title={loadedSourceSummaryTitle}
+                    className="ml-2 inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700"
+                  >
+                    {loadedSourceSummaryLabel}
                   </span>
                 </div>
               </div>
@@ -4008,7 +4027,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     Start with CV + Gallup Strengths, then add LinkedIn and supporting proof.
                   </div>
                   <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700">
-                    Input quality: <span className="font-semibold">{sourcePackStrength}</span> | Loaded: <span className="font-semibold">{documents.length}</span>
+                    Input quality: <span className="font-semibold">{sourcePackStrength}</span> | Loaded:{" "}
+                    <span className="font-semibold">{loadedSourceSummaryLabel}</span>
                   </div>
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950">
                     {hasStrengthThemes

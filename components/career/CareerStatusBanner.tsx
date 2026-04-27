@@ -7,6 +7,7 @@ type Props = {
 }
 
 export function CareerStatusBanner({ message, tone = "info", className = "" }: Props) {
+  const isProgress = tone === "progress"
   const toneMeta =
     tone === "success"
       ? {
@@ -39,8 +40,10 @@ export function CareerStatusBanner({ message, tone = "info", className = "" }: P
         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-current/80">
           {toneMeta.label}
         </span>
+        {isProgress ? <span className="h-2.5 w-2.5 rounded-full bg-current/70 animate-pulse" aria-hidden /> : null}
       </div>
       <div className="mt-2">{message}</div>
+      {isProgress ? <div className="mt-1 text-xs text-current/75">This can take up to a minute. You can keep working while it runs.</div> : null}
     </div>
   )
 }

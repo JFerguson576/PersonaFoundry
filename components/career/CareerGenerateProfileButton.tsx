@@ -44,10 +44,20 @@ export function CareerGenerateProfileButton({ candidateId }: Props) {
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="mt-4 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className={`mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+          loading ? "animate-pulse bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900" : "bg-black"
+        }`}
       >
-        {loading ? "Generating..." : "Generate new positioning version"}
+        {loading ? (
+          <>
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />
+            Generating...
+          </>
+        ) : (
+          "Generate new positioning version"
+        )}
       </button>
+      {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. You can stay on this page while it runs.</p> : null}
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
     </div>
