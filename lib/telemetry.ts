@@ -22,6 +22,11 @@ type ApiUsageInput = {
   inputTokens?: number | null
   outputTokens?: number | null
   totalTokens?: number | null
+  interactionKey?: string | null
+  schemaVersion?: string | null
+  qualityScoreTotal?: number | null
+  userActionAfterOutput?: string | null
+  timeToFirstActionMs?: number | null
   metadata?: Record<string, unknown>
 }
 
@@ -130,6 +135,11 @@ export async function logApiUsage(client: TelemetryClient, input: ApiUsageInput)
         output_tokens: input.outputTokens ?? null,
         total_tokens: input.totalTokens ?? null,
         estimated_cost_usd: estimateOpenAICost(input.model, input.inputTokens, input.outputTokens, input.totalTokens),
+        interaction_key: input.interactionKey ?? null,
+        schema_version: input.schemaVersion ?? null,
+        quality_score_total: input.qualityScoreTotal ?? null,
+        user_action_after_output: input.userActionAfterOutput ?? null,
+        time_to_first_action_ms: input.timeToFirstActionMs ?? null,
         metadata: input.metadata ?? {},
       },
     ])

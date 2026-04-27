@@ -431,6 +431,7 @@ export function ExperienceAgentWidget({ enabled = true, inline = true }: { enabl
   const [feedbackByMessageId, setFeedbackByMessageId] = useState<Record<string, "up" | "down">>({})
   const quickPrompts = useMemo(() => modulePromptChips(moduleName, workflowSignal), [moduleName, workflowSignal])
   const missingTableMessage = "Agent storage is not enabled yet. Guidance still works."
+  const signInRequiredMessage = "Sign in to use the live Agent. I can then read this page context and guide your next step."
 
   useEffect(() => {
     setMessages((current) => {
@@ -473,6 +474,11 @@ export function ExperienceAgentWidget({ enabled = true, inline = true }: { enabl
       if (getJson?.table_missing) {
         showMissingTableInfo()
       }
+      if (getResponse.status === 401) {
+        setStatusTone("info")
+        setStatusMessage(signInRequiredMessage)
+        return ""
+      }
       if (getResponse.ok && getJson?.session?.id) {
         setSessionId(getJson.session.id)
         return getJson.session.id as string
@@ -492,6 +498,11 @@ export function ExperienceAgentWidget({ enabled = true, inline = true }: { enabl
       const postJson = await postResponse.json()
       if (postJson?.table_missing) {
         showMissingTableInfo()
+      }
+      if (postResponse.status === 401) {
+        setStatusTone("info")
+        setStatusMessage(signInRequiredMessage)
+        return ""
       }
       if (!postResponse.ok || !postJson?.session?.id) {
         throw new Error(postJson?.error || "Could not start an agent session")
@@ -529,7 +540,17 @@ export function ExperienceAgentWidget({ enabled = true, inline = true }: { enabl
 
     try {
       const activeSessionId = await ensureSession()
-      if (!activeSessionId) return
+      if (!activeSessionId) {
+        setMessages((current) => [
+          ...current,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            content: signInRequiredMessage,
+          },
+        ])
+        return
+      }
 
       const pageContext = collectPageContextSnapshot(pathname)
       const response = await fetch("/api/agent/respond", {

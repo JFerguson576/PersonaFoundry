@@ -152,7 +152,57 @@ type TesterFeedbackOutreachCampaignRow = {
 
 type TesterFeedbackNoteRow = {
   id: string
+  user_id: string | null
+  user_email: string | null
+  note_type: string | null
+  severity: "low" | "medium" | "high"
   status: "open" | "in_review" | "resolved"
+  message: string | null
+  module: string | null
+  route_path: string | null
+  full_url: string | null
+  section_anchor: string | null
+  page_title: string | null
+  viewport_width: number | null
+  viewport_height: number | null
+  browser_tz: string | null
+  admin_note: string | null
+  reviewed_by_email: string | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+function routeFromFullUrl(value: string | null) {
+  if (!value) return ""
+  try {
+    const url = new URL(value)
+    return `${url.pathname}${url.hash}`
+  } catch {
+    return value
+  }
+}
+
+function testerFeedbackRouteLabel(note: TesterFeedbackNoteRow) {
+  const route = note.route_path || routeFromFullUrl(note.full_url)
+  const anchor = note.section_anchor ? `#${note.section_anchor}` : ""
+  return route ? `${route}${route.includes("#") ? "" : anchor}` : note.module || "Unknown location"
+}
+
+function testerFeedbackPageKey(note: TesterFeedbackNoteRow) {
+  return `${note.module || "unknown"}|${testerFeedbackRouteLabel(note)}`
+}
+
+function testerSeverityToneClass(severity: TesterFeedbackNoteRow["severity"]) {
+  if (severity === "high") return "border-rose-200 bg-rose-50 text-rose-800"
+  if (severity === "medium") return "border-amber-200 bg-amber-50 text-amber-800"
+  return "border-sky-200 bg-sky-50 text-sky-800"
+}
+
+function testerStatusToneClass(status: TesterFeedbackNoteRow["status"]) {
+  if (status === "resolved") return "border-emerald-200 bg-emerald-50 text-emerald-800"
+  if (status === "in_review") return "border-amber-200 bg-amber-50 text-amber-800"
+  return "border-rose-200 bg-rose-50 text-rose-800"
 }
 
 type RevenueLinePoint = {
@@ -302,16 +352,27 @@ type BacklogAssetDraft = {
   type: "doc" | "pdf" | "md" | "xlsx" | "image"
 }
 
+type BacklogItemDraft = {
+  title: string
+  priority: CodexBacklogItem["priority"]
+  status: CodexBacklogItem["status"]
+  owner: string
+  target: string
+  notes: string
+}
+
 type ExecutionBacklogState = {
   order: string[]
   archivedIds: string[]
   deletedIds: string[]
   statusOverrides: Record<string, CodexBacklogItem["status"]>
+  customItems?: CodexBacklogItem[]
 }
 
 type OperationsMenuGroup =
   | "runHealth"
   | "marketingTools"
+  | "testerFeedback"
   | "candidateManagement"
   | "financials"
   | "executionRoadmap"
@@ -379,7 +440,7 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     owner: "Platform + Operations",
     target: "2 weeks",
     notes:
-      "Implement the Operations dashboard handover pack end-to-end: data model and APIs, status workflow, section modules, Codex execution flow, and seeded backlog import from the provided spec bundle.",
+      "Merged seed tasks CORE-1, CORE-2, and CORE-3. Implement the Operations dashboard handover pack end-to-end: data model and APIs, status workflow, section modules, Codex execution flow, and seeded backlog import from the provided spec bundle.",
   },
   {
     id: "p0-onboarding",
@@ -426,7 +487,7 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     owner: "Platform + Finance Ops",
     target: "2 weeks",
     notes:
-      "Track Codex/API usage as a first-class cost line in Financials, expose daily + monthly totals, and roll costs into margin guardrails and revenue-vs-expense monitoring.",
+      "Merged seed task RC-1. Track Codex/API usage as a first-class cost line in Financials, expose daily + monthly totals, add threshold alerts, and roll costs into margin guardrails and revenue-vs-expense monitoring.",
   },
   {
     id: "p0-codex-usage-automatic-control",
@@ -439,6 +500,36 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
       "Implement automatic CODEX usage controls: per-user and global spend caps, alert thresholds, guardrail actions when thresholds are crossed, and clear daily/monthly tracking inside Operations Financials.",
   },
   {
+    id: "p0-north-star-kpi",
+    priority: "P0",
+    status: "planned",
+    title: "North-star KPI tile and trend",
+    owner: "Operations + Data",
+    target: "2 weeks",
+    notes:
+      "Imported seed task NS-1. Add the north-star metric tile, daily/weekly trend line, and KPI context so weekly operators can see the highest-value action signal at a glance.",
+  },
+  {
+    id: "p0-funnel-control",
+    priority: "P0",
+    status: "planned",
+    title: "Conversion funnel taxonomy + drop-off dashboard",
+    owner: "Growth + Data",
+    target: "3 weeks",
+    notes:
+      "Merged seed tasks FC-1 and FC-2. Validate core funnel events, then show visit-to-paid conversion, drop-off percentages, and the biggest blocker to action each review cycle.",
+  },
+  {
+    id: "p0-ai-flow-registry",
+    priority: "P0",
+    status: "planned",
+    title: "Create AI flow registry",
+    owner: "Product + AI",
+    target: "2 weeks",
+    notes:
+      "Imported seed task AQ-1. Record production AI flows with owners, output contracts, fallback behavior, latency expectations, and quality-control status.",
+  },
+  {
     id: "p1-growth-loop",
     priority: "P1",
     status: "planned",
@@ -446,6 +537,46 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     owner: "Growth",
     target: "3 weeks",
     notes: "Issue one-time share codes, track redemptions and conversions, and report top referral contributors.",
+  },
+  {
+    id: "p1-prompt-versioning-rollback",
+    priority: "P1",
+    status: "planned",
+    title: "Add prompt versioning and rollback",
+    owner: "Product + AI",
+    target: "3 weeks",
+    notes:
+      "Imported seed task AQ-2. Give each AI flow an active prompt version, prompt history, rollback action, and visible release notes for prompt changes.",
+  },
+  {
+    id: "p1-retention-next-best-action-dashboard",
+    priority: "P1",
+    status: "planned",
+    title: "Weekly next-best-action dashboard",
+    owner: "Product + Retention",
+    target: "3 weeks",
+    notes:
+      "Imported seed task RE-1. Surface weekly action plans for active users, track completion, and connect the signal to retention experiments.",
+  },
+  {
+    id: "p1-pricing-packaging-matrix",
+    priority: "P1",
+    status: "planned",
+    title: "Pricing plan matrix editor",
+    owner: "Product + Finance Ops",
+    target: "3 weeks",
+    notes:
+      "Imported seed task PP-1. Add an editable Starter/Pro/Reseller/White-label plan matrix with feature limits and entitlement mapping.",
+  },
+  {
+    id: "p1-gtm-pipeline-board",
+    priority: "P1",
+    status: "planned",
+    title: "GTM pipeline board",
+    owner: "Growth + Sales Ops",
+    target: "3 weeks",
+    notes:
+      "Imported seed task GTM-1. Add lead stages, conversion counts, and editable pipeline movement for new, qualified, demo, pilot, won, and lost leads.",
   },
   {
     id: "p1-outreach",
@@ -525,6 +656,16 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
       "Build practitioner CRM + channel workflows: import practitioner lists, segment by ICP/tier/region, track outreach lifecycle, manage templates and campaigns, and report conversion from first contact to active subscription referrals.",
   },
   {
+    id: "p1-compliance-retention-deletion",
+    priority: "P1",
+    status: "planned",
+    title: "Compliance retention/deletion controls",
+    owner: "Compliance + Platform",
+    target: "4 weeks",
+    notes:
+      "Imported seed task CT-1. Add policy records, delete-request tracking, and audit-friendly status reporting for retention and deletion workflows.",
+  },
+  {
     id: "p1-teamsync-addon-practitioner-plan",
     priority: "P1",
     status: "planned",
@@ -572,6 +713,32 @@ const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
     target: "6 weeks",
     notes: "Publish exportable audit timelines, policy states, and governance summaries for enterprise buyers.",
   },
+  {
+    id: "p2-experiment-lifecycle-tracker",
+    priority: "P2",
+    status: "planned",
+    title: "Experiment lifecycle tracker",
+    owner: "Product + Growth",
+    target: "5 weeks",
+    notes:
+      "Imported seed task EL-1. Track experiments through planned, running, analyzing, adopted, and killed states with hypothesis, outcome, and decision notes.",
+  },
+  {
+    id: "p2-weekly-rhythm-workflow",
+    priority: "P2",
+    status: "planned",
+    title: "Weekly rhythm workflow",
+    owner: "Operations",
+    target: "4 weeks",
+    notes:
+      "Imported seed task WR-1. Add Monday metrics, Wednesday checkpoint, and Friday decisions workflow with recurring checklists and logged outcomes.",
+  },
+]
+
+const OPERATIONS_SEED_ASSETS: BacklogAsset[] = [
+  { label: "Operations Tasks Seed", href: "/docs/operations/operations-tasks-seed.json", type: "md" },
+  { label: "Detailed Operations Spec", href: "/docs/operations/operations-dashboard-detailed-codex-spec.md", type: "md" },
+  { label: "Operational Menu Playbook", href: "/docs/operations/operational-menu-codex-playbook.md", type: "md" },
 ]
 
 const EXECUTION_BACKLOG_ASSETS: Record<string, BacklogAsset[]> = {
@@ -580,6 +747,20 @@ const EXECUTION_BACKLOG_ASSETS: Record<string, BacklogAsset[]> = {
     { label: "Detailed Operations Spec", href: "/docs/operations/operations-dashboard-detailed-codex-spec.md", type: "md" },
     { label: "Operational Menu Playbook", href: "/docs/operations/operational-menu-codex-playbook.md", type: "md" },
     { label: "Operations Tasks Seed", href: "/docs/operations/operations-tasks-seed.json", type: "md" },
+  ],
+  "p0-north-star-kpi": OPERATIONS_SEED_ASSETS,
+  "p0-funnel-control": OPERATIONS_SEED_ASSETS,
+  "p0-ai-flow-registry": OPERATIONS_SEED_ASSETS,
+  "p1-prompt-versioning-rollback": OPERATIONS_SEED_ASSETS,
+  "p1-retention-next-best-action-dashboard": OPERATIONS_SEED_ASSETS,
+  "p1-pricing-packaging-matrix": OPERATIONS_SEED_ASSETS,
+  "p1-gtm-pipeline-board": OPERATIONS_SEED_ASSETS,
+  "p1-compliance-retention-deletion": OPERATIONS_SEED_ASSETS,
+  "p2-experiment-lifecycle-tracker": OPERATIONS_SEED_ASSETS,
+  "p2-weekly-rhythm-workflow": OPERATIONS_SEED_ASSETS,
+  "p0-codex-cost-observability": [
+    { label: "Operations Tasks Seed", href: "/docs/operations/operations-tasks-seed.json", type: "md" },
+    { label: "Detailed Operations Spec", href: "/docs/operations/operations-dashboard-detailed-codex-spec.md", type: "md" },
   ],
   "p1-teamsync-planning-pack-integration": [
     { label: "Future Pathway", href: "/docs/future-pathway.md", type: "md" },
@@ -593,6 +774,59 @@ const EXECUTION_BACKLOG_ASSETS: Record<string, BacklogAsset[]> = {
   "p1-content-library-cms": [{ label: "Primary To-Do Archive", href: "/docs/todo.md", type: "md" }],
   "p1-due-diligence-resources": [{ label: "Enterprise SaaS Delivery Review", href: "/docs/Personara_Enterprise_SaaS_Delivery_Review.docx", type: "doc" }],
   "p0-legal-policies-rollout": [{ label: "Moat Plan + Legal To-Do", href: "/docs/personara-moat-plan-todo.docx", type: "doc" }],
+}
+
+const EMPTY_BACKLOG_ITEM_DRAFT: BacklogItemDraft = {
+  title: "",
+  priority: "P1",
+  status: "planned",
+  owner: "",
+  target: "",
+  notes: "",
+}
+
+function createCustomBacklogId(title: string, existingIds: Set<string>) {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48)
+  const baseId = `custom-${slug || "roadmap-item"}`
+  let nextId = baseId
+  let counter = 2
+
+  while (existingIds.has(nextId)) {
+    nextId = `${baseId}-${counter}`
+    counter += 1
+  }
+
+  return nextId
+}
+
+function normalizeCustomBacklogItems(value: unknown): CodexBacklogItem[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((item): item is Partial<CodexBacklogItem> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : "",
+      priority: item.priority === "P0" || item.priority === "P1" || item.priority === "P2" ? item.priority : "P1",
+      status:
+        item.status === "planned" ||
+        item.status === "in_progress" ||
+        item.status === "blocked" ||
+        item.status === "completed"
+          ? item.status
+          : "planned",
+      title: typeof item.title === "string" ? item.title.trim() : "",
+      owner: typeof item.owner === "string" && item.owner.trim() ? item.owner.trim() : "Operations",
+      target: typeof item.target === "string" && item.target.trim() ? item.target.trim() : "TBD",
+      notes:
+        typeof item.notes === "string" && item.notes.trim()
+          ? item.notes.trim()
+          : "Custom backlog item added from the Operations dashboard.",
+    }))
+    .filter((item) => item.id.length > 0 && item.title.length > 0)
 }
 
 export function OperationsJobsClient() {
@@ -618,6 +852,7 @@ export function OperationsJobsClient() {
   const [activePanel, setActivePanel] = useState<keyof typeof collapsedPanels>("digest")
   const [runHealthMenuOpen, setRunHealthMenuOpen] = useState(false)
   const [marketingToolsMenuOpen, setMarketingToolsMenuOpen] = useState(false)
+  const [testerFeedbackMenuOpen, setTesterFeedbackMenuOpen] = useState(false)
   const [candidateMenuOpen, setCandidateMenuOpen] = useState(false)
   const [financialMenuOpen, setFinancialMenuOpen] = useState(false)
   const [quickActionsMenuOpen, setQuickActionsMenuOpen] = useState(false)
@@ -668,6 +903,7 @@ export function OperationsJobsClient() {
   const [savingEconomicsUserId, setSavingEconomicsUserId] = useState("")
   const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
   const [sendingTesterFeedbackOutreach, setSendingTesterFeedbackOutreach] = useState(false)
+  const [reviewingTesterFeedbackId, setReviewingTesterFeedbackId] = useState("")
   const [testerAudienceStatus, setTesterAudienceStatus] = useState<"all" | "open" | "in_review" | "resolved">("open")
   const [testerAudienceModule, setTesterAudienceModule] = useState("all")
   const [testerOutreachSubject, setTesterOutreachSubject] = useState("Personara tester follow-up")
@@ -676,6 +912,8 @@ export function OperationsJobsClient() {
   )
   const [executionBacklogCustomAssets, setExecutionBacklogCustomAssets] = useState<Record<string, BacklogAsset[]>>({})
   const [backlogAssetDrafts, setBacklogAssetDrafts] = useState<Record<string, BacklogAssetDraft>>({})
+  const [executionBacklogCustomItems, setExecutionBacklogCustomItems] = useState<CodexBacklogItem[]>([])
+  const [backlogItemDraft, setBacklogItemDraft] = useState<BacklogItemDraft>(EMPTY_BACKLOG_ITEM_DRAFT)
   const [executionBacklogOrder, setExecutionBacklogOrder] = useState<string[]>(CODEX_EXECUTION_BACKLOG.map((item) => item.id))
   const [executionBacklogArchivedIds, setExecutionBacklogArchivedIds] = useState<string[]>([])
   const [executionBacklogDeletedIds, setExecutionBacklogDeletedIds] = useState<string[]>([])
@@ -770,6 +1008,9 @@ export function OperationsJobsClient() {
       if (parsed.statusOverrides && typeof parsed.statusOverrides === "object") {
         setExecutionBacklogStatusOverrides(parsed.statusOverrides as Record<string, CodexBacklogItem["status"]>)
       }
+      if (Array.isArray(parsed.customItems)) {
+        setExecutionBacklogCustomItems(normalizeCustomBacklogItems(parsed.customItems))
+      }
     } catch {}
   }, [EXECUTION_BACKLOG_STATE_KEY])
 
@@ -817,6 +1058,7 @@ export function OperationsJobsClient() {
       archivedIds: executionBacklogArchivedIds,
       deletedIds: executionBacklogDeletedIds,
       statusOverrides: executionBacklogStatusOverrides,
+      customItems: executionBacklogCustomItems,
     }
     window.localStorage.setItem(EXECUTION_BACKLOG_STATE_KEY, JSON.stringify(payload))
   }, [
@@ -825,12 +1067,57 @@ export function OperationsJobsClient() {
     executionBacklogArchivedIds,
     executionBacklogDeletedIds,
     executionBacklogStatusOverrides,
+    executionBacklogCustomItems,
   ])
 
   useEffect(() => {
     if (typeof window === "undefined") return
     window.localStorage.setItem(CONTENT_LIBRARY_ITEMS_KEY, JSON.stringify(contentLibraryItems))
   }, [CONTENT_LIBRARY_ITEMS_KEY, contentLibraryItems])
+
+  const allExecutionBacklogItems = useMemo(() => {
+    const byId = new Map<string, CodexBacklogItem>()
+    for (const item of CODEX_EXECUTION_BACKLOG) {
+      byId.set(item.id, item)
+    }
+    for (const item of executionBacklogCustomItems) {
+      if (!byId.has(item.id)) {
+        byId.set(item.id, item)
+      }
+    }
+    return [...byId.values()]
+  }, [executionBacklogCustomItems])
+
+  function updateBacklogItemDraft(patch: Partial<BacklogItemDraft>) {
+    setBacklogItemDraft((current) => ({ ...current, ...patch }))
+  }
+
+  function addBacklogItem() {
+    const title = backlogItemDraft.title.trim()
+    if (!title) {
+      setMessage("Add a backlog item title before saving.")
+      return
+    }
+
+    const existingIds = new Set(allExecutionBacklogItems.map((item) => item.id))
+    const item: CodexBacklogItem = {
+      id: createCustomBacklogId(title, existingIds),
+      priority: backlogItemDraft.priority,
+      status: backlogItemDraft.status,
+      title,
+      owner: backlogItemDraft.owner.trim() || "Operations",
+      target: backlogItemDraft.target.trim() || "TBD",
+      notes: backlogItemDraft.notes.trim() || "Custom backlog item added from the Operations dashboard.",
+    }
+
+    setExecutionBacklogCustomItems((current) => [...current, item])
+    setExecutionBacklogOrder((current) => {
+      if (current.includes(item.id)) return current
+      return current.length > 0 ? [...current, item.id] : [...allExecutionBacklogItems.map((backlogItem) => backlogItem.id), item.id]
+    })
+    setBacklogItemDraft(EMPTY_BACKLOG_ITEM_DRAFT)
+    setMessage("Backlog item added.")
+  }
 
   function updateBacklogAssetDraft(itemId: string, patch: Partial<BacklogAssetDraft>) {
     setBacklogAssetDrafts((current) => ({
@@ -897,7 +1184,7 @@ export function OperationsJobsClient() {
 
   function moveBacklogItem(itemId: string, direction: "up" | "down") {
     setExecutionBacklogOrder((current) => {
-      const ids = current.length > 0 ? [...current] : CODEX_EXECUTION_BACKLOG.map((item) => item.id)
+      const ids = current.length > 0 ? [...current] : allExecutionBacklogItems.map((item) => item.id)
       const index = ids.indexOf(itemId)
       if (index === -1) return ids
       const swapWith = direction === "up" ? index - 1 : index + 1
@@ -933,10 +1220,11 @@ export function OperationsJobsClient() {
   }
 
   const orderedBacklogItems = useMemo(() => {
-    const ids = executionBacklogOrder.length > 0 ? executionBacklogOrder : CODEX_EXECUTION_BACKLOG.map((item) => item.id)
+    const allIds = allExecutionBacklogItems.map((item) => item.id)
+    const ids = executionBacklogOrder.length > 0 ? executionBacklogOrder : allIds
     const idSet = new Set(ids)
-    const completedOrder = [...ids, ...CODEX_EXECUTION_BACKLOG.map((item) => item.id).filter((id) => !idSet.has(id))]
-    const byId = new Map(CODEX_EXECUTION_BACKLOG.map((item) => [item.id, item]))
+    const completedOrder = [...ids, ...allIds.filter((id) => !idSet.has(id))]
+    const byId = new Map(allExecutionBacklogItems.map((item) => [item.id, item]))
 
     return completedOrder
       .map((id) => byId.get(id))
@@ -948,6 +1236,7 @@ export function OperationsJobsClient() {
         status: executionBacklogStatusOverrides[item.id] ?? item.status,
       }))
   }, [
+    allExecutionBacklogItems,
     executionBacklogOrder,
     executionBacklogDeletedIds,
     showArchivedBacklog,
@@ -1137,6 +1426,67 @@ export function OperationsJobsClient() {
     }
   }, [loadTesterFeedback, testerAudienceModule, testerAudienceStatus, testerOutreachMessage, testerOutreachSubject])
 
+  async function updateTesterFeedbackNote(
+    noteId: string,
+    updates: { status?: TesterFeedbackNoteRow["status"]; severity?: TesterFeedbackNoteRow["severity"] }
+  ) {
+    setReviewingTesterFeedbackId(noteId)
+    setMessage("")
+    try {
+      const response = await fetch("/api/admin/tester-notes", {
+        method: "PATCH",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: noteId,
+          ...updates,
+        }),
+      })
+      const json = await parseApiJson(response, "update tester note")
+      if (!response.ok) {
+        throw new Error(readApiError(json, "Could not update tester note"))
+      }
+      const updated = json.note as TesterFeedbackNoteRow
+      setTesterFeedbackNotes((current) => current.map((note) => (note.id === updated.id ? updated : note)))
+      setMessage("Tester feedback note updated.")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update tester note")
+    } finally {
+      setReviewingTesterFeedbackId("")
+    }
+  }
+
+  async function pushTesterFeedbackToCodex(label: string, notes: TesterFeedbackNoteRow[]) {
+    const activeNotes = notes.filter((note) => note.status !== "resolved")
+    const notesForPrompt = activeNotes.length > 0 ? activeNotes : notes
+    const prompt = [
+      `Review and fix tester feedback for: ${label}`,
+      "Context: These notes came from the public in-app Tester Feedback widget and should be turned into a small, focused CODEX change.",
+      "Instructions: inspect the relevant route/components, merge duplicate issues, implement the safest high-impact fix, run npm.cmd run build, and report the diff summary.",
+      "",
+      ...notesForPrompt.slice(0, 20).map((note, index) =>
+        [
+          `Feedback ${index + 1}`,
+          `Route: ${testerFeedbackRouteLabel(note)}`,
+          `Module: ${note.module || "unknown"}`,
+          `Status: ${note.status}`,
+          `Severity: ${note.severity}`,
+          `Tester: ${note.user_email || note.user_id || "unknown"}`,
+          `Message: ${note.message || "No message"}`,
+        ].join("\n")
+      ),
+    ].join("\n\n")
+
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setMessage("Tester feedback Codex handoff copied to clipboard.")
+    } catch {
+      setMessage("Tester feedback Codex handoff prepared. Clipboard access failed in this browser session.")
+    }
+  }
+
   useEffect(() => {
     async function load() {
       const {
@@ -1317,13 +1667,67 @@ export function OperationsJobsClient() {
     const open = testerFeedbackNotes.filter((row) => row.status === "open").length
     const inReview = testerFeedbackNotes.filter((row) => row.status === "in_review").length
     const resolved = testerFeedbackNotes.filter((row) => row.status === "resolved").length
+    const high = testerFeedbackNotes.filter((row) => row.severity === "high").length
     return {
       open,
       inReview,
       resolved,
+      high,
       campaigns: testerFeedbackCampaigns.length,
     }
   }, [testerFeedbackCampaigns.length, testerFeedbackNotes])
+
+  const testerFeedbackPageGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        key: string
+        label: string
+        route: string
+        module: string
+        notes: TesterFeedbackNoteRow[]
+        open: number
+        inReview: number
+        resolved: number
+        high: number
+        latestAt: number
+      }
+    >()
+
+    for (const note of testerFeedbackNotes) {
+      const key = testerFeedbackPageKey(note)
+      const route = testerFeedbackRouteLabel(note)
+      const current =
+        groups.get(key) ??
+        {
+          key,
+          label: note.page_title || route,
+          route,
+          module: note.module || "Unknown module",
+          notes: [],
+          open: 0,
+          inReview: 0,
+          resolved: 0,
+          high: 0,
+          latestAt: 0,
+        }
+      current.notes.push(note)
+      if (note.status === "open") current.open += 1
+      if (note.status === "in_review") current.inReview += 1
+      if (note.status === "resolved") current.resolved += 1
+      if (note.severity === "high") current.high += 1
+      current.latestAt = Math.max(current.latestAt, Date.parse(note.created_at || "") || 0)
+      groups.set(key, current)
+    }
+
+    return Array.from(groups.values()).sort((a, b) => {
+      const aActive = a.open + a.inReview
+      const bActive = b.open + b.inReview
+      if (a.high !== b.high) return b.high - a.high
+      if (aActive !== bActive) return bActive - aActive
+      return b.latestAt - a.latestAt
+    })
+  }, [testerFeedbackNotes])
 
   const stalledRunningCount = useMemo(() => {
     if (!overview) return 0
@@ -1699,6 +2103,7 @@ export function OperationsJobsClient() {
     const current = {
       runHealth: runHealthMenuOpen,
       marketingTools: marketingToolsMenuOpen,
+      testerFeedback: testerFeedbackMenuOpen,
       candidateManagement: candidateMenuOpen,
       financials: financialMenuOpen,
       executionRoadmap: executionRoadmapMenuOpen,
@@ -1708,6 +2113,7 @@ export function OperationsJobsClient() {
     const nextOpen = !current[group]
     setRunHealthMenuOpen(group === "runHealth" ? nextOpen : false)
     setMarketingToolsMenuOpen(group === "marketingTools" ? nextOpen : false)
+    setTesterFeedbackMenuOpen(group === "testerFeedback" ? nextOpen : false)
     setCandidateMenuOpen(group === "candidateManagement" ? nextOpen : false)
     setFinancialMenuOpen(group === "financials" ? nextOpen : false)
     setExecutionRoadmapMenuOpen(group === "executionRoadmap" ? nextOpen : false)
@@ -1883,20 +2289,6 @@ export function OperationsJobsClient() {
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveMarketingView("tester_outreach")
-                        focusPanel("testerFeedback")
-                      }}
-                      className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
-                        activePanel === "testerFeedback" || (activePanel === "marketing" && activeMarketingView === "tester_outreach")
-                          ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
-                          : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
-                      }`}
-                    >
-                      Tester outreach
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
                         setActiveMarketingView("analytics")
                         setActiveFinancialView("marketing")
                         focusPanel("financials")
@@ -1938,6 +2330,41 @@ export function OperationsJobsClient() {
                       Practitioner outreach data
                     </button>
                   </div> : null}
+                </section>
+              ) : null}
+              {overview.permissions.is_superuser ? (
+                <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
+                  <button
+                    type="button"
+                    onClick={() => toggleOperationsMenu("testerFeedback")}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[#3d567d]"
+                    aria-expanded={testerFeedbackMenuOpen}
+                  >
+                    Tester feedback
+                    <span>{testerFeedbackMenuOpen ? "-" : "+"}</span>
+                  </button>
+                  {testerFeedbackMenuOpen ? (
+                    <div className="px-2 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => focusPanel("testerFeedback")}
+                        className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${
+                          activePanel === "testerFeedback"
+                            ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                            : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                        }`}
+                      >
+                        Feedback command center
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void pushTesterFeedbackToCodex("All active tester feedback", testerFeedbackNotes)}
+                        className="w-full rounded-lg border border-[#cbd8eb] bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
+                      >
+                        Push active feedback to Codex
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
               <section className="mt-2 rounded-xl border border-[#c7d8ee] bg-white">
@@ -2556,25 +2983,112 @@ export function OperationsJobsClient() {
                   <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Execution roadmap</div>
                   <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Prioritized Codex action backlog</h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => togglePanel("executionBacklog")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {collapsedPanels.executionBacklog ? "Expand" : "Collapse"}
-                </button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = document.getElementById("operations-add-backlog-item")
+                      if (target) scrollToElementWithOffset(target)
+                    }}
+                    className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                  >
+                    New backlog item
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel("executionBacklog")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {collapsedPanels.executionBacklog ? "Expand" : "Collapse"}
+                  </button>
+                </div>
               </div>
               {!collapsedPanels.executionBacklog ? (
                 <>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-xs text-[#2e4b74]">
                     <p>This list converts the enterprise review into an execution sequence. Work P0 top to bottom before expanding P1/P2.</p>
-                    <button
-                      type="button"
-                      onClick={() => setShowArchivedBacklog((current) => !current)}
-                      className="rounded-full border border-[#b7cce9] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#244a7b] hover:bg-[#edf4ff]"
-                    >
-                      {showArchivedBacklog ? "Hide archived" : "Show archived"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = document.getElementById("operations-add-backlog-item")
+                          if (target) scrollToElementWithOffset(target)
+                        }}
+                        className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                      >
+                        Add backlog item
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowArchivedBacklog((current) => !current)}
+                        className="rounded-full border border-[#b7cce9] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#244a7b] hover:bg-[#edf4ff]"
+                      >
+                        {showArchivedBacklog ? "Hide archived" : "Show archived"}
+                      </button>
+                    </div>
+                  </div>
+                  <div id="operations-add-backlog-item" className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#4b678e]">Add backlog item</div>
+                        <p className="mt-0.5 text-xs text-[#587396]">Add a Codex-ready item directly into this prioritized menu.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addBacklogItem}
+                        className="rounded-full border border-[#9dbbe3] bg-[#eaf4ff] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1e4f93] hover:bg-[#deedff]"
+                      >
+                        Add item
+                      </button>
+                    </div>
+                    <div className="mt-2 grid gap-1.5 md:grid-cols-[1fr_100px_130px]">
+                      <input
+                        value={backlogItemDraft.title}
+                        onChange={(event) => updateBacklogItemDraft({ title: event.target.value })}
+                        placeholder="Backlog item title"
+                        className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                      />
+                      <select
+                        value={backlogItemDraft.priority}
+                        onChange={(event) => updateBacklogItemDraft({ priority: event.target.value as BacklogItemDraft["priority"] })}
+                        className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                      >
+                        <option value="P0">P0</option>
+                        <option value="P1">P1</option>
+                        <option value="P2">P2</option>
+                      </select>
+                      <select
+                        value={backlogItemDraft.status}
+                        onChange={(event) => updateBacklogItemDraft({ status: event.target.value as BacklogItemDraft["status"] })}
+                        className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                      >
+                        <option value="planned">Planned</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    <div className="mt-1.5 grid gap-1.5 md:grid-cols-2">
+                      <input
+                        value={backlogItemDraft.owner}
+                        onChange={(event) => updateBacklogItemDraft({ owner: event.target.value })}
+                        placeholder="Owner, e.g. Platform + Ops"
+                        className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                      />
+                      <input
+                        value={backlogItemDraft.target}
+                        onChange={(event) => updateBacklogItemDraft({ target: event.target.value })}
+                        placeholder="Target, e.g. 2 weeks"
+                        className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                      />
+                    </div>
+                    <textarea
+                      value={backlogItemDraft.notes}
+                      onChange={(event) => updateBacklogItemDraft({ notes: event.target.value })}
+                      placeholder="Codex execution notes, definition of done, or source context"
+                      rows={3}
+                      className="mt-1.5 min-h-20 w-full rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
+                    />
                   </div>
                   <div className="mt-2 space-y-2">
                     {orderedBacklogItems.length === 0 ? (
@@ -3276,8 +3790,21 @@ export function OperationsJobsClient() {
                 className={`mt-3 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("testerFeedback") ? "" : "hidden"}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-[#142c4f]">Tester outreach</h2>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Tester feedback operations</div>
+                    <h2 className="mt-1 text-lg font-semibold text-[#142c4f]">Feedback command center</h2>
+                    <p className="mt-0.5 text-xs text-[#48658d]">
+                      Review tester notes by page, email the right testers, and push clear handoffs into Codex.
+                    </p>
+                  </div>
                   <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void pushTesterFeedbackToCodex("All active tester feedback", testerFeedbackNotes)}
+                      className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
+                    >
+                      Push active to Codex
+                    </button>
                     <button
                       type="button"
                       onClick={() => togglePanel("testerFeedback")}
@@ -3299,10 +3826,127 @@ export function OperationsJobsClient() {
                     <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                       <SnapshotStat label="Open notes" value={String(testerSignals.open)} />
                       <SnapshotStat label="In review" value={String(testerSignals.inReview)} />
-                      <SnapshotStat label="Resolved" value={String(testerSignals.resolved)} />
-                      <SnapshotStat label="Outreach campaigns" value={String(testerSignals.campaigns)} />
+                      <SnapshotStat label="High severity" value={String(testerSignals.high)} />
+                      <SnapshotStat label="Pages reporting" value={String(testerFeedbackPageGroups.length)} />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-[#d0dff2] bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Feedback grouped by page</div>
+                          <p className="mt-0.5 text-xs text-[#587396]">Automatically grouped from route, anchor, page title, and module context.</p>
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#587396]">
+                          {testerFeedbackNotes.length} notes loaded
+                        </div>
+                      </div>
+                      {loadingTesterFeedback ? (
+                        <p className="mt-2 text-sm text-[#48658d]">Loading tester feedback...</p>
+                      ) : testerFeedbackPageGroups.length === 0 ? (
+                        <div className="mt-2 rounded-xl border border-[#d3dfee] bg-[#f6faff] px-3 py-2 text-sm text-[#48658d]">
+                          No tester feedback has been submitted yet.
+                        </div>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          {testerFeedbackPageGroups.map((group) => (
+                            <article key={group.key} className="rounded-xl border border-[#d3dfee] bg-[#f8fbff] p-2.5">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <h3 className="text-sm font-semibold text-[#142c4f]">{group.label}</h3>
+                                    <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d]">
+                                      {group.notes.length} note{group.notes.length === 1 ? "" : "s"}
+                                    </span>
+                                    {group.high > 0 ? (
+                                      <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-800">
+                                        {group.high} high
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className="mt-1 text-xs text-[#587396]">{group.module} | {group.route}</div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => void pushTesterFeedbackToCodex(group.label, group.notes)}
+                                    className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
+                                  >
+                                    Push page to Codex
+                                  </button>
+                                  {group.notes[0]?.full_url ? (
+                                    <a
+                                      href={group.notes[0].full_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                                    >
+                                      Open page
+                                    </a>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className="mt-2 grid gap-1.5">
+                                {group.notes.map((note) => (
+                                  <div key={note.id} className="rounded-lg border border-[#d8e4f2] bg-white px-2.5 py-2">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${testerStatusToneClass(note.status)}`}>
+                                            {note.status.replace("_", " ")}
+                                          </span>
+                                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${testerSeverityToneClass(note.severity)}`}>
+                                            {note.severity}
+                                          </span>
+                                          <span className="text-[11px] text-[#637b9e]">
+                                            {new Date(note.created_at).toLocaleString()}
+                                          </span>
+                                        </div>
+                                        <p className="mt-1 text-sm text-[#18365f]">{note.message || "No message supplied."}</p>
+                                        <div className="mt-1 text-[11px] text-[#637b9e]">
+                                          {note.user_email || note.user_id || "Unknown tester"}
+                                          {note.viewport_width && note.viewport_height ? ` | ${note.viewport_width}x${note.viewport_height}` : ""}
+                                        </div>
+                                      </div>
+                                      <div className="grid min-w-[190px] gap-1.5">
+                                        <select
+                                          value={note.status}
+                                          onChange={(event) => void updateTesterFeedbackNote(note.id, { status: event.target.value as TesterFeedbackNoteRow["status"] })}
+                                          disabled={reviewingTesterFeedbackId === note.id}
+                                          className="rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs font-medium text-[#163159]"
+                                        >
+                                          <option value="open">Open</option>
+                                          <option value="in_review">In review</option>
+                                          <option value="resolved">Resolved</option>
+                                        </select>
+                                        <select
+                                          value={note.severity}
+                                          onChange={(event) => void updateTesterFeedbackNote(note.id, { severity: event.target.value as TesterFeedbackNoteRow["severity"] })}
+                                          disabled={reviewingTesterFeedbackId === note.id}
+                                          className="rounded-lg border border-[#c2d3ea] bg-white px-2 py-1 text-xs font-medium text-[#163159]"
+                                        >
+                                          <option value="low">Low severity</option>
+                                          <option value="medium">Medium severity</option>
+                                          <option value="high">High severity</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3 rounded-xl border border-[#d0dff2] bg-[#f7fbff] p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">Email testers</div>
+                          <p className="mt-0.5 text-xs text-[#587396]">Send follow-up, retest, or release-note emails to testers filtered by note status and module.</p>
+                        </div>
+                        <span className="rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d]">
+                          {testerSignals.campaigns} campaigns
+                        </span>
+                      </div>
                       <div className="grid gap-2 md:grid-cols-2">
                         <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#3d567d]">
                           Audience status

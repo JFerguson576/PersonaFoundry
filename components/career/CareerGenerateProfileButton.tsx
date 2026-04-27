@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
-import { careerActionErrorMessage, careerBackgroundStartedMessage, getCareerMessageTone, startCareerBackgroundJob } from "@/lib/career-client"
+import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
 
 type Props = {
   candidateId: string
+  variant?: "card" | "inline"
+  label?: string
 }
 
-export function CareerGenerateProfileButton({ candidateId }: Props) {
+const PROFILE_GENERATION_TIMEOUT_MS = 120_000
+
+export function CareerGenerateProfileButton({ candidateId, variant = "card", label = "Generate profile" }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -19,32 +23,42 @@ export function CareerGenerateProfileButton({ candidateId }: Props) {
     setMessage("")
 
     try {
-      await startCareerBackgroundJob(candidateId, "generate_profile", {})
-      setMessage(
-        careerBackgroundStartedMessage({
-          label: "Career positioning",
-          destination: "the positioning section",
-        })
-      )
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), PROFILE_GENERATION_TIMEOUT_MS)
+      const response = await fetch("/api/career/generate-profile", {
+        method: "POST",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ candidate_id: candidateId }),
+        signal: controller.signal,
+      })
+      window.clearTimeout(timeout)
+
+      const json = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(typeof json?.error === "string" ? json.error : careerActionErrorMessage("generate career positioning"))
+      }
+
+      setMessage("Career positioning generated. The workspace is refreshing with the new profile.")
+      notifyCareerWorkspaceRefresh()
       router.refresh()
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : careerActionErrorMessage("start career positioning"))
+      if (error instanceof Error && error.name === "AbortError") {
+        setMessage("Profile generation timed out. Please try again, or reduce the source material before retrying.")
+        return
+      }
+      setMessage(toCareerUserMessage(error instanceof Error ? error.message : null, careerActionErrorMessage("generate career positioning")))
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold">Generate career positioning</h2>
-      <p className="mt-2 text-sm text-neutral-600">
-        Build a new career identity and positioning pack from the currently saved source material.
-      </p>
-
+  const action = (
+    <>
       <button
+        type="button"
         onClick={handleGenerate}
         disabled={loading}
-        className={`mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
           loading ? "animate-pulse bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900" : "bg-black"
         }`}
       >
@@ -54,12 +68,26 @@ export function CareerGenerateProfileButton({ candidateId }: Props) {
             Generating...
           </>
         ) : (
-          "Generate new positioning version"
+          label
         )}
       </button>
-      {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. You can stay on this page while it runs.</p> : null}
+      {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. Stay on this page while the profile is created.</p> : null}
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
+    </>
+  )
+
+  if (variant === "inline") {
+    return <div>{action}</div>
+  }
+
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <h2 className="text-base font-semibold">Generate career positioning</h2>
+      <p className="mt-1 text-sm text-neutral-600">
+        Build the first career identity and positioning pack from the saved source material.
+      </p>
+      <div className="mt-3">{action}</div>
     </div>
   )
 }

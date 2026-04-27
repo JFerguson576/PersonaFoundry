@@ -374,6 +374,8 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
           type="button"
           onClick={startTour}
           className={`fixed bottom-5 left-4 z-[260] rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] shadow-[0_12px_30px_-20px_rgba(15,30,70,0.7)] transition ${
+            moduleKey === "career" ? "lg:left-[216px]" : ""
+          } ${
             hasCompleted
               ? "border-[#c9d4e8] bg-white text-[#243a63] hover:bg-[#f4f7ff]"
               : "border-[#2f6df6] bg-[#2f6df6] text-white hover:bg-[#1f56d5] wizard-spotlight-soft"

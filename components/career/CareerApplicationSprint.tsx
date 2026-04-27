@@ -7,6 +7,7 @@ import { CAREER_WORKSPACE_NAVIGATE_EVENT, careerActionErrorMessage, careerBackgr
 
 type Props = {
   candidateId: string
+  applicationSprintStatus?: string | null
   initialPrefill?: {
     jobTitle?: string
     companyName?: string
@@ -18,7 +19,7 @@ type Props = {
   }
 }
 
-export function CareerApplicationSprint({ candidateId, initialPrefill }: Props) {
+export function CareerApplicationSprint({ candidateId, applicationSprintStatus = null, initialPrefill }: Props) {
   const router = useRouter()
   const [jobTitle, setJobTitle] = useState(initialPrefill?.jobTitle || "")
   const [companyName, setCompanyName] = useState(initialPrefill?.companyName || "")
@@ -29,7 +30,17 @@ export function CareerApplicationSprint({ candidateId, initialPrefill }: Props) 
   const [notes, setNotes] = useState(initialPrefill?.notes || "")
   const [dossierInfluence, setDossierInfluence] = useState("medium")
   const [loading, setLoading] = useState(false)
+  const [startedSprint, setStartedSprint] = useState(false)
   const [message, setMessage] = useState("")
+  const persistedSprintRunning = applicationSprintStatus === "queued" || applicationSprintStatus === "running"
+  const persistedSprintFinished = applicationSprintStatus === "completed" || applicationSprintStatus === "failed"
+  const sprintRunning = loading || persistedSprintRunning || (startedSprint && !persistedSprintFinished)
+
+  useEffect(() => {
+    if (persistedSprintFinished) {
+      setStartedSprint(false)
+    }
+  }, [persistedSprintFinished])
 
   useEffect(() => {
     function handlePrefill(event: Event) {
@@ -92,8 +103,10 @@ export function CareerApplicationSprint({ candidateId, initialPrefill }: Props) 
           destination: "the company, fit, salary, cover letter, and interview sections",
         })
       )
+      setStartedSprint(true)
       router.refresh()
     } catch (error) {
+      setStartedSprint(false)
       setMessage(error instanceof Error ? error.message : careerActionErrorMessage("start the application sprint"))
     } finally {
       setLoading(false)
@@ -197,10 +210,10 @@ export function CareerApplicationSprint({ candidateId, initialPrefill }: Props) 
         </p>
         <button
           type="submit"
-          disabled={loading || !jobTitle.trim() || !jobDescription.trim()}
+          disabled={sprintRunning || !jobTitle.trim() || !jobDescription.trim()}
           className="rounded-xl bg-[#0f172a] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Starting application sprint..." : "Start application sprint"}
+          {loading ? "Starting sprint..." : sprintRunning ? "Application sprint running" : "Start application sprint"}
         </button>
       </div>
 

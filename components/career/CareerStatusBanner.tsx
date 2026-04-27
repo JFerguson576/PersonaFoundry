@@ -22,7 +22,7 @@ export function CareerStatusBanner({ message, tone = "info", className = "" }: P
         : tone === "progress"
           ? {
               className: "border-amber-200 bg-amber-50 text-amber-950",
-              label: "Running",
+              label: "Processing",
             }
           : tone === "error"
             ? {
@@ -34,16 +34,55 @@ export function CareerStatusBanner({ message, tone = "info", className = "" }: P
                 label: "Info",
               }
 
+  if (isProgress) {
+    const processingStages = ["Queued", "Generating", "Saving"]
+
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={`rounded-2xl border px-4 py-3 text-sm leading-6 shadow-sm ${toneMeta.className} ${className}`.trim()}
+      >
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-current/15 bg-white/80" aria-hidden>
+            <span className="absolute h-9 w-9 animate-spin rounded-full border-2 border-current/15 border-t-current" />
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-current/80" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-current/80">
+                {toneMeta.label}
+              </span>
+              <span className="text-xs font-medium text-current/75">Background task in progress</span>
+            </div>
+            <div className="mt-2">{message}</div>
+            <div className="mt-3 grid gap-1.5 sm:grid-cols-3">
+              {processingStages.map((stage, index) => (
+                <div key={stage} className="flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-current/75">
+                  <span
+                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-current/65"
+                    style={{ animationDelay: `${index * 180}ms` }}
+                    aria-hidden
+                  />
+                  {stage}
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-current/75">This can take up to a minute. You can keep working while it runs.</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`rounded-2xl border px-4 py-3 text-sm leading-6 shadow-sm ${toneMeta.className} ${className}`.trim()}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-current/80">
           {toneMeta.label}
         </span>
-        {isProgress ? <span className="h-2.5 w-2.5 rounded-full bg-current/70 animate-pulse" aria-hidden /> : null}
       </div>
       <div className="mt-2">{message}</div>
-      {isProgress ? <div className="mt-1 text-xs text-current/75">This can take up to a minute. You can keep working while it runs.</div> : null}
     </div>
   )
 }

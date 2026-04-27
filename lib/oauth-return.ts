@@ -36,3 +36,25 @@ export function clearOAuthReturnParamsFromUrl() {
   window.history.replaceState({}, "", next)
 }
 
+export function getOAuthRedirectTo(fallbackPath = "/platform") {
+  if (typeof window !== "undefined") {
+    const url = new URL(window.location.href)
+    const keys = ["error", "error_code", "error_description", "code"]
+
+    for (const key of keys) {
+      url.searchParams.delete(key)
+    }
+
+    const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash)
+    for (const key of keys) {
+      hashParams.delete(key)
+    }
+
+    const hashString = hashParams.toString()
+    return `${url.origin}${url.pathname}${url.search}${hashString ? `#${hashString}` : ""}`
+  }
+
+  if (!process.env.NEXT_PUBLIC_SITE_URL) return undefined
+
+  return `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}${fallbackPath}`
+}

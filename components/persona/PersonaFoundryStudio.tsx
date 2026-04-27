@@ -9,6 +9,7 @@ import { AdaptiveProductTour } from '@/components/navigation/AdaptiveProductTour
 import { WelcomeBackNotice } from '@/components/navigation/WelcomeBackNotice'
 import type { AuthProviderStatus } from '@/lib/auth-provider-status'
 import { getAuthHeaders } from '@/lib/career-client'
+import { getOAuthRedirectTo } from '@/lib/oauth-return'
 
 type Traits = {
   warmth: number
@@ -1588,8 +1589,7 @@ export default function Home() {
       return
     }
     setBusyProvider(provider)
-    const redirectTo =
-      typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL
+    const redirectTo = getOAuthRedirectTo('/persona-foundry')
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,

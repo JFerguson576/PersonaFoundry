@@ -2,11 +2,11 @@
 
 Active project path:
 
-- `C:\Users\johnf\OneDrive\Desktop\personafoundry`
+- `C:\Users\johnf\Desktop\personafoundry`
 
 Do not use this nested path:
 
-- `C:\Users\johnf\OneDrive\Desktop\personafoundry\PersonaFoundry`
+- `C:\Users\johnf\Desktop\personafoundry\PersonaFoundry`
 
 Reason:
 

@@ -41,6 +41,35 @@ type Props = {
   fitAnalysisOptions: { id: string; title: string | null; content?: string | null }[]
 }
 
+type CareerWorkspaceSection = "company" | "documents" | "jobs"
+
+type RecommendedActionIntent =
+  | {
+      kind: "status"
+      label: string
+      status: string
+      message: string
+    }
+  | {
+      kind: "navigate"
+      label: string
+      sectionKey: CareerWorkspaceSection
+      href: string
+    }
+  | {
+      kind: "details"
+      label: string
+    }
+
+type RecommendedActionBanner = {
+  title: string
+  body: string
+  badge: string
+  badgeClass: string
+  cardClass: string
+  action: RecommendedActionIntent | null
+}
+
 const applicationStatuses = [
   { value: "targeting", label: "Considering" },
   { value: "shortlisted", label: "Priority shortlist" },
@@ -92,9 +121,11 @@ export function CareerApplicationTracker({
   const [showRoleComparison, setShowRoleComparison] = useState(false)
   const [showShortlist, setShowShortlist] = useState(false)
   const [showRoleBoard, setShowRoleBoard] = useState(false)
+  const [showPipelineDetails, setShowPipelineDetails] = useState(false)
   const [showAdvancedRoleEntry, setShowAdvancedRoleEntry] = useState(false)
   const [openBoardStage, setOpenBoardStage] = useState<string | null>(null)
   const [openApplicationId, setOpenApplicationId] = useState<string | null>(applications[0]?.id ?? null)
+  const [detailsApplicationId, setDetailsApplicationId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
   const today = new Date()
@@ -149,6 +180,52 @@ export function CareerApplicationTracker({
     return urgencyRank(right.urgencyLabel) - urgencyRank(left.urgencyLabel)
   })
   const topFocusRow = rankedComparisonRows[0] ?? null
+  const pipelineNextAction = overdueApplications[0]
+    ? `Follow up with ${overdueApplications[0].company_name || overdueApplications[0].job_title || "the overdue role"}`
+    : dueTodayApplications[0]
+      ? `Check ${dueTodayApplications[0].company_name || dueTodayApplications[0].job_title || "today's role"}`
+      : topFocusRow
+        ? topFocusRow.nextMove
+        : hasAnyApplications
+          ? "Review saved roles and decide the next move."
+          : "Add the first target role to start the pipeline."
+  const pipelineFocusLabel = topFocusRow
+    ? `${topFocusRow.company} | ${topFocusRow.role}`
+    : hasAnyApplications
+      ? "Saved role pipeline"
+      : "No roles tracked yet"
+  const comparisonRowById = new Map(comparisonRows.map((row) => [row.id, row]))
+  const sortedApplications = [...applications].sort((left, right) => {
+    const leftRow = comparisonRowById.get(left.id)
+    const rightRow = comparisonRowById.get(right.id)
+    const urgencyRank = (label: string | undefined) => {
+      if (label === "Overdue") return 4
+      if (label === "Today") return 3
+      if (label === "Upcoming") return 2
+      return 0
+    }
+    const statusRank = (status: string | null | undefined) => {
+      if (status === "shortlisted") return 3
+      if (status === "applied" || status === "interviewing" || status === "final_round") return 2
+      if (status === "targeting") return 1
+      return 0
+    }
+    const leftUrgency = urgencyRank(leftRow?.urgencyLabel)
+    const rightUrgency = urgencyRank(rightRow?.urgencyLabel)
+    if (rightUrgency !== leftUrgency) return rightUrgency - leftUrgency
+
+    const leftStatus = statusRank(left.status)
+    const rightStatus = statusRank(right.status)
+    if (rightStatus !== leftStatus) return rightStatus - leftStatus
+
+    const leftFit = leftRow?.fitScore ?? -1
+    const rightFit = rightRow?.fitScore ?? -1
+    if (rightFit !== leftFit) return rightFit - leftFit
+
+    const leftTime = Date.parse(left.updated_at || left.created_at || "") || 0
+    const rightTime = Date.parse(right.updated_at || right.created_at || "") || 0
+    return rightTime - leftTime
+  })
 
   useEffect(() => {
     function handlePrefill(event: Event) {
@@ -539,8 +616,8 @@ export function CareerApplicationTracker({
         </div>
       </form>
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm">
-        <div className="mb-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-5">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm">
+        <div className="mb-1.5 grid gap-1 md:grid-cols-2 xl:grid-cols-5">
           <TrackerMetricCard label="Active roles" value={String(activeApplications.length)} tone="neutral" />
           <TrackerMetricCard label="Shortlisted" value={String(shortlistedApplications.length)} tone={shortlistedApplications.length > 0 ? "success" : "neutral"} />
           <TrackerMetricCard label="Overdue follow-ups" value={String(overdueApplications.length)} tone={overdueApplications.length > 0 ? "danger" : "neutral"} />
@@ -548,35 +625,82 @@ export function CareerApplicationTracker({
           <TrackerMetricCard label="Offers" value={String(applications.filter((application) => application.status === "offer").length)} tone="success" />
         </div>
 
-        <div className="mb-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-1.5">
+        <div className="mb-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">Application pipeline</span>
+                <span className="rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+                  {activeApplications.length} active
+                </span>
+                <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+                  {applicationDecisionSummary.promising.length} promising
+                </span>
+                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                  overdueApplications.length > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-neutral-200 bg-white text-neutral-600"
+                }`}>
+                  {overdueApplications.length} overdue
+                </span>
+              </div>
+              <div className="mt-1 grid gap-1 lg:grid-cols-[minmax(0,0.8fr),minmax(0,1.2fr)]">
+                <div className="truncate text-sm font-semibold text-sky-950">{pipelineFocusLabel}</div>
+                <div className="line-clamp-1 text-xs text-sky-900">
+                  <span className="font-semibold">Next:</span> {pipelineNextAction}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {topFocusRow ? (
+                <button
+                  type="button"
+                  onClick={() => setCareerWorkspaceTarget(topFocusRow.id)}
+                  className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                >
+                  Focus top role
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowPipelineDetails((current) => !current)}
+                className="rounded-full border border-sky-300 bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+              >
+                {showPipelineDetails ? "Hide details" : "View details"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {showPipelineDetails ? (
+          <>
+        <div className="mb-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role stages</div>
-              <p className="mt-0.5 text-xs text-neutral-600">One status per role keeps next actions clear.</p>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role stages</div>
+              <p className="mt-0.5 text-[11px] text-neutral-600">One status per role keeps next actions clear.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 Active stages {stageCountWithRoles}/{applicationStatuses.length}
               </span>
               <button
                 type="button"
                 onClick={() => setShowStageMeanings((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 {showStageMeanings ? "Hide details" : "Show details"}
               </button>
             </div>
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] font-semibold text-neutral-800">
-            <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Considering</span>
+          <div className="mt-1 flex flex-wrap items-center gap-0.5 text-[10px] font-semibold text-neutral-800">
+            <span className="rounded-full border border-neutral-200 bg-white px-1.5 py-0.5">Considering</span>
             <span className="text-neutral-400">{"->"}</span>
-            <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Priority shortlist</span>
+            <span className="rounded-full border border-neutral-200 bg-white px-1.5 py-0.5">Priority shortlist</span>
             <span className="text-neutral-400">{"->"}</span>
-            <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Applied</span>
+            <span className="rounded-full border border-neutral-200 bg-white px-1.5 py-0.5">Applied</span>
             <span className="text-neutral-400">{"->"}</span>
-            <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">In interviews</span>
+            <span className="rounded-full border border-neutral-200 bg-white px-1.5 py-0.5">In interviews</span>
             <span className="text-neutral-400">{"->"}</span>
-            <span className="rounded-full border border-neutral-200 bg-white px-2 py-1">Offer</span>
+            <span className="rounded-full border border-neutral-200 bg-white px-1.5 py-0.5">Offer</span>
           </div>
           {!hasAnyApplications ? (
             <div className="mt-2 rounded-lg border border-dashed border-neutral-300 bg-white px-2.5 py-2 text-xs text-neutral-600">
@@ -602,26 +726,26 @@ export function CareerApplicationTracker({
           ) : null}
         </div>
 
-        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-1.5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Focus next</div>
-              <h3 className="mt-0.5 text-sm font-semibold">Where to spend time first</h3>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Focus next</div>
+              <h3 className="mt-0.5 text-xs font-semibold">Where to spend time first</h3>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-800">
                 Strong {applicationDecisionSummary.strongFit.length}
               </span>
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-amber-800">
                 Promising {applicationDecisionSummary.promising.length}
               </span>
-              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 Lower {applicationDecisionSummary.lowFit.length}
               </span>
               <button
                 type="button"
                 onClick={() => setShowFocusGuide((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 {showFocusGuide ? "Hide" : "Show"}
               </button>
@@ -687,27 +811,27 @@ export function CareerApplicationTracker({
           ) : null}
         </div>
 
-        <div className="mb-2 rounded-xl border border-violet-200 bg-violet-50 p-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700">Shortlist</div>
-              <h3 className="mt-0.5 text-sm font-semibold">Roles to decide next</h3>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700">Shortlist</div>
+              <h3 className="mt-0.5 text-xs font-semibold">Roles to decide next</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-violet-700">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-violet-700">
                 Shortlisted {shortlistedApplications.length}
               </span>
               <button
                 type="button"
                 onClick={() => setShowShortlist((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 {showShortlist ? "Hide" : "Show"}
               </button>
             </div>
           </div>
           {!showShortlist ? (
-            <div className="mt-2 rounded-xl border border-violet-200 bg-white px-2.5 py-2 text-xs text-neutral-700">
+            <div className="mt-1 rounded-lg border border-violet-200 bg-white px-2 py-1 text-[11px] text-neutral-700">
               {shortlistedApplications.length === 0
                 ? "No shortlisted roles yet."
                 : `${shortlistedApplications.length} shortlisted role${shortlistedApplications.length === 1 ? "" : "s"} ready for review.`}
@@ -800,20 +924,20 @@ export function CareerApplicationTracker({
           )}
         </div>
 
-        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-1.5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Compare roles</div>
-              <h3 className="mt-0.5 text-sm font-semibold">Side-by-side view</h3>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Compare roles</div>
+              <h3 className="mt-0.5 text-xs font-semibold">Side-by-side view</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 Compared {rankedComparisonRows.length}
               </span>
               <button
                 type="button"
                 onClick={() => setShowRoleComparison((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 {showRoleComparison ? "Hide" : "Show"}
               </button>
@@ -869,20 +993,20 @@ export function CareerApplicationTracker({
           ) : null}
         </div>
 
-        <div className="mb-2 rounded-xl border border-neutral-200 bg-neutral-50 p-1.5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role board</div>
-              <h3 className="mt-0.5 text-sm font-semibold">Pipeline by stage</h3>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600">Role board</div>
+              <h3 className="mt-0.5 text-xs font-semibold">Pipeline by stage</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                 Stages {boardStatuses.length || 1}
               </span>
               <button
                 type="button"
                 onClick={() => setShowRoleBoard((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 {showRoleBoard ? "Hide" : "Show"}
               </button>
@@ -1020,33 +1144,121 @@ export function CareerApplicationTracker({
               })}
             </div>
           ) : (
-            <div className="mt-2 rounded-xl border border-neutral-200 bg-white px-2.5 py-2 text-xs text-neutral-600">
+            <div className="mt-1 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600">
               Keep this collapsed for a cleaner view. Open when you need stage-by-stage detail.
             </div>
           )}
         </div>
+          </>
+        ) : null}
 
-        <h2 className="text-xl font-semibold">Saved roles and applications</h2>
+        <h2 className="text-base font-semibold">Saved roles and applications</h2>
         {applications.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-600">No saved roles yet. Add one above to start managing tailoring, follow-up, and interview progress.</p>
         ) : (
-          <div className="mt-4 space-y-2.5">
-            {applications.map((application) => {
+          <div className="mt-1.5 space-y-1.5">
+            {sortedApplications.map((application) => {
               const isOpen = openApplicationId === application.id
+              const matchedCoverLetterTitle =
+                (application.cover_letter_asset_id ? coverLetterTitleById.get(application.cover_letter_asset_id) : null) ||
+                suggestAssetForCompany(coverLetterOptions, application.company_name || "")?.title ||
+                null
+              const matchedDossierTitle =
+                (application.company_dossier_asset_id ? companyDossierTitleById.get(application.company_dossier_asset_id) : null) ||
+                suggestAssetForCompany(companyDossierOptions, application.company_name || "")?.title ||
+                null
+              const matchedSalaryTitle =
+                (application.salary_analysis_asset_id ? salaryAnalysisTitleById.get(application.salary_analysis_asset_id) : null) ||
+                suggestAssetForCompany(salaryAnalysisOptions, application.company_name || "")?.title ||
+                null
+              const matchedFitTitle =
+                (application.fit_analysis_asset_id ? fitAnalysisTitleById.get(application.fit_analysis_asset_id) : null) ||
+                suggestAssetForCompany(fitAnalysisOptions, application.company_name || "")?.title ||
+                null
+              const roleAssetReadiness = [
+                { label: "Dossier", ready: Boolean(matchedDossierTitle), title: matchedDossierTitle },
+                { label: "Letter", ready: Boolean(matchedCoverLetterTitle), title: matchedCoverLetterTitle },
+                { label: "Salary", ready: Boolean(matchedSalaryTitle), title: matchedSalaryTitle },
+                { label: "Fit", ready: Boolean(matchedFitTitle), title: matchedFitTitle },
+              ]
               const fitScore = application.fit_analysis_asset_id ? extractFitScore(fitAnalysisContentById.get(application.fit_analysis_asset_id) || "") : null
               const fitDecision = fitScore !== null ? getFitDecision(fitScore) : null
               const followUpState = getFollowUpState(application.follow_up_date || "", application.status || "")
+              const rolePrimaryAction = !matchedDossierTitle
+                ? {
+                    label: "Create dossier",
+                    helper: "Research the company before tailoring.",
+                    run: () =>
+                      navigateCareerWorkspace("company", "#company-dossier", {
+                        companyName: application.company_name || "",
+                        location: application.location || "",
+                        roleFamily: application.job_title || "",
+                        jobUrl: application.job_url || "",
+                        notes: application.notes || "Create a company dossier for this tracked role.",
+                      }),
+                  }
+                : !matchedCoverLetterTitle
+                  ? {
+                      label: "Create cover letter",
+                      helper: "Turn the role context into application copy.",
+                      run: () =>
+                        navigateCareerWorkspace("documents", "#document-workbench", {
+                          companyName: application.company_name || "",
+                          location: application.location || "",
+                          roleFamily: application.job_title || "",
+                          jobUrl: application.job_url || "",
+                          notes: application.notes || "Create a tailored cover letter for this tracked role.",
+                        }),
+                    }
+                  : !matchedFitTitle
+                    ? {
+                        label: "Run fit check",
+                        helper: "Score the role before spending more time.",
+                        run: () =>
+                          navigateCareerWorkspace("jobs", "#fit-analysis", {
+                            companyName: application.company_name || "",
+                            location: application.location || "",
+                            roleFamily: application.job_title || "",
+                            jobUrl: application.job_url || "",
+                            notes: application.notes || "Run a fit analysis for this tracked role.",
+                          }),
+                      }
+                    : !application.follow_up_date && !["offer", "rejected", "archived"].includes(application.status || "")
+                      ? {
+                          label: "Set follow-up",
+                          helper: "Add the next date or action.",
+                          run: () => {
+                            setDetailsApplicationId(application.id)
+                            setOpenApplicationId(application.id)
+                          },
+                        }
+                      : {
+                          label: "Focus role",
+                          helper: "Use this role across the workspace.",
+                          run: () => setCareerWorkspaceTarget(application.id),
+                        }
 
               return (
-                <div key={application.id} className="rounded-xl border border-neutral-200 bg-white">
+                <div key={application.id} className="rounded-xl border border-neutral-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)]">
                   <button
                     type="button"
                     onClick={() => setOpenApplicationId((current) => (current === application.id ? null : application.id))}
-                    className="flex w-full flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-left"
+                    className="flex w-full flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 text-left"
                   >
                     <div>
                       <div className="text-sm font-semibold text-neutral-900">{application.company_name || "Untitled company"}</div>
                       <div className="mt-0.5 text-xs text-neutral-600">{application.job_title || "Untitled role"}</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {roleAssetReadiness.map((asset) => (
+                          <span
+                            key={`${application.id}-${asset.label}`}
+                            title={asset.title ? `${asset.label}: ${asset.title}` : `${asset.label} not generated yet`}
+                            className={`rounded-full border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.04em] ${assetReadinessChipClass(asset.ready)}`}
+                          >
+                            {asset.label} {asset.ready ? "ready" : "missing"}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {fitDecision && fitScore !== null ? (
@@ -1067,8 +1279,20 @@ export function CareerApplicationTracker({
                       </span>
                     </div>
                   </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50/60 px-2.5 py-1.5">
+                    <div className="text-[11px] text-neutral-500">
+                      <span className="font-semibold text-neutral-700">Best next:</span> {rolePrimaryAction.helper}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={rolePrimaryAction.run}
+                      className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                    >
+                      {rolePrimaryAction.label}
+                    </button>
+                  </div>
                   {isOpen ? (
-                    <div className="border-t border-neutral-200 p-2">
+                    <div className="border-t border-neutral-200 p-1">
                       <ApplicationEditor
                         application={application}
                         coverLetterOptions={coverLetterOptions}
@@ -1077,6 +1301,7 @@ export function CareerApplicationTracker({
                         salaryAnalysisOptions={salaryAnalysisOptions}
                         fitAnalysisOptions={fitAnalysisOptions}
                         embedded
+                        initialShowDetails={detailsApplicationId === application.id}
                       />
                     </div>
                   ) : null}
@@ -1098,6 +1323,7 @@ function ApplicationEditor({
   salaryAnalysisOptions,
   fitAnalysisOptions,
   embedded = false,
+  initialShowDetails = false,
 }: {
   application: ApplicationRow
   coverLetterOptions: { id: string; title: string | null }[]
@@ -1106,6 +1332,7 @@ function ApplicationEditor({
   salaryAnalysisOptions: { id: string; title: string | null }[]
   fitAnalysisOptions: { id: string; title: string | null; content?: string | null }[]
   embedded?: boolean
+  initialShowDetails?: boolean
 }) {
   const [companyName, setCompanyName] = useState(application.company_name || "")
   const [jobTitle, setJobTitle] = useState(application.job_title || "")
@@ -1127,6 +1354,7 @@ function ApplicationEditor({
   const [showWarmPlan, setShowWarmPlan] = useState(false)
   const [showAdvancedLinks, setShowAdvancedLinks] = useState(false)
   const [showRoleDetails, setShowRoleDetails] = useState(() => {
+    if (initialShowDetails) return true
     if (!embedded) return false
     return !(application.company_name && application.job_title)
   })
@@ -1160,8 +1388,15 @@ function ApplicationEditor({
     hasCoverLetter: Boolean(linkedCoverLetterTitle),
     hasFollowUp: Boolean(followUpDate || nextAction),
   })
+  const recommendedActionIntent = recommendedAction.action
   const suggestedCoverLetter = suggestAssetForCompany(coverLetterOptions, companyName)
   const suggestedDossier = suggestAssetForCompany(companyDossierOptions, companyName)
+
+  useEffect(() => {
+    if (initialShowDetails) {
+      setShowRoleDetails(true)
+    }
+  }, [initialShowDetails])
 
   useEffect(() => {
     if (!companyName.trim()) return
@@ -1175,7 +1410,10 @@ function ApplicationEditor({
     }
   }, [companyName, companyDossierAssetId, coverLetterAssetId, suggestedCoverLetter, suggestedDossier])
 
-  async function handleSave() {
+  async function handleSave(overrides: { status?: string; nextAction?: string; message?: string } = {}) {
+    const nextStatus = overrides.status ?? status
+    const nextActionValue = overrides.nextAction ?? nextAction
+
     setLoading(true)
     setMessage("")
 
@@ -1188,9 +1426,9 @@ function ApplicationEditor({
           job_title: jobTitle,
           location,
           job_url: jobUrl,
-          status,
+          status: nextStatus,
           notes,
-          next_action: nextAction,
+          next_action: nextActionValue,
           follow_up_date: followUpDate,
           cover_letter_asset_id: coverLetterAssetId,
           company_dossier_asset_id: companyDossierAssetId,
@@ -1204,7 +1442,9 @@ function ApplicationEditor({
         throw new Error(json.error || "Failed to update application")
       }
 
-      setMessage("Application updated.")
+      if (overrides.status) setStatus(overrides.status)
+      if (overrides.nextAction !== undefined) setNextAction(overrides.nextAction)
+      setMessage(overrides.message || "Application updated.")
       notifyCareerWorkspaceRefresh()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : careerActionErrorMessage("update the application"))
@@ -1213,45 +1453,78 @@ function ApplicationEditor({
     }
   }
 
+  function handleRecommendedAction(action: RecommendedActionIntent) {
+    if (action.kind === "navigate") {
+      navigateCareerWorkspace(action.sectionKey, action.href, {
+        companyName,
+        location,
+        roleFamily: jobTitle,
+        notes: "Use this tracked role as the context for the next application step.",
+      })
+      return
+    }
+
+    if (action.kind === "details") {
+      setShowRoleDetails(true)
+      return
+    }
+
+    void handleSave({
+      status: action.status,
+      message: action.message,
+    })
+  }
+
   return (
-    <div className={embedded ? "rounded-xl bg-neutral-50 p-1.5" : "rounded-xl border border-neutral-200 bg-neutral-50 p-1.5"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className={embedded ? "rounded-lg bg-neutral-50 p-1" : "rounded-lg border border-neutral-200 bg-neutral-50 p-1"}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <div className="font-semibold text-neutral-900">{companyName || "Untitled company"}</div>
-          <div className="mt-1 text-sm text-neutral-600">{jobTitle || "Untitled role"}</div>
+          <div className="text-sm font-semibold text-neutral-900">{companyName || "Untitled company"}</div>
+          <div className="mt-0.5 text-xs text-neutral-600">{jobTitle || "Untitled role"}</div>
           {fitDecision ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${fitDecision.badgeClass}`}>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${fitDecision.badgeClass}`}>
                 {fitDecision.label}
               </span>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-700">{fitScore}/100 fit</span>
+              <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-neutral-700">{fitScore}/100 fit</span>
             </div>
           ) : null}
           {followUpState ? (
-            <div className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${followUpState.badgeClass}`}>
+            <div className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${followUpState.badgeClass}`}>
               {followUpState.label}
             </div>
           ) : null}
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(status)}`}>
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.08em] ${statusBadgeClass(status)}`}>
           {formatStatus(status)}
         </span>
       </div>
 
-      <div className={`mt-2 rounded-xl border p-1.5 ${recommendedAction.cardClass}`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className={`mt-1.5 rounded-lg border px-2 py-1.5 ${recommendedAction.cardClass}`}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="max-w-2xl">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-current/80">Recommended action</div>
-            <div className="mt-1 text-sm font-semibold text-neutral-900">{recommendedAction.title}</div>
-            <p className="mt-1 text-xs leading-5 text-neutral-700">{recommendedAction.body}</p>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-current/80">Recommended action</div>
+            <div className="mt-0.5 text-sm font-semibold text-neutral-900">{recommendedAction.title}</div>
+            <p className="mt-0.5 text-[11px] leading-4 text-neutral-700">{recommendedAction.body}</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${recommendedAction.badgeClass}`}>
-            {recommendedAction.badge}
-          </span>
+          {recommendedActionIntent ? (
+            <button
+              type="button"
+              onClick={() => handleRecommendedAction(recommendedActionIntent)}
+              disabled={loading || (recommendedActionIntent.kind === "status" && (!companyName.trim() || !jobTitle.trim()))}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 ${recommendedAction.badgeClass}`}
+            >
+              {loading && recommendedActionIntent.kind === "status" ? "Updating..." : recommendedActionIntent.label}
+            </button>
+          ) : (
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${recommendedAction.badgeClass}`}>
+              {recommendedAction.badge}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="mt-2 rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
+      <div className="mt-1.5 rounded-lg border border-neutral-200 bg-white px-2 py-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
@@ -1367,7 +1640,7 @@ function ApplicationEditor({
           ) : null}
         </>
       ) : (
-        <div className="mt-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-600">
+        <div className="mt-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1 text-[11px] text-neutral-600">
           Editor is collapsed for focus. Open details only when you need to change role, links, or follow-up.
         </div>
       )}
@@ -1490,18 +1763,18 @@ function ApplicationEditor({
           </Field>
         </div>
       ) : (
-        <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+        <div className="mt-1 rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1 text-[11px] text-neutral-700">
           Next action: {nextAction?.trim() ? nextAction : "No next action set yet."}
         </div>
       )}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {showRoleDetails ? (
           <button
             type="button"
             onClick={() => void handleSave()}
             disabled={loading || !companyName.trim() || !jobTitle.trim()}
-            className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-black px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Saving..." : "Save application"}
           </button>
@@ -1509,13 +1782,13 @@ function ApplicationEditor({
           <button
             type="button"
             onClick={() => setShowRoleDetails(true)}
-            className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
           >
             Edit details
           </button>
         )}
         {jobUrl ? (
-          <a href={jobUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-white">
+          <a href={jobUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-white">
             Open link
           </a>
         ) : null}
@@ -1684,6 +1957,12 @@ function statusBadgeClass(status: string | null | undefined) {
   }
 }
 
+function assetReadinessChipClass(ready: boolean) {
+  return ready
+    ? "border-emerald-100 bg-white text-emerald-700"
+    : "border-neutral-200 bg-white text-neutral-400"
+}
+
 function TrackerMetricCard({ label, value, tone }: { label: string; value: string; tone: "neutral" | "warning" | "danger" | "success" }) {
   const toneClass =
     tone === "danger"
@@ -1695,9 +1974,9 @@ function TrackerMetricCard({ label, value, tone }: { label: string; value: strin
           : "border-neutral-200 bg-neutral-50 text-neutral-700"
 
   return (
-    <div className={`rounded-xl border px-3 py-2.5 ${toneClass}`}>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
+    <div className={`rounded-lg border px-2.5 py-1.5 ${toneClass}`}>
+      <div className="text-[9px] font-semibold uppercase tracking-[0.12em]">{label}</div>
+      <div className="mt-0.5 text-lg font-semibold leading-none">{value}</div>
     </div>
   )
 }
@@ -2175,7 +2454,7 @@ function getRecommendedActionBanner({
   hasDossier: boolean
   hasCoverLetter: boolean
   hasFollowUp: boolean
-}) {
+}): RecommendedActionBanner {
   if (status === "offer") {
     return {
       title: "Review the offer and capture the decision path.",
@@ -2183,6 +2462,7 @@ function getRecommendedActionBanner({
       badge: "Offer",
       badgeClass: "bg-emerald-100 text-emerald-700",
       cardClass: "border-emerald-200 bg-emerald-50",
+      action: { kind: "details", label: "Add notes" },
     }
   }
 
@@ -2195,6 +2475,7 @@ function getRecommendedActionBanner({
       badge: "Interview",
       badgeClass: "bg-amber-100 text-amber-800",
       cardClass: "border-amber-200 bg-amber-50",
+      action: { kind: "details", label: hasFollowUp ? "Review follow-up" : "Add follow-up" },
     }
   }
 
@@ -2207,6 +2488,7 @@ function getRecommendedActionBanner({
       badge: "Applied",
       badgeClass: "bg-emerald-100 text-emerald-700",
       cardClass: "border-emerald-200 bg-emerald-50",
+      action: { kind: "details", label: hasFollowUp ? "Review follow-up" : "Add follow-up" },
     }
   }
 
@@ -2220,6 +2502,10 @@ function getRecommendedActionBanner({
       badge: "Shortlist",
       badgeClass: "bg-violet-100 text-violet-700",
       cardClass: "border-violet-200 bg-violet-50",
+      action:
+        hasDossier && hasCoverLetter
+          ? { kind: "status", label: "Mark applied", status: "applied", message: "Role moved to applied." }
+          : { kind: "navigate", label: "Create assets", sectionKey: "documents", href: "#document-workbench" },
     }
   }
 
@@ -2230,6 +2516,7 @@ function getRecommendedActionBanner({
       badge: "Reassess",
       badgeClass: "bg-neutral-200 text-neutral-700",
       cardClass: "border-neutral-200 bg-white",
+      action: { kind: "details", label: "Open details" },
     }
   }
 
@@ -2241,6 +2528,9 @@ function getRecommendedActionBanner({
     badge: "Next",
     badgeClass: "bg-sky-100 text-sky-700",
     cardClass: "border-sky-200 bg-sky-50",
+    action: hasDossier
+      ? { kind: "status", label: "Move to shortlist", status: "shortlisted", message: "Role moved to the priority shortlist." }
+      : { kind: "navigate", label: "Research company", sectionKey: "company", href: "#company-dossier" },
   }
 }
 

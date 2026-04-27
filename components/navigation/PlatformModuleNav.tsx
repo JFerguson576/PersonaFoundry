@@ -452,12 +452,12 @@ export function PlatformModuleNav() {
               Share
             </button>
           ) : null}
-          {isSignedIn ? (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {isSignedIn ? (
               <TesterNotesWidget enabled />
-              <ExperienceAgentWidget enabled inline />
-            </div>
-          ) : null}
+            ) : null}
+            <ExperienceAgentWidget enabled inline />
+          </div>
         </div>
       </div>
       {showReferralModal && isClient

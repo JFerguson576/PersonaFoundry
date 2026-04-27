@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import PersonaChatSandbox from '@/components/PersonaChatSandbox'
 import { PlatformModuleNav } from '@/components/navigation/PlatformModuleNav'
+import { getOAuthRedirectTo } from '@/lib/oauth-return'
 
 type Traits = {
   warmth: number
@@ -1241,8 +1242,7 @@ export default function Home() {
   const topCompareRows = useMemo(() => compareRows.slice(0, 3), [compareRows])
 
   async function signInWithProvider(provider: 'google' | 'facebook' | 'linkedin_oidc') {
-    const redirectTo =
-      typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL
+    const redirectTo = getOAuthRedirectTo('/')
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,

@@ -4,11 +4,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Use this folder as the only active repo:
 
-- `C:\Users\johnf\OneDrive\Desktop\personafoundry`
+- `C:\Users\johnf\Desktop\personafoundry`
 
 Do **not** use this nested folder (legacy/locked and not the active workspace):
 
-- `C:\Users\johnf\OneDrive\Desktop\personafoundry\PersonaFoundry`
+- `C:\Users\johnf\Desktop\personafoundry\PersonaFoundry`
 
 ## Product Roadmap
 

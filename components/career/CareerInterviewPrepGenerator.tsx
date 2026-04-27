@@ -1,12 +1,13 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, careerBackgroundStartedMessage, getCareerMessageTone, startCareerBackgroundJob } from "@/lib/career-client"
 
 type Props = {
   candidateId: string
+  interviewPrepStatus?: string | null
   initialPrefill?: {
     jobTitle?: string
     companyName?: string
@@ -14,15 +15,25 @@ type Props = {
   }
 }
 
-export function CareerInterviewPrepGenerator({ candidateId, initialPrefill }: Props) {
+export function CareerInterviewPrepGenerator({ candidateId, interviewPrepStatus = null, initialPrefill }: Props) {
   const router = useRouter()
   const [jobTitle, setJobTitle] = useState(initialPrefill?.jobTitle || "")
   const [companyName, setCompanyName] = useState(initialPrefill?.companyName || "")
   const [jobDescription, setJobDescription] = useState(initialPrefill?.jobDescription || "")
   const [strengthVoiceInfluence, setStrengthVoiceInfluence] = useState("medium")
   const [loading, setLoading] = useState(false)
+  const [startedPrep, setStartedPrep] = useState(false)
   const [message, setMessage] = useState("")
   const canGenerate = Boolean(jobDescription.trim())
+  const persistedPrepRunning = interviewPrepStatus === "queued" || interviewPrepStatus === "running"
+  const persistedPrepFinished = interviewPrepStatus === "completed" || interviewPrepStatus === "failed"
+  const prepRunning = loading || persistedPrepRunning || (startedPrep && !persistedPrepFinished)
+
+  useEffect(() => {
+    if (persistedPrepFinished) {
+      setStartedPrep(false)
+    }
+  }, [persistedPrepFinished])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -43,8 +54,10 @@ export function CareerInterviewPrepGenerator({ candidateId, initialPrefill }: Pr
           followUp: "Save an interview reflection afterward to improve the next prep round.",
         })
       )
+      setStartedPrep(true)
       router.refresh()
     } catch (error) {
+      setStartedPrep(false)
       setMessage(error instanceof Error ? error.message : careerActionErrorMessage("start interview prep"))
     } finally {
       setLoading(false)
@@ -159,14 +172,20 @@ export function CareerInterviewPrepGenerator({ candidateId, initialPrefill }: Pr
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading || !canGenerate}
-        title="Generate interview prep and save it to the interview section."
-        className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Generating..." : "Generate interview prep"}
-      </button>
+      {prepRunning ? (
+        <div className="inline-flex w-fit rounded-xl border border-neutral-200 bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-500">
+          {loading ? "Starting interview prep..." : "Interview prep running"}
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={!canGenerate}
+          title="Generate interview prep and save it to the interview section."
+          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Generate interview prep
+        </button>
+      )}
       <div
         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
           canGenerate ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-500"

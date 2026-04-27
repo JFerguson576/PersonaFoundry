@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { ModuleExplainerPanel } from "@/components/navigation/ModuleExplainerPanel"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
-import { clearOAuthReturnParamsFromUrl, getOAuthReturnErrorFromUrl } from "@/lib/oauth-return"
+import { clearOAuthReturnParamsFromUrl, getOAuthRedirectTo, getOAuthReturnErrorFromUrl } from "@/lib/oauth-return"
 import type { AuthProviderStatus } from "@/lib/auth-provider-status"
 
 type Provider = "google" | "facebook" | "linkedin_oidc"
@@ -72,12 +72,7 @@ export default function PlatformLandingPage() {
     }
     setMessage("")
     setBusyProvider(provider)
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/platform`
-        : process.env.NEXT_PUBLIC_SITE_URL
-          ? `${process.env.NEXT_PUBLIC_SITE_URL}/platform`
-          : undefined
+    const redirectTo = getOAuthRedirectTo("/platform")
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,

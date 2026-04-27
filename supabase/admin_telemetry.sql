@@ -20,6 +20,11 @@ create table if not exists public.api_usage_logs (
   output_tokens integer,
   total_tokens integer,
   estimated_cost_usd numeric(12,6),
+  interaction_key text,
+  schema_version text,
+  quality_score_total integer,
+  user_action_after_output text,
+  time_to_first_action_ms integer,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now())
 );

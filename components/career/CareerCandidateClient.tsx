@@ -28,7 +28,7 @@ import { CareerSourceDocumentEditor } from "@/components/career/CareerSourceDocu
 import { CareerStrategicDocumentGenerator } from "@/components/career/CareerStrategicDocumentGenerator"
 import { CareerTargetCompanyWorkflow } from "@/components/career/CareerTargetCompanyWorkflow"
 import { AdaptiveProductTour } from "@/components/navigation/AdaptiveProductTour"
-import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
+import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import {
   CAREER_WORKSPACE_NAVIGATE_EVENT,
@@ -236,7 +236,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     jobs: false,
   })
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false)
-  const [showCompletedLeftSteps, setShowCompletedLeftSteps] = useState(false)
   const [didAutoRouteOnboarding, setDidAutoRouteOnboarding] = useState(false)
 
   const showToast = useCallback((nextToast: { tone: "success" | "error" | "info"; message: string }) => {
@@ -313,6 +312,23 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     if (href === "#saved-library") {
       setIsSavedWorkExpanded(true)
     }
+    if (href === "#current-application-documents" || href === "#current-cover-letters") {
+      setShowDocumentSecondaryPanels(true)
+    }
+    if (href === "#current-company-dossiers" || href === "#current-outreach-strategies") {
+      setShowSectionContext((current) => ({ ...current, company: true }))
+    }
+    if (href === "#current-interview-prep" || href === "#recent-interview-assessments") {
+      setShowSectionContext((current) => ({ ...current, interview: true }))
+    }
+    if (
+      href === "#current-live-opportunities" ||
+      href === "#current-recruiter-match-searches" ||
+      href === "#current-salary-analysis" ||
+      href === "#current-fit-analysis"
+    ) {
+      setShowJobsSecondaryPanels(true)
+    }
     setOpenSections(openSectionsFor(sectionKey))
     setIsMenuRolledUp(true)
 
@@ -322,7 +338,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         if (target instanceof HTMLElement) {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
-              const stickyNav = document.querySelector('[data-sticky-nav="true"]')
+              const stickyNav =
+                document.querySelector("#career-workspace-root nav") ||
+                document.querySelector('[data-sticky-nav="true"]')
               let stickyOffset = 172
               if (stickyNav instanceof HTMLElement) {
                 const stickyTop = Number.parseFloat(window.getComputedStyle(stickyNav).top || "0")
@@ -366,6 +384,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     revealLeftSection(sectionKey, true)
     openAndScroll(sectionKey, href)
   }, [activeAnchor, activeStep, expandedLeftSections, openAndScroll, revealLeftSection])
+
+  useEffect(() => {
+    revealLeftSection(activeStep, true)
+  }, [activeStep, revealLeftSection])
 
   useEffect(() => {
     void Promise.resolve().then(loadWorkspace)
@@ -599,49 +621,15 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const courseRecommendationHistory = assets.filter((asset) => asset.asset_type === "course_recommendations")
   const activeLiveJobRuns = liveJobRuns.filter((run) => run.status === "queued" || run.status === "running")
   const activeBackgroundJobs = backgroundJobs.filter((job) => job.status === "queued" || job.status === "running")
+  const isBackgroundJobRunning = (...jobTypes: string[]) => activeBackgroundJobs.some((job) => jobTypes.includes(job.job_type || ""))
   const latestApplicationSprintJob = backgroundJobs.find((job) => job.job_type === "generate_application_sprint") ?? null
+  const latestTargetCompanyWorkflowJob = backgroundJobs.find((job) => job.job_type === "generate_target_company_workflow") ?? null
+  const latestInterviewPrepJob = backgroundJobs.find((job) => job.job_type === "generate_interview_prep") ?? null
   const latestApplicationSprintPayload = latestApplicationSprintJob?.request_payload ?? null
   const latestApplicationSprintJobTitle =
     typeof latestApplicationSprintPayload?.job_title === "string" ? latestApplicationSprintPayload.job_title : ""
   const latestApplicationSprintCompany =
     typeof latestApplicationSprintPayload?.company_name === "string" ? latestApplicationSprintPayload.company_name : ""
-  const applicationSprintChecklist = [
-    {
-      key: "dossier",
-      label: "Company intelligence",
-      complete: Boolean(latestCompanyDossiers[0]),
-      sectionKey: "company",
-      href: "#current-company-dossiers",
-    },
-    {
-      key: "fit",
-      label: "Fit analysis",
-      complete: Boolean(latestFitAnalysis[0]),
-      sectionKey: "documents",
-      href: "#current-fit-analysis",
-    },
-    {
-      key: "salary",
-      label: "Salary analysis",
-      complete: Boolean(latestSalaryAnalysis[0]),
-      sectionKey: "documents",
-      href: "#current-salary-analysis",
-    },
-    {
-      key: "cover-letter",
-      label: "Cover letter",
-      complete: Boolean(latestCoverLetters[0]),
-      sectionKey: "documents",
-      href: "#current-cover-letters",
-    },
-    {
-      key: "interview",
-      label: "Interview prep",
-      complete: Boolean(latestInterviewPrep[0]),
-      sectionKey: "interview",
-      href: "#current-interview-prep",
-    },
-  ]
   const sprintRelatedApplication =
     applications.find((application) => {
       if (!latestApplicationSprintJob) return false
@@ -729,6 +717,44 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       latestDraftsByType.set(asset.asset_type, asset)
     }
   }
+
+  const applicationSprintChecklist = [
+    {
+      key: "dossier",
+      label: "Company intelligence",
+      complete: Boolean(latestCompanyDossiers[0]),
+      sectionKey: "company",
+      href: "#current-company-dossiers",
+    },
+    {
+      key: "fit",
+      label: "Fit analysis",
+      complete: Boolean(latestFitAnalysis[0]),
+      sectionKey: "jobs",
+      href: "#current-fit-analysis",
+    },
+    {
+      key: "salary",
+      label: "Salary analysis",
+      complete: Boolean(latestSalaryAnalysis[0]),
+      sectionKey: "jobs",
+      href: "#current-salary-analysis",
+    },
+    {
+      key: "cover-letter",
+      label: "Cover letter",
+      complete: Boolean(latestCoverLetters[0]),
+      sectionKey: "documents",
+      href: "#current-cover-letters",
+    },
+    {
+      key: "interview",
+      label: "Interview prep",
+      complete: Boolean(latestInterviewPrep[0]),
+      sectionKey: "interview",
+      href: "#current-interview-prep",
+    },
+  ]
 
   const hasCv = documents.some((doc) => doc.source_type === "cv")
   const hasGallupStrengths = documents.some((doc) => doc.source_type === "gallup_strengths" || doc.source_type === "strengths")
@@ -833,6 +859,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   }
   const hasProfile = Boolean(latestProfile)
   const hasDraftDocuments = draftHistory.length > 0
+  const hasGeneratedAssets = assets.length > 0
   const hasLiveSearch = liveJobSearchHistory.length > 0
   const showOnboardingGuide = !hasCv || !hasGallupStrengths || !hasProfile
   const firstFiveChecklist = [
@@ -859,10 +886,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
     {
       key: "assets",
-      label: "Generate first assets",
-      done: hasDraftDocuments,
+      label: hasGeneratedAssets ? "Review saved assets" : "Create first CV + LinkedIn assets",
+      done: hasGeneratedAssets,
       sectionKey: "documents",
-      href: "#document-workbench",
+      href: hasGeneratedAssets ? "#saved-library" : "#base-asset-generator",
     },
     {
       key: "jobs",
@@ -892,6 +919,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       label: "Profile",
       systemDone: hasProfile,
       done: hasProfile || Boolean(manualOutputChecks.profile),
+      count: hasProfile ? 1 : 0,
       sectionKey: "positioning",
       href: "#positioning",
     },
@@ -900,6 +928,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       label: "Company dossier",
       systemDone: companyDossiers.length > 0,
       done: companyDossiers.length > 0 || Boolean(manualOutputChecks.dossier),
+      count: companyDossiers.length,
       sectionKey: "company",
       href: companyDossiers.length > 0 ? "#current-company-dossiers" : "#company-dossier",
     },
@@ -908,10 +937,114 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       label: "Cover letter",
       systemDone: coverLetterHistory.length > 0,
       done: coverLetterHistory.length > 0 || Boolean(manualOutputChecks.cover_letter),
+      count: coverLetterHistory.length,
       sectionKey: "documents",
-      href: coverLetterHistory.length > 0 ? "#current-cover-letters" : "#cover-letter",
+      href: coverLetterHistory.length > 0 ? "#current-cover-letters" : "#document-actions",
+    },
+    {
+      id: "fit_analysis",
+      label: "Fit analysis",
+      systemDone: fitAnalysisHistory.length > 0,
+      done: fitAnalysisHistory.length > 0 || Boolean(manualOutputChecks.fit_analysis),
+      count: fitAnalysisHistory.length,
+      sectionKey: "jobs",
+      href: fitAnalysisHistory.length > 0 ? "#current-fit-analysis" : "#fit-analysis",
+    },
+    {
+      id: "salary_analysis",
+      label: "Salary analysis",
+      systemDone: salaryAnalysisHistory.length > 0,
+      done: salaryAnalysisHistory.length > 0 || Boolean(manualOutputChecks.salary_analysis),
+      count: salaryAnalysisHistory.length,
+      sectionKey: "jobs",
+      href: salaryAnalysisHistory.length > 0 ? "#current-salary-analysis" : "#salary-analysis",
+    },
+    {
+      id: "interview_prep",
+      label: "Interview prep",
+      systemDone: interviewPrepHistory.length > 0,
+      done: interviewPrepHistory.length > 0 || Boolean(manualOutputChecks.interview_prep),
+      count: interviewPrepHistory.length,
+      sectionKey: "interview",
+      href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#interview",
     },
   ] as const
+  const outputCompletionItems = [
+    {
+      id: "cv-linkedin",
+      label: "CV + LinkedIn",
+      count: draftHistory.length,
+      running: isBackgroundJobRunning("generate_assets"),
+      sectionKey: "documents",
+      href: draftHistory.length > 0 ? "#current-application-documents" : "#base-asset-generator",
+    },
+    {
+      id: "dossier",
+      label: "Company dossier",
+      count: companyDossiers.length,
+      running: isBackgroundJobRunning("generate_company_dossier", "generate_target_company_workflow", "generate_application_sprint"),
+      sectionKey: "company",
+      href: companyDossiers.length > 0 ? "#current-company-dossiers" : "#company-dossier",
+    },
+    {
+      id: "cover-letter",
+      label: "Cover letter",
+      count: coverLetterHistory.length,
+      running: isBackgroundJobRunning("generate_cover_letter", "generate_target_company_workflow", "generate_application_sprint"),
+      sectionKey: "documents",
+      href: coverLetterHistory.length > 0 ? "#current-cover-letters" : "#document-actions",
+    },
+    {
+      id: "fit",
+      label: "Fit analysis",
+      count: fitAnalysisHistory.length,
+      running: isBackgroundJobRunning("generate_application_fit_analysis", "generate_application_sprint"),
+      sectionKey: "jobs",
+      href: fitAnalysisHistory.length > 0 ? "#current-fit-analysis" : "#fit-analysis",
+    },
+    {
+      id: "salary",
+      label: "Salary view",
+      count: salaryAnalysisHistory.length,
+      running: isBackgroundJobRunning("generate_salary_analysis", "generate_application_sprint"),
+      sectionKey: "jobs",
+      href: salaryAnalysisHistory.length > 0 ? "#current-salary-analysis" : "#salary-analysis",
+    },
+    {
+      id: "interview",
+      label: "Interview prep",
+      count: interviewPrepHistory.length,
+      running: isBackgroundJobRunning("generate_interview_prep", "generate_target_company_workflow", "generate_application_sprint"),
+      sectionKey: "interview",
+      href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#interview",
+    },
+  ] as const
+  const outputReadyCount = outputCompletionItems.filter((item) => item.count > 0).length
+  const runningOutputItem = outputCompletionItems.find((item) => item.running) ?? null
+  const nextMissingOutputItem = outputCompletionItems.find((item) => item.count === 0 && !item.running) ?? null
+  const nextOutputPromptItem = runningOutputItem ?? nextMissingOutputItem
+  const completedBackgroundJobs = backgroundJobs
+    .filter((job) => job.status === "completed")
+    .map((job) => ({
+      job,
+      timestamp: Date.parse(job.completed_at || job.started_at || job.created_at || "") || 0,
+    }))
+    .sort((a, b) => b.timestamp - a.timestamp)
+  const latestCompletedBackgroundJob = completedBackgroundJobs[0]?.job ?? null
+  const latestCompletedOutputTarget = latestCompletedBackgroundJob
+    ? getResultAnchorForBackgroundJob(latestCompletedBackgroundJob.job_type)
+    : null
+  const latestCompletedOutputFollowUp = latestCompletedBackgroundJob
+    ? getFollowUpActionForBackgroundJob(latestCompletedBackgroundJob.job_type)
+    : null
+  const latestCompletedOutputOpenLabel = latestCompletedBackgroundJob
+    ? getOpenOutputLabelForBackgroundJob(latestCompletedBackgroundJob.job_type)
+    : "Open output"
+  const latestCompletedOutputTime =
+    latestCompletedBackgroundJob?.completed_at ||
+    latestCompletedBackgroundJob?.started_at ||
+    latestCompletedBackgroundJob?.created_at ||
+    null
   const activeApplications = applications.filter((application) => {
     const status = application.status ?? ""
     return !["offer", "rejected", "archived"].includes(status)
@@ -941,6 +1074,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     return matchesType && matchesSearch
   })
   const recentSavedAssets = filteredSavedAssets.slice(0, 3)
+  const latestSavedAsset = recentSavedAssets[0] ?? null
+  const latestSavedAssetTarget = latestSavedAsset ? getSectionTargetForAssetType(latestSavedAsset.asset_type) : null
   const filteredLatestSavedAssets = filteredSavedAssets.slice(0, 8)
   const suggestedTargetRole =
     latestProfile?.recommended_target_roles?.[0] ||
@@ -991,6 +1126,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     : preferredApplication
       ? "Auto-picked live role"
       : "No live role selected"
+  const targetStageLabel = preferredApplication?.status ? preferredApplication.status.replaceAll("_", " ") : targetStatusBadgeLabel
   const currentTargetQuickLinks = [
     {
       label: "Dossier",
@@ -1073,8 +1209,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
     {
       id: "tailor",
-      title: "3. Tailor application assets",
-      description: "Create CV, LinkedIn, cover letter, and company-specific language for target roles.",
+      title: "3. Create CV + LinkedIn assets",
+      description: "Generate base CV and LinkedIn drafts before tailoring anything to a role.",
       ready: hasDraftDocuments || coverLetterHistory.length > 0 || companyDossiers.length > 0,
       sectionKey: "documents",
       href: "#document-workbench",
@@ -1312,10 +1448,17 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     return acc
   }, {} as Record<string, string[]>)
   const quickLinks = [
-    { href: "#workflow-guide", sectionKey: "workflow", label: "Start", description: "See what matters now and follow the easiest next step." },
+    {
+      href: "#workflow-guide",
+      sectionKey: "workflow",
+      label: isFirstFiveComplete ? "Overview" : "Start",
+      description: isFirstFiveComplete
+        ? "Review momentum, saved outputs, and the next best action."
+        : "See what matters now and follow the easiest next step.",
+    },
     { href: "#source-material", sectionKey: "source", label: "Add files", description: "Add CV, Gallup Strengths, LinkedIn, and supporting notes." },
     { href: "#positioning", sectionKey: "positioning", label: "Create profile", description: "Turn your files into a clear professional story and target roles." },
-    { href: "#document-workbench", sectionKey: "documents", label: "Create documents", description: "Create CV, LinkedIn text, cover letters, and application files." },
+    { href: "#document-workbench", sectionKey: "documents", label: "Create CV + LinkedIn", description: "Generate base CV and LinkedIn drafts, then tailor to a role when ready." },
     { href: "#company-dossier", sectionKey: "company", label: "Research companies", description: "Research target employers so tone and messaging fit better." },
     { href: "#interview", sectionKey: "interview", label: "Practice interviews", description: "Prepare answers and save notes after real interviews." },
     { href: "#jobs", sectionKey: "jobs", label: "Search jobs", description: "Run job search, recruiter search, salary checks, and fit checks." },
@@ -1342,7 +1485,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       { label: "Learning plan", sectionKey: "positioning", href: "#current-course-recommendations" },
     ],
     documents: [
-      { label: "Document tools", sectionKey: "documents", href: "#document-actions" },
+      { label: "Generate base assets", sectionKey: "documents", href: "#base-asset-generator" },
+      { label: "Tailor to a role", sectionKey: "documents", href: "#target-role-tracker" },
       { label: "Saved documents", sectionKey: "documents", href: "#current-application-documents" },
       { label: "Cover letters", sectionKey: "documents", href: "#current-cover-letters" },
     ],
@@ -1376,7 +1520,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const showWorkflowSecondary = (!isFocusMode || showAdvancedTools) && !isGuidedMode
   const hideWorkspaceMenuInFocus = isFocusMode && activeStep !== "workflow"
   const showFirstFiveCompact = !showAdvancedTools
-  const hideFirstFivePanel = firstFiveCompleteCount >= 5 && !showAdvancedTools && !showOnboardingGuide
+  const showApplicationWorkspacePanel = isFirstFiveComplete && !showOnboardingGuide
   const showTargetRoleDetails = !isMenuRolledUp || !isFocusMode || showAdvancedTools
   const sourceRemainingCount = sourceChecklist.filter((item) => !item.ready).length
   const sourceWizardFocusMode = openSections.source && sourceRemainingCount > 0 && !showAdvancedTools
@@ -1408,13 +1552,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       href: hasProfile ? "#positioning" : "#generate-profile",
     },
     documents: {
-      statusLabel: hasDraftDocuments || coverLetterHistory.length > 0 ? "Execution active" : "Create first assets",
+      statusLabel: hasDraftDocuments || coverLetterHistory.length > 0 ? "Assets active" : "Create base assets",
       summary:
         hasDraftDocuments || coverLetterHistory.length > 0
-          ? "Core application materials are already saved here. Keep refining them and connect them to tracked roles."
-          : "Create CV and LinkedIn drafts first, then tailor letters and connect the work to real applications.",
-      actionLabel: hasDraftDocuments || coverLetterHistory.length > 0 ? "Open current documents" : "Open generation tools",
-      href: hasDraftDocuments || coverLetterHistory.length > 0 ? "#current-application-documents" : "#document-actions",
+          ? "Core CV and LinkedIn materials are already saved here. Keep refining them or tailor them to a specific role."
+          : "Generate the base CV and LinkedIn drafts first. Add a target role only when the user is ready to tailor.",
+      actionLabel: hasDraftDocuments || coverLetterHistory.length > 0 ? "Open current documents" : "Generate base assets",
+      href: hasDraftDocuments || coverLetterHistory.length > 0 ? "#current-application-documents" : "#base-asset-generator",
     },
     company: {
       statusLabel: companyDossiers.length > 0 ? "Research ready" : "Research needed",
@@ -1499,7 +1643,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     workflow: "Follow this one action first. The rest of the page can wait.",
     source: "Load missing source files first so every downstream output is stronger.",
     positioning: "Generate or refine the profile before creating new application assets.",
-    documents: "Create or improve the core documents next, then tailor by company.",
+    documents: "Generate the base CV and LinkedIn drafts first. Tailoring can wait until there is a real role.",
     company: "Research the target company next so tone matching and messaging are specific.",
     interview: "Run interview prep before your next conversation, then save reflections.",
     jobs: "Search and shortlist roles next, then move them into your tracker.",
@@ -1744,7 +1888,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     },
     documents: {
       complete: hasDraftDocuments || coverLetterHistory.length > 0,
-      nextPrompt: hasDraftDocuments ? "Tailor a cover letter or generate strategic assets." : "Create CV and LinkedIn assets first.",
+      nextPrompt: hasDraftDocuments ? "Review saved drafts or tailor them to a role." : "Generate base CV and LinkedIn assets first.",
     },
     company: {
       complete: companyDossiers.length > 0,
@@ -1868,18 +2012,36 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           : "bg-amber-100 text-amber-800",
     }
   })
-  const activeWorkflowIndex = workflowLinkStatuses.findIndex((link) => link.isActive)
-  const visibleLeftWorkflowLinks = showCompletedLeftSteps
-    ? workflowLinkStatuses
-    : workflowLinkStatuses.filter((link, index) => {
-        if (link.isActive || link.isUrgent) return true
-        if (activeWorkflowIndex >= 0) {
-          return index === activeWorkflowIndex + 1
-        }
-        return index === 0
-      })
+  const leftWorkflowLinkStatuses = quickLinks.map((link) => {
+    const sectionState = stageStatusBySection[link.sectionKey]
+    const isActive = link.sectionKey === activeStep
+    const isUrgent = urgentSectionKey === link.sectionKey
+    const isWorkflowOverview = link.sectionKey === "workflow"
+    const complete = isWorkflowOverview ? completionCount > 0 : sectionState?.complete ?? false
+
+    return {
+      ...link,
+      isActive,
+      isUrgent: !isWorkflowOverview && isUrgent,
+      complete,
+      badgeLabel: isActive ? "Current" : isWorkflowOverview ? (isFirstFiveComplete ? "Ready" : "Guide") : isUrgent ? "Next" : complete ? "Ready" : "Todo",
+      badgeClass: isActive
+        ? "bg-sky-100 text-sky-800"
+        : isWorkflowOverview
+          ? isFirstFiveComplete
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-neutral-100 text-neutral-600"
+        : isUrgent
+          ? "bg-amber-100 text-amber-800"
+          : complete
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-neutral-100 text-neutral-600",
+    }
+  })
+  const displayedLeftWorkflowLinks = leftWorkflowLinkStatuses
   const hasLiveExecutionActivity = activeBackgroundJobs.length + activeLiveJobRuns.length > 0
   const isWorkflowComplete = preparationSteps.length > 0 && completionCount >= preparationSteps.length
+  const useCompactWorkflowGuide = showApplicationWorkspacePanel && isWorkflowComplete && !showAdvancedTools
   const shouldShowTodayAtGlance =
     priorityItems.length > 0 || hasLiveExecutionActivity || isTodayAtGlanceExpanded
   const contextRailItems = [
@@ -1916,6 +2078,131 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       href: nextUndoneStep?.href || "#workflow-guide",
     },
   ]
+  const workflowActionLane = [
+    ...(runningOutputItem
+      ? [
+          {
+            id: "running-output",
+            label: "Processing now",
+            title: `${runningOutputItem.label} is being saved`,
+            detail: "Open the related workspace while the result finishes.",
+            actionLabel: "Open area",
+            sectionKey: runningOutputItem.sectionKey,
+            href: runningOutputItem.href,
+            tone: "sky" as const,
+          },
+        ]
+      : []),
+    ...(activeLiveJobRuns.length > 0
+      ? [
+          {
+            id: "running-live-search",
+            label: "Live search running",
+            title: "Opportunity matching is in progress",
+            detail: "Review live matches as soon as the run completes.",
+            actionLabel: "Open search",
+            sectionKey: "jobs",
+            href: "#live-job-search",
+            tone: "sky" as const,
+          },
+        ]
+      : []),
+    ...(overdueApplications[0]
+      ? [
+          {
+            id: `overdue-${overdueApplications[0].id}`,
+            label: "Follow-up overdue",
+            title: overdueApplications[0].company_name
+              ? `Follow up with ${overdueApplications[0].company_name}`
+              : "Follow-up is overdue",
+            detail:
+              overdueApplications[0].next_action ||
+              overdueApplications[0].job_title ||
+              "Open the role tracker and decide the next move.",
+            actionLabel: "Open tracker",
+            sectionKey: "documents",
+            href: "#target-role-tracker",
+            tone: "rose" as const,
+          },
+        ]
+      : []),
+    ...(dueTodayApplications[0]
+      ? [
+          {
+            id: `due-today-${dueTodayApplications[0].id}`,
+            label: "Due today",
+            title: dueTodayApplications[0].company_name
+              ? `Check ${dueTodayApplications[0].company_name}`
+              : "Application follow-up due",
+            detail:
+              dueTodayApplications[0].next_action ||
+              dueTodayApplications[0].job_title ||
+              "Keep the role moving while it is fresh.",
+            actionLabel: "Open tracker",
+            sectionKey: "documents",
+            href: "#target-role-tracker",
+            tone: "amber" as const,
+          },
+        ]
+      : []),
+    ...(latestCompletedBackgroundJob && latestCompletedOutputTarget
+      ? [
+          {
+            id: `latest-output-${latestCompletedBackgroundJob.id}`,
+            label: "Latest output ready",
+            title: `${formatBackgroundJobType(latestCompletedBackgroundJob.job_type)} ready`,
+            detail: latestCompletedOutputFollowUp?.label
+              ? `Next: ${latestCompletedOutputFollowUp.label}`
+              : latestCompletedBackgroundJob.result_summary || "Open the saved result.",
+            actionLabel: latestCompletedOutputOpenLabel,
+            sectionKey: latestCompletedOutputTarget.sectionKey,
+            href: latestCompletedOutputTarget.href,
+            tone: "emerald" as const,
+          },
+        ]
+      : []),
+    ...(nextMissingOutputItem
+      ? [
+          {
+            id: `missing-output-${nextMissingOutputItem.id}`,
+            label: "Next output",
+            title: `Create ${nextMissingOutputItem.label}`,
+            detail: "Fill the next gap in the candidate output set.",
+            actionLabel: "Create",
+            sectionKey: nextMissingOutputItem.sectionKey,
+            href: nextMissingOutputItem.href,
+            tone: "amber" as const,
+          },
+        ]
+      : []),
+    ...(firstFiveNextItem
+      ? [
+          {
+            id: `setup-${firstFiveNextItem.key}`,
+            label: "Setup",
+            title: firstFiveNextItem.label,
+            detail: "Finish the next setup step before moving into full execution.",
+            actionLabel: "Continue",
+            sectionKey: firstFiveNextItem.sectionKey,
+            href: firstFiveNextItem.href,
+            tone: "neutral" as const,
+          },
+        ]
+      : nextUndoneStep
+        ? [
+            {
+              id: `workflow-${nextUndoneStep.id}`,
+              label: "Workflow",
+              title: nextUndoneStep.title,
+              detail: nextUndoneStep.description,
+              actionLabel: nextUndoneStep.actionLabel,
+              sectionKey: nextUndoneStep.sectionKey,
+              href: nextUndoneStep.href,
+              tone: "neutral" as const,
+            },
+          ]
+        : []),
+  ].slice(0, 3)
 
   function toggleSection(sectionKey: string) {
     const isCollapsingCurrentSection = activeStep === sectionKey && openSections[sectionKey]
@@ -1999,6 +2286,58 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         return { sectionKey: "positioning", href: "#current-course-recommendations" }
       default:
         return { sectionKey: "workflow", href: "#workflow-guide" }
+    }
+  }
+
+  function getFollowUpActionForBackgroundJob(jobType: string | null | undefined) {
+    switch (jobType) {
+      case "generate_profile":
+        return { label: "Create first assets", sectionKey: "documents", href: "#base-asset-generator" }
+      case "generate_assets":
+        return { label: "Create cover letter", sectionKey: "documents", href: "#document-actions" }
+      case "generate_company_dossier":
+        return { label: "Use in cover letter", sectionKey: "documents", href: "#document-actions" }
+      case "generate_target_company_workflow":
+      case "generate_application_sprint":
+        return { label: "Review saved files", sectionKey: "documents", href: "#saved-library" }
+      case "generate_cover_letter":
+        return { label: "Open tracker", sectionKey: "documents", href: "#document-workbench" }
+      case "generate_interview_prep":
+        return { label: "Open interview notes", sectionKey: "interview", href: "#recent-interview-assessments" }
+      case "generate_salary_analysis":
+      case "generate_application_fit_analysis":
+        return { label: "Open active role", sectionKey: "documents", href: "#document-workbench" }
+      default:
+        return null
+    }
+  }
+
+  function getOpenOutputLabelForBackgroundJob(jobType: string | null | undefined) {
+    switch (jobType) {
+      case "generate_profile":
+        return "Open profile"
+      case "generate_assets":
+        return "Review assets"
+      case "generate_company_dossier":
+        return "Open dossier"
+      case "generate_outreach_strategy":
+        return "Open outreach"
+      case "generate_cover_letter":
+        return "Open cover letter"
+      case "generate_interview_prep":
+        return "Open interview prep"
+      case "generate_salary_analysis":
+        return "Open salary view"
+      case "generate_application_fit_analysis":
+        return "Open fit analysis"
+      case "generate_course_recommendations":
+        return "Open courses"
+      case "generate_target_company_workflow":
+      case "generate_application_sprint":
+      case "generate_strategy_document":
+        return "Review files"
+      default:
+        return "Open output"
     }
   }
 
@@ -2298,7 +2637,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`candidate-compact-workspace w-full px-4 py-4 md:px-6 lg:pl-[206px] lg:pr-6 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`candidate-compact-workspace w-full px-4 py-5 lg:pl-[240px] lg:pr-4 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+        <PlatformModuleNav />
         <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
@@ -2306,7 +2646,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
           </div>
         ) : null}
-        <div id="career-header" className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
+        <div id="career-header" className="mb-2 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Link href="/career" className="text-[11px] font-medium text-neutral-500 hover:text-neutral-900">
@@ -2342,32 +2682,30 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 {candidate.primary_goal ? candidate.primary_goal.replaceAll("_", " ") : "Not set"}
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Link
-                href="/platform#modules"
-                className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                Main modules
-              </Link>
-              <ExperienceAgentWidget enabled inline={false} />
-            </div>
           </div>
         </div>
 
-        {!isWizardFocusActive && !hideFirstFivePanel ? (
-        <section className="mb-2.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2.5 shadow-sm">
+        {!isWizardFocusActive ? (
+        <section className="mb-2 rounded-2xl border border-[#d8e4f2] bg-white px-2.5 py-2 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Setup progress</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">
+                {showApplicationWorkspacePanel ? "Application workspace" : "Setup progress"}
+              </div>
               <p className="text-xs text-neutral-600">
-                {firstFiveCompleteCount}/5 complete
-                {firstFiveNextItem ? ` | Next: ${firstFiveNextItem.label}` : " | Core setup complete"}
+                {showApplicationWorkspacePanel
+                  ? `${outputReadyCount}/${outputCompletionItems.length} outputs ready | ${activeApplications.length} active role${activeApplications.length === 1 ? "" : "s"}`
+                  : `${firstFiveCompleteCount}/5 complete${firstFiveNextItem ? ` | Next: ${firstFiveNextItem.label}` : " | Core setup complete"}`}
               </p>
             </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
+                    if (showApplicationWorkspacePanel) {
+                      openAndScroll("documents", "#saved-library")
+                      return
+                    }
                     if (firstFiveNextItem) {
                       openAndScroll(firstFiveNextItem.sectionKey, firstFiveNextItem.href)
                       return
@@ -2378,7 +2716,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     showOnboardingGuide ? "wizard-spotlight" : ""
                   }`}
                 >
-                  {firstFiveNextItem
+                  {showApplicationWorkspacePanel
+                    ? "Review saved assets"
+                    : firstFiveNextItem
                     ? `Next step: ${firstFiveNextItem.label}`
                     : `Setup wizard${showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}`}
                 </button>
@@ -2396,7 +2736,198 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : null}
             </div>
           </div>
-          {!showFirstFiveCompact ? (
+          {latestCompletedBackgroundJob && latestCompletedOutputTarget ? (
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">Latest completed output</div>
+                <div className="mt-0.5 truncate text-sm font-semibold text-emerald-950">
+                  {formatBackgroundJobType(latestCompletedBackgroundJob.job_type)} ready
+                </div>
+                <div className="mt-0.5 line-clamp-1 text-[11px] text-emerald-900">
+                  {latestCompletedBackgroundJob.result_summary ||
+                    (latestCompletedOutputTime ? `Saved ${new Date(latestCompletedOutputTime).toLocaleString()}` : "Saved and ready to review")}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => openAndScroll(latestCompletedOutputTarget.sectionKey, latestCompletedOutputTarget.href)}
+                  className="rounded-full border border-emerald-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+                >
+                  {latestCompletedOutputOpenLabel}
+                </button>
+                {latestCompletedOutputFollowUp ? (
+                  <button
+                    type="button"
+                    onClick={() => openAndScroll(latestCompletedOutputFollowUp.sectionKey, latestCompletedOutputFollowUp.href)}
+                    className="rounded-full border border-emerald-300 bg-emerald-700 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-emerald-800"
+                  >
+                    {latestCompletedOutputFollowUp.label}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {workflowActionLane.length > 0 ? (
+            <div className="mt-1.5 rounded-xl border border-[#d8e4f2] bg-[#f7fbff] px-2 py-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#56708d]">Today's workflow</div>
+                  <div className="hidden text-[11px] text-neutral-600 md:block">Best next actions based on saved files, running work, and tracked roles.</div>
+                </div>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                  {workflowActionLane.length} active
+                </span>
+              </div>
+              <div className="mt-1.5 grid gap-1.5 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+                {workflowActionLane.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAndScroll(item.sectionKey, item.href)}
+                    className={`rounded-lg border px-2.5 py-1.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${workflowActionToneClass(item.tone)}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-neutral-500">{item.label}</span>
+                      <span className="rounded-full border border-white bg-white px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                        {item.actionLabel}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 line-clamp-1 text-xs font-semibold text-neutral-950">{item.title}</div>
+                    <div className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-neutral-600">{item.detail}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {showApplicationWorkspacePanel ? (
+            <>
+              <div className="mt-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Current target</div>
+                    <div className="mt-0.5 truncate text-sm font-semibold text-sky-950">{targetSummaryTitle}</div>
+                    <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-sky-900">
+                      <span>Location: {currentTargetBrief.location || "Not set"}</span>
+                      <span>Status: {targetStageLabel}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#target-role-tracker")}
+                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                    >
+                      Change target
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#document-workbench")}
+                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                    >
+                      Open tracker
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("company", "#company-dossier")}
+                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                    >
+                      Use in generators
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-1.5 grid gap-1.5 md:grid-cols-5">
+                {[
+                  { label: "Review assets", detail: `${assets.length} saved`, sectionKey: "documents", href: "#saved-library" },
+                  { label: "Track roles", detail: `${activeApplications.length} active`, sectionKey: "documents", href: "#document-workbench" },
+                  { label: "Research company", detail: companyDossiers.length > 0 ? "Dossier ready" : "Build dossier", sectionKey: "company", href: "#company-dossier" },
+                  { label: "Prepare interview", detail: interviewPrepHistory.length > 0 ? "Prep ready" : "Create prep", sectionKey: "interview", href: "#interview" },
+                  { label: "Search jobs", detail: liveJobRuns.length > 0 ? "Review matches" : "Run search", sectionKey: "jobs", href: "#live-job-search" },
+                ].map((item) => (
+                  <button
+                    key={`workspace-action-${item.label}`}
+                    type="button"
+                    onClick={() => openAndScroll(item.sectionKey, item.href)}
+                    className="group rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-white"
+                  >
+                    <span className="block truncate text-[11px] font-semibold text-neutral-900">{item.label}</span>
+                    <span className="mt-0.5 flex items-center justify-between gap-2 text-[10px]">
+                      <span className="truncate text-neutral-500">{item.detail}</span>
+                      <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">Open</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Output status</div>
+                  <div className="text-[10px] text-neutral-500">
+                    {outputReadyCount}/{outputCompletionItems.length} ready
+                  </div>
+                </div>
+                {nextOutputPromptItem ? (
+                  <div className={`mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
+                    runningOutputItem
+                      ? "border-sky-200 bg-sky-50 text-sky-900"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em]">
+                        {runningOutputItem ? "Processing now" : "Next output to create"}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] font-semibold">
+                        {runningOutputItem ? `${nextOutputPromptItem.label} is being saved` : nextOutputPromptItem.label}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll(nextOutputPromptItem.sectionKey, nextOutputPromptItem.href)}
+                      className="rounded-full border border-white bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-800 hover:bg-neutral-50"
+                    >
+                      {runningOutputItem ? "Open area" : "Create"}
+                    </button>
+                  </div>
+                ) : null}
+                <div className="mt-1.5 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
+                  {outputCompletionItems.map((item) => {
+                    const isReady = item.count > 0
+                    const statusLabel = item.running ? "Running" : isReady ? "Ready" : "Missing"
+                    const actionLabel = item.running ? "Open area" : isReady ? "Review" : "Create"
+                    const statusClass = item.running
+                      ? "bg-sky-100 text-sky-800"
+                      : isReady
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-neutral-200 text-neutral-600"
+
+                    return (
+                      <button
+                        key={`workspace-output-status-${item.id}`}
+                        type="button"
+                        onClick={() => openAndScroll(item.sectionKey, item.href)}
+                        className="group rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="truncate text-[11px] font-semibold text-neutral-900">{item.label}</div>
+                          <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+                          <span className="text-neutral-500">
+                            {isReady ? `${item.count} saved` : item.running ? "Saving soon" : "Not created"}
+                          </span>
+                          <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">
+                            {actionLabel}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          ) : !showFirstFiveCompact ? (
             <>
               <div className="mt-2 grid gap-1.5 md:grid-cols-3">
                 {topReadinessItems.map((item) => (
@@ -2429,28 +2960,72 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                 ))}
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Quick complete</div>
-                {keyOutputChecklist.map((item) => (
-                  <button
-                    key={`output-check-${item.id}`}
-                    type="button"
-                    onClick={() => {
-                      if (item.systemDone) {
-                        openAndScroll(item.sectionKey, item.href)
-                      } else {
-                        markOutputChecked(item.id)
-                      }
-                    }}
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                      item.done
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
-                    }`}
-                  >
-                    {item.systemDone ? "Open" : item.done ? "Undo" : "Mark done"} | {item.label}
-                  </button>
-                ))}
+              <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Output status</div>
+                  <div className="text-[10px] text-neutral-500">
+                    {outputReadyCount}/{outputCompletionItems.length} ready
+                  </div>
+                </div>
+                {nextOutputPromptItem ? (
+                  <div className={`mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
+                    runningOutputItem
+                      ? "border-sky-200 bg-sky-50 text-sky-900"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em]">
+                        {runningOutputItem ? "Processing now" : "Next output to create"}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] font-semibold">
+                        {runningOutputItem ? `${nextOutputPromptItem.label} is being saved` : nextOutputPromptItem.label}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll(nextOutputPromptItem.sectionKey, nextOutputPromptItem.href)}
+                      className="rounded-full border border-white bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-800 hover:bg-neutral-50"
+                    >
+                      {runningOutputItem ? "Open area" : "Create"}
+                    </button>
+                  </div>
+                ) : null}
+                <div className="mt-1.5 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
+                  {outputCompletionItems.map((item) => {
+                    const isReady = item.count > 0
+                    const statusLabel = item.running ? "Running" : isReady ? "Ready" : "Missing"
+                    const actionLabel = item.running ? "Open area" : isReady ? "Review" : "Create"
+                    const statusClass = item.running
+                      ? "bg-sky-100 text-sky-800"
+                      : isReady
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-neutral-200 text-neutral-600"
+
+                    return (
+                      <button
+                        key={`output-status-${item.id}`}
+                        type="button"
+                        onClick={() => openAndScroll(item.sectionKey, item.href)}
+                        className="group rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="truncate text-[11px] font-semibold text-neutral-900">{item.label}</div>
+                          <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
+                          <span className="text-neutral-500">
+                            {isReady ? `${item.count} saved` : item.running ? "Saving soon" : "Not created"}
+                          </span>
+                          <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">
+                            {actionLabel}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </>
           ) : isFirstTimeMinimalMode ? (
@@ -2479,12 +3054,20 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         </section>
 
         {showSetupCelebration && !isWizardFocusActive ? (
-          <section className="mb-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 shadow-sm">
+          <section
+            className={`border border-emerald-300 bg-emerald-50 shadow-sm ${
+              showApplicationWorkspacePanel
+                ? "mb-2 rounded-2xl px-2.5 py-1.5"
+                : "mb-2.5 rounded-2xl px-3 py-2.5"
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Setup complete</div>
                 <p className="text-xs text-emerald-800">
-                  Great momentum. Your first five setup actions are complete, so you can now focus on high-impact applications.
+                  {showApplicationWorkspacePanel
+                    ? "Core setup is done. Continue from the workspace above when you are ready to review or create outputs."
+                    : "Great momentum. Your first five setup actions are complete, so you can now focus on high-impact applications."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -2496,7 +3079,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   }}
                   className="rounded-full border border-emerald-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700 hover:bg-emerald-100"
                 >
-                  Build documents
+                  {showApplicationWorkspacePanel ? "Open documents" : "Build documents"}
                 </button>
                 <button
                   type="button"
@@ -2983,178 +3566,199 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         </section>
         ) : null}
 
-        <section id="workflow-guide" className={`mb-5 rounded-[1.5rem] border border-[#d7e3f4] bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_100%)] p-3 shadow-sm ${isFirstTimeMinimalMode ? "hidden" : activeStep === "workflow" ? "" : "hidden"}`}>
+        <section id="workflow-guide" className={`${useCompactWorkflowGuide ? "mb-2 rounded-2xl p-2" : "mb-3 rounded-[1.25rem] p-2.5"} border border-[#d7e3f4] bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_100%)] shadow-sm ${isFirstTimeMinimalMode ? "hidden" : activeStep === "workflow" ? "" : "hidden"}`}>
           <button
             type="button"
             onClick={() => toggleSection("workflow")}
             aria-expanded={openSections.workflow}
-            className="flex w-full items-start justify-between gap-3 text-left"
+            className={`flex w-full justify-between gap-3 text-left ${useCompactWorkflowGuide ? "items-center" : "items-start"}`}
           >
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Guide</div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#0f172a]">Next best step</h2>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                {useCompactWorkflowGuide ? "Momentum" : "Guide"}
+              </div>
+              <h2 className={`${useCompactWorkflowGuide ? "text-sm" : "mt-0.5 text-base"} font-semibold tracking-tight text-[#0f172a]`}>
+                {useCompactWorkflowGuide ? "Ready to keep moving" : "Next best step"}
+              </h2>
+              <div className={`${useCompactWorkflowGuide ? "mt-0.5" : "mt-1"} flex flex-wrap items-center gap-1.5`}>
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${sectionHeaderMeta.workflow.badgeClass}`}>
                   {sectionHeaderMeta.workflow.badgeLabel}
                 </span>
-                <span className="text-xs text-neutral-600">{sectionHeaderMeta.workflow.prompt}</span>
+                <span className="text-xs text-neutral-600">
+                  {useCompactWorkflowGuide ? "Use the workspace above for saved assets, follow-ups, and live role execution." : sectionHeaderMeta.workflow.prompt}
+                </span>
               </div>
             </div>
             <span className="rounded-full border border-neutral-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">
-              {openSections.workflow ? "Collapse" : "Expand"}
+              {useCompactWorkflowGuide ? (openSections.workflow ? "Hide" : "Show") : openSections.workflow ? "Collapse" : "Expand"}
             </span>
           </button>
 
           {openSections.workflow ? (
-            <div className="mt-3 space-y-2.5">
-              <div className="rounded-2xl border border-[#0a66c2]/20 bg-white px-3 py-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-2 space-y-1.5">
+              {useCompactWorkflowGuide ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#0a66c2]/20 bg-white px-2.5 py-1.5">
+                  <p className="text-xs text-neutral-700">
+                    <span className="font-semibold text-[#0f172a]">Setup complete.</span>{" "}
+                    Keep working from Application Workspace and open details only when you need the full checklist.
+                  </p>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                      Setup {completionCount}/{preparationSteps.length}
-                    </span>
-                    {priorityItems.length > 0 ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
-                        {priorityItems.length} priority
-                      </span>
+                    {workflowPrimaryAction ? (
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll(workflowPrimaryAction.sectionKey, workflowPrimaryAction.href)}
+                        className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                      >
+                        {workflowPrimaryAction.actionLabel || "Open step"}
+                      </button>
                     ) : null}
-                  </div>
-                  {workflowPrimaryAction ? (
                     <button
                       type="button"
-                      onClick={() => openAndScroll(workflowPrimaryAction.sectionKey, workflowPrimaryAction.href)}
-                      className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                      onClick={() => setIsWorkflowGuideExpanded((current) => !current)}
+                      className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {workflowPrimaryAction.actionLabel || "Open step"}
+                      {isWorkflowGuideExpanded ? "Less details" : "More details"}
                     </button>
-                  ) : null}
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-neutral-700">
-                  <span className="font-semibold text-[#0f172a]">Next step:</span>{" "}
-                  {isWorkflowComplete && !hasLiveExecutionActivity
-                    ? "Core setup is complete. Stay in momentum with saved files, follow-ups, and live role execution."
-                    : workflowPrimaryAction?.description || "Move to document refinement or live role execution."}
-                </p>
-              </div>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-[#0a66c2]/20 bg-white px-2.5 py-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                          Setup {completionCount}/{preparationSteps.length}
+                        </span>
+                        {priorityItems.length > 0 ? (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800">
+                            {priorityItems.length} priority
+                          </span>
+                        ) : null}
+                      </div>
+                      {workflowPrimaryAction ? (
+                        <button
+                          type="button"
+                          onClick={() => openAndScroll(workflowPrimaryAction.sectionKey, workflowPrimaryAction.href)}
+                          className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                        >
+                          {workflowPrimaryAction.actionLabel || "Open step"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-neutral-700">
+                      <span className="font-semibold text-[#0f172a]">Next step:</span>{" "}
+                      {isWorkflowComplete && !hasLiveExecutionActivity
+                        ? "Core setup is complete. Stay in momentum with saved files, follow-ups, and live role execution."
+                        : workflowPrimaryAction?.description || "Move to document refinement or live role execution."}
+                    </p>
+                  </div>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsWorkflowGuideExpanded((current) => !current)}
-                  className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {isWorkflowGuideExpanded ? "Less details" : "More details"}
-                </button>
-              </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsWorkflowGuideExpanded((current) => !current)}
+                      className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {isWorkflowGuideExpanded ? "Less details" : "More details"}
+                    </button>
+                  </div>
+                </>
+              )}
 
               {isWorkflowGuideExpanded ? (
                 <>
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
+                  <div className="rounded-xl border border-neutral-200 bg-white p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Quick start</div>
-                      <div className="text-[11px] text-sky-800">Hover, focus, or tap ? for details</div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Workflow status</div>
+                        <p className="mt-0.5 text-xs text-neutral-600">Core stages, current readiness, and the next practical action.</p>
+                      </div>
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                        {completionCount}/{preparationSteps.length} complete
+                      </span>
                     </div>
-                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="mt-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-4">
                       {simpleWorkflowSteps.map((step) => (
-                        <div key={`simple-${step.id}`} data-guide-hint-root="true" className="group relative rounded-xl border border-sky-200 bg-white px-3 py-2">
+                        <button
+                          key={`simple-${step.id}`}
+                          type="button"
+                          onClick={() => openAndScroll(step.sectionKey, step.href)}
+                          className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-left transition hover:border-neutral-300 hover:bg-white"
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <button
-                              type="button"
-                              title={step.description}
-                              onClick={() => openAndScroll(step.sectionKey, step.href)}
-                              className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                            <div className="truncate text-xs font-semibold text-neutral-900">{step.title}</div>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                                step.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
+                              }`}
                             >
-                              <div className="truncate text-sm font-semibold text-neutral-900">{step.title}</div>
-                            </button>
-                            <div className="flex items-center gap-1.5">
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${step.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>
-                                {step.ready ? "Ready" : "Next"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setOpenGuideHintId((current) => (current === `simple-${step.id}` ? null : `simple-${step.id}`))}
-                                className="rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-100"
-                                aria-label={`Show help for ${step.title}`}
-                              >
-                                ?
-                              </button>
-                            </div>
+                              {step.ready ? "Ready" : "Next"}
+                            </span>
                           </div>
-                          <div
-                            className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-sky-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
-                              openGuideHintId === `simple-${step.id}` ? "block" : "hidden group-hover:block group-focus-within:block"
-                            }`}
-                          >
-                            {step.description}
-                          </div>
-                        </div>
+                          <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-neutral-600">{step.description}</p>
+                        </button>
                       ))}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
-                        Personalized next actions
-                      </div>
-                      <div className="text-[11px] text-indigo-900">Style: {strengthWorkflowLabel}</div>
+                  <div className="grid gap-2 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                    <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Priority queue</div>
+                      {strengthOrderedNextSteps.length > 0 ? (
+                        <div className="mt-2 space-y-1.5">
+                          {strengthOrderedNextSteps.map((step, index) => (
+                            <button
+                              key={`strength-priority-${step.id}`}
+                              type="button"
+                              onClick={() => openAndScroll(step.sectionKey, step.href)}
+                              className="flex w-full items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-neutral-300 hover:bg-white"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-xs font-semibold text-neutral-900">{step.title}</span>
+                                <span className="block truncate text-[11px] text-neutral-600">{step.actionLabel}</span>
+                              </span>
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-neutral-600">{index + 1}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs leading-5 text-neutral-600">
+                          No blockers. Continue with saved files, follow-ups, and live role execution.
+                        </p>
+                      )}
                     </div>
-                    {strengthOrderedNextSteps.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {strengthOrderedNextSteps.map((step, index) => (
+
+                    <div className="rounded-xl border border-neutral-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Checklist</div>
+                        <div className="text-[11px] font-medium text-neutral-500">{strengthWorkflowLabel} guidance</div>
+                      </div>
+                      <div className="mt-2 divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-neutral-50">
+                        {preparationSteps.map((step, index) => (
                           <button
-                            key={`strength-priority-${step.id}`}
+                            key={step.title}
                             type="button"
                             onClick={() => openAndScroll(step.sectionKey, step.href)}
-                            className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-900 hover:bg-indigo-100"
+                            className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition hover:bg-white"
                           >
-                            {index + 1}. {step.title}
+                            <span
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold ${
+                                step.done ? "bg-emerald-100 text-emerald-700" : "bg-neutral-200 text-neutral-700"
+                              }`}
+                            >
+                              {step.done ? "OK" : index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-semibold text-neutral-900">{step.title}</span>
+                              <span className="block truncate text-[11px] text-neutral-600">{step.description}</span>
+                            </span>
+                            <span className="hidden shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500 md:inline">
+                              {step.actionLabel}
+                            </span>
                           </button>
                         ))}
                       </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-indigo-900">Great momentum. Current priority steps are complete.</p>
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl border border-neutral-200 bg-white p-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">Preparation checklist</div>
-                    <div className="mt-2 grid gap-2 md:grid-cols-2">
-                      {preparationSteps.map((step, index) => (
-                        <div key={step.title} data-guide-hint-root="true" className="group relative flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
-                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${step.done ? "bg-emerald-600 text-white" : "bg-neutral-200 text-neutral-700"}`}>
-                            {step.done ? "OK" : index + 1}
-                          </span>
-                          <button
-                            type="button"
-                            title={step.description}
-                            onClick={() => openAndScroll(step.sectionKey, step.href)}
-                            className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                          >
-                            {step.title}
-                          </button>
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">{step.actionLabel}</span>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGuideHintId((current) => (current === `prep-${index}` ? null : `prep-${index}`))}
-                            className="rounded-full border border-neutral-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
-                            aria-label={`Show help for ${step.title}`}
-                          >
-                            ?
-                          </button>
-                          <span
-                            className={`pointer-events-none absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[11px] leading-5 text-neutral-600 shadow-md ${
-                              openGuideHintId === `prep-${index}` ? "block" : "hidden group-hover:block group-focus-within:block"
-                            }`}
-                          >
-                            {step.description}
-                          </span>
-                        </div>
-                      ))}
                     </div>
-                    <p className="mt-2 text-xs text-neutral-600">
-                      Gallup Strengths is the core input that most improves positioning, letters, and interview answers.
-                    </p>
                   </div>
                 </>
               ) : null}
@@ -3176,10 +3780,27 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
 
           <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700">
-              {recentSavedAssets[0]?.created_at
-                ? `Latest saved: ${new Date(recentSavedAssets[0].created_at).toLocaleString()}`
-                : "No saved files yet. Generate an output and it will appear here."}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700">
+              {latestSavedAsset ? (
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-neutral-900">{latestSavedAsset.title || "Untitled file"}</div>
+                  <div className="mt-0.5 truncate text-[11px] text-neutral-500">
+                    Latest saved | {formatAssetType(latestSavedAsset.asset_type)}
+                    {latestSavedAsset.created_at ? ` | ${new Date(latestSavedAsset.created_at).toLocaleString()}` : ""}
+                  </div>
+                </div>
+              ) : (
+                <span>No saved files yet. Generate an output and it will appear here.</span>
+              )}
+              {latestSavedAssetTarget ? (
+                <button
+                  type="button"
+                  onClick={() => openAndScroll(latestSavedAssetTarget.sectionKey, latestSavedAssetTarget.href)}
+                  className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
+                >
+                  Open latest
+                </button>
+              ) : null}
             </div>
             <div className="ui-action-row">
               <button
@@ -3720,7 +4341,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                   <button
                     type="button"
-                    onClick={() => openAndScroll("documents", "#current-fit-analysis")}
+                    onClick={() => openAndScroll("jobs", "#current-fit-analysis")}
                     className="rounded-2xl border border-[#cbd5e1] bg-white p-4 text-left transition hover:border-[#94a3b8]"
                   >
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Role fit</div>
@@ -3729,7 +4350,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                   <button
                     type="button"
-                    onClick={() => openAndScroll("documents", "#current-salary-analysis")}
+                    onClick={() => openAndScroll("jobs", "#current-salary-analysis")}
                     className="rounded-2xl border border-[#cbd5e1] bg-white p-4 text-left transition hover:border-[#94a3b8]"
                   >
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Compensation</div>
@@ -4160,24 +4781,40 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       />
                     </>
                   ) : null}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-800">
-                      Build profile first, then generate outward-facing assets.
-                    </div>
-                    <div id="generate-profile" className="w-full max-w-xl">
-                      <CareerGenerateProfileButton candidateId={candidate.id} />
-                    </div>
-                  </div>
-                <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
-              <h2 className="text-xl font-semibold">Current career positioning</h2>
+                <section id="generate-profile" className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm md:p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-700">Profile builder</div>
+                  <h2 className="mt-1 text-lg font-semibold">Current career positioning</h2>
+                  <p className="mt-1 text-sm text-neutral-600">Generate the professional narrative before creating outward-facing assets.</p>
+                </div>
+                {latestProfile ? (
+                  <CareerGenerateProfileButton candidateId={candidate.id} variant="inline" label="Generate new version" />
+                ) : null}
+              </div>
               {!latestProfile ? (
-                <EmptyStateActionCard
-                  className="mt-3"
-                  title="No profile generated yet"
-                  description="Save source material first, then generate the first career identity so the workspace can start producing tailored assets."
-                  actionLabel={documents.length > 0 ? "Generate profile" : "Load source material"}
-                  onClick={() => openAndScroll(documents.length > 0 ? "positioning" : "source", documents.length > 0 ? "#generate-profile" : "#source-material")}
-                />
+                <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Recommended next move</div>
+                  <div className="mt-1 text-base font-semibold text-sky-950">No profile generated yet</div>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-sky-950">
+                    Use the saved source material to generate the first career identity. The profile will appear here and power the CV,
+                    LinkedIn, cover letter, and interview tools.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    {documents.length > 0 ? (
+                      <CareerGenerateProfileButton candidateId={candidate.id} variant="inline" label="Generate profile" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll("source", "#source-material")}
+                        className="inline-flex rounded-full border border-sky-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                      >
+                        Load source material
+                      </button>
+                    )}
+                    <span className="text-xs text-sky-900">{documents.length} source {documents.length === 1 ? "file" : "files"} saved</span>
+                  </div>
+                </div>
               ) : (
                 <div className="mt-3 space-y-3">
                   <div className="grid gap-3 lg:grid-cols-[1.2fr,0.8fr]">
@@ -4427,7 +5064,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 4</span>
-                    <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Create application assets</h2>
+                    <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Create CV + LinkedIn assets</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${sectionHeaderMeta.documents.badgeClass}`}>
@@ -4445,7 +5082,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
                 <div className="text-[11px] text-neutral-700">
-                  <span className="font-semibold">Next:</span> Create base assets, then tailor for your target role.
+                  <span className="font-semibold">Next:</span> Generate base CV + LinkedIn assets. Tailor them to a role when you have one.
                 </div>
                 <button
                   type="button"
@@ -4469,8 +5106,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     className="mb-3"
                     title="Inside asset builder"
                     items={[
-                      { label: "Application tracker", href: "#document-workbench" },
-                      { label: "Document tools", href: "#document-actions" },
+                      { label: "Generate base assets", href: "#base-asset-generator" },
+                      { label: "Tailor to a role", href: "#target-role-tracker" },
                       { label: "Current documents", href: "#current-application-documents" },
                       { label: "Cover letters", href: "#current-cover-letters" },
                     ]}
@@ -4478,6 +5115,36 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   />
                 </>
               ) : null}
+              <section id="base-asset-generator" className="mb-2.5 rounded-xl border border-sky-200 bg-sky-50 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="max-w-3xl">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Recommended next move</div>
+                    <h3 className="mt-1 text-base font-semibold text-sky-950">Your profile is ready. Create the base assets first.</h3>
+                    <p className="mt-1 text-xs leading-5 text-sky-950">
+                      Generate the reusable CV and LinkedIn drafts before asking the user for a target role. Role tracking and tailored cover letters can come after the base materials exist.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#base-asset-generator-action")}
+                      className="rounded-full bg-black px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-neutral-800"
+                    >
+                      Open generator
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAndScroll("documents", "#target-role-tracker")}
+                      className="rounded-full border border-sky-300 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                    >
+                      Add target role first
+                    </button>
+                  </div>
+                </div>
+              </section>
+              <div id="base-asset-generator-action" className="mb-2.5">
+                <CareerGenerateAssetsButton candidateId={candidate.id} />
+              </div>
               {showSectionContext.documents ? (
               <section className="mb-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4513,13 +5180,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </section>
               ) : null}
 
-              <section className="mb-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
+              <section id="target-role-tracker" className="mb-2.5 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Application tracker</div>
-                    <h3 className="mt-0.5 text-sm font-semibold">Live roles</h3>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Optional tailoring path</div>
+                    <h3 className="mt-0.5 text-sm font-semibold">Add a target role when ready</h3>
                     <p className="mt-0.5 max-w-2xl text-[11px] leading-4 text-neutral-600">
-                      Keep application status, follow-up notes, and next actions in one place.
+                      Use this when the user has a real role to tailor against. It is not required before generating the base CV and LinkedIn drafts.
                     </p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -4586,8 +5253,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   brief={currentTargetBrief}
                   statusBadge={targetStatusBadgeLabel}
                 />
-                <CareerApplicationSprint candidateId={candidate.id} initialPrefill={currentTargetBrief} />
-                <CareerGenerateAssetsButton candidateId={candidate.id} />
+                <CareerApplicationSprint
+                  candidateId={candidate.id}
+                  applicationSprintStatus={latestApplicationSprintJob?.status ?? null}
+                  initialPrefill={currentTargetBrief}
+                />
                 <CareerCoverLetterGenerator candidateId={candidate.id} companyDossiers={companyDossiers} />
                 <CareerStrategicDocumentGenerator candidateId={candidate.id} assetType="executive_interview_playbook" />
                 <CareerStrategicDocumentGenerator candidateId={candidate.id} assetType="interview_training_pack" />
@@ -4839,7 +5509,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     />
                   </div>
                   <div className="mt-5">
-                    <CareerTargetCompanyWorkflow candidateId={candidate.id} initialPrefill={currentTargetBrief} />
+                    <CareerTargetCompanyWorkflow
+                      candidateId={candidate.id}
+                      targetWorkflowStatus={latestTargetCompanyWorkflowJob?.status ?? null}
+                      initialPrefill={currentTargetBrief}
+                    />
                   </div>
                   <div className="mt-5">
                     <CareerCompanyDossierGenerator candidateId={candidate.id} initialPrefill={currentTargetBrief} />
@@ -5085,7 +5759,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   brief={currentTargetBrief}
                   statusBadge={targetStatusBadgeLabel}
                 />
-                <CareerInterviewPrepGenerator candidateId={candidate.id} initialPrefill={currentTargetBrief} />
+                <CareerInterviewPrepGenerator
+                  candidateId={candidate.id}
+                  interviewPrepStatus={latestInterviewPrepJob?.status ?? null}
+                  initialPrefill={currentTargetBrief}
+                />
                 <CareerInterviewReflectionForm candidateId={candidate.id} />
 
                 {showSectionContext.interview ? (
@@ -6105,35 +6783,37 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : null}
             </section>
 
-            <HistoryArchiveSection
-              eyebrow="Version trail"
-              title="Saved cover letter history"
-              countLabel="Saved letters"
-              count={coverLetterHistory.length}
-              emptyMessage="Cover letter history will appear here after the first cover letter generation run."
-            >
-              {coverLetterHistory.map((asset) => (
-                <CompactHistoryCard
-                  key={asset.id}
-                  title={asset.title || "Untitled cover letter"}
-                  subtitle={`${formatAssetType(asset.asset_type)} | Version ${asset.version ?? "?"}`}
-                  timestamp={asset.created_at ? new Date(asset.created_at).toLocaleString() : ""}
-                  preview={summarizeAssetContent(asset.content)}
-                  actionLabel="Open current cover letter"
-                  onClick={() => openAndScroll("documents", "#current-cover-letters")}
-                />
-              ))}
-            </HistoryArchiveSection>
+            {activeStep === "documents" ? (
+              <HistoryArchiveSection
+                eyebrow="Version trail"
+                title="Saved cover letter history"
+                countLabel="Saved letters"
+                count={coverLetterHistory.length}
+                emptyMessage="Cover letter history will appear here after the first cover letter generation run."
+              >
+                {coverLetterHistory.map((asset) => (
+                  <CompactHistoryCard
+                    key={asset.id}
+                    title={asset.title || "Untitled cover letter"}
+                    subtitle={`${formatAssetType(asset.asset_type)} | Version ${asset.version ?? "?"}`}
+                    timestamp={asset.created_at ? new Date(asset.created_at).toLocaleString() : ""}
+                    preview={summarizeAssetContent(asset.content)}
+                    actionLabel="Open current cover letter"
+                    onClick={() => openAndScroll("documents", "#current-cover-letters")}
+                  />
+                ))}
+              </HistoryArchiveSection>
+            ) : null}
           </div>
       </div>
       </div>
       <aside
         id="career-left-nav"
-        className={`fixed left-0 top-0 z-40 hidden h-screen w-[194px] border-r border-[#d8e4f2] bg-white/95 px-2 pb-4 pt-24 shadow-sm backdrop-blur lg:block ${
+        className={`fixed left-0 top-0 z-20 hidden h-screen w-[220px] flex-col border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-20 shadow-sm backdrop-blur lg:flex ${
           isWizardFocusActive ? "ring-2 ring-[#0a66c2]/20" : ""
         }`}
       >
-        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Workflow</div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Career nav</div>
         <div className="mt-0.5 text-[10px] text-neutral-600">
           {completionCount}/{preparationSteps.length} steps done
         </div>
@@ -6181,36 +6861,92 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   >
                     Reset
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCompletedLeftSteps((current) => !current)}
-                    className="flex-1 rounded-full border border-neutral-300 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                  >
-                    {showCompletedLeftSteps ? "Hide completed" : "Show completed"}
-                  </button>
                 </div>
               </div>
             ) : null}
           </div>
         </div>
-        <div className="mt-2.5 space-y-1">
-          {visibleLeftWorkflowLinks.map((link) => (
-            <div key={`left-step-${link.href}`} className="rounded-lg border border-neutral-200 bg-white">
-              <button
-                type="button"
-                onClick={() => activateLeftNavigation(link.sectionKey, link.href)}
-                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-semibold transition ${
-                    link.isActive
-                      ? "border-sky-300 bg-sky-100 text-sky-900"
-                    : link.complete
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+        <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-0.5">
+          {displayedLeftWorkflowLinks.map((link) => {
+            const sectionKey = link.sectionKey as keyof typeof expandedLeftSections
+            const isExpanded = Boolean(expandedLeftSections[sectionKey])
+            const submenuItems = sectionSubmenuLinks[link.sectionKey] ?? []
+
+            return (
+              <div
+                key={`left-step-${link.href}`}
+                className={`rounded-lg border bg-white transition ${
+                  link.isActive
+                    ? "border-sky-300 shadow-sm"
+                    : link.isUrgent
+                      ? "border-amber-200"
+                      : "border-neutral-200"
                 }`}
               >
-                <span className="truncate">{cleanWorkflowLabel(link.label)}</span>
-              </button>
-            </div>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => activateLeftNavigation(link.sectionKey, link.href)}
+                  aria-expanded={isExpanded}
+                  className={`flex w-full items-start justify-between gap-2 rounded-lg px-2 py-1 text-left transition ${
+                    link.isActive
+                      ? "bg-sky-50 text-sky-950"
+                      : link.complete
+                        ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                        : "bg-white text-neutral-800 hover:bg-neutral-50"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[10px] font-semibold">{cleanWorkflowLabel(link.label)}</span>
+                    <span className="mt-0.5 block line-clamp-1 text-[9px] font-normal leading-3 text-neutral-500">
+                      {link.description}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${link.badgeClass}`}>
+                      {link.badgeLabel}
+                    </span>
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                      {isExpanded ? "Hide" : "Open"}
+                    </span>
+                  </span>
+                </button>
+                {isExpanded ? (
+                  <div className="space-y-0.5 border-t border-neutral-100 px-2 py-1">
+                    {submenuItems.length > 0 ? (
+                      submenuItems.map((item) => {
+                        const isSubActive = item.sectionKey === activeStep && item.href === activeAnchor
+                        return (
+                          <button
+                            key={`left-sub-${item.sectionKey}-${item.href}-${item.label}`}
+                            type="button"
+                            onClick={() => {
+                              revealLeftSection(link.sectionKey, true)
+                              openAndScroll(item.sectionKey, item.href)
+                            }}
+                            className={`block w-full rounded-md px-2 py-1 text-left text-[9px] font-semibold transition ${
+                              isSubActive
+                                ? "bg-sky-100 text-sky-900"
+                                : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll(link.sectionKey, link.href)}
+                        className="block w-full rounded-md px-2 py-1 text-left text-[9px] font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                      >
+                        Open section
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
         </div>
       </aside>
       {isMyFilesDrawerOpen && !isWizardFocusActive ? (
@@ -7092,6 +7828,21 @@ function savedLinkToneClass(tone: "neutral" | "research" | "outreach" | "executi
       return "border-indigo-200 bg-indigo-50 hover:border-indigo-300 hover:bg-white"
     default:
       return "border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white"
+  }
+}
+
+function workflowActionToneClass(tone: "sky" | "rose" | "amber" | "emerald" | "neutral") {
+  switch (tone) {
+    case "sky":
+      return "border-sky-200 bg-sky-50 hover:border-sky-300 hover:bg-white"
+    case "rose":
+      return "border-rose-200 bg-rose-50 hover:border-rose-300 hover:bg-white"
+    case "amber":
+      return "border-amber-200 bg-amber-50 hover:border-amber-300 hover:bg-white"
+    case "emerald":
+      return "border-emerald-200 bg-emerald-50 hover:border-emerald-300 hover:bg-white"
+    default:
+      return "border-neutral-200 bg-white hover:border-neutral-300"
   }
 }
 

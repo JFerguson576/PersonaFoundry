@@ -37,7 +37,15 @@ function findVisibleSectionAnchor() {
   return ""
 }
 
-export function TesterNotesWidget({ enabled = true }: { enabled?: boolean }) {
+export function TesterNotesWidget({
+  enabled = true,
+  buttonClassName = "",
+  buttonLabel = "Tester Feedback",
+}: {
+  enabled?: boolean
+  buttonClassName?: string
+  buttonLabel?: string
+}) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -138,10 +146,10 @@ export function TesterNotesWidget({ enabled = true }: { enabled?: boolean }) {
         }}
         className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
           open ? "border-[#0a66c2] bg-[#e8f3ff] text-[#0a66c2]" : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
-        }`}
+        } ${buttonClassName}`}
         title="Share bug reports and ideas with context"
       >
-        Tester Feedback
+        {buttonLabel}
       </button>
 
       {open ? (

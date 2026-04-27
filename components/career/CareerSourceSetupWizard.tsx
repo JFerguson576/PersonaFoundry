@@ -3,11 +3,24 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
-import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
+import {
+  careerActionErrorMessage,
+  getAuthHeaders,
+  getCareerMessageTone,
+  navigateCareerWorkspace,
+  notifyCareerWorkspaceRefresh,
+  toCareerUserMessage,
+} from "@/lib/career-client"
 import { CAREER_SOURCE_TYPE_OPTIONS, CAREER_SOURCE_WIZARD_STEPS, type CareerSourceTypeValue } from "@/lib/career-workflow"
 import { validateCareerUploadFile } from "@/lib/career-upload-client"
 const UPLOAD_REQUEST_TIMEOUT_MS = 90_000
 const DRAFT_KEY_PREFIX = "career-source-draft"
+const OPTIONAL_SOURCE_TYPES: ReadonlySet<CareerSourceTypeValue> = new Set([
+  "cover_letter",
+  "achievements",
+  "recruiter_feedback",
+  "job-target",
+])
 
 type Props = {
   candidateId: string
@@ -76,7 +89,13 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   const sourceSetupComplete = nextRecommendedType === null
   const nextActionLabel = sourceSetupComplete
     ? "Go to Step 3: Build profile"
-    : `Open next required file: ${nextRecommendedOption?.label || "Continue source setup"}`
+    : `Open next source step: ${nextRecommendedOption?.label || "Continue source setup"}`
+  const canSkipCurrentStep = !sourceSetupComplete && !completedTypes.has(sourceType) && OPTIONAL_SOURCE_TYPES.has(sourceType)
+  const doNextText = sourceSetupComplete
+    ? "Build the profile from these inputs."
+    : canSkipCurrentStep
+      ? `Add ${selectedOption.label} if available, or skip this step.`
+      : "Finish the next source step."
   const saveSuccessMessage = (savedFileName: string) => {
     if (sourceType === "strengths") {
       return `Strengths report loaded and mapped: ${savedFileName}. Open My files > Recent files to view it.`
@@ -86,9 +105,20 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
 
   const activeDraftKey = `${DRAFT_KEY_PREFIX}:${candidateId}:${sourceType}`
 
-  function moveToNextMissing() {
-    const nextType = CAREER_SOURCE_WIZARD_STEPS[nextIncompleteIndex] ?? CAREER_SOURCE_WIZARD_STEPS[0]
-    setStepIndex(nextIncompleteIndex)
+  function moveToNextMissing(completedType?: CareerSourceTypeValue) {
+    const completedSnapshot = new Set(completedTypes)
+    if (completedType) completedSnapshot.add(completedType)
+    const nextIndex = CAREER_SOURCE_WIZARD_STEPS.findIndex((step) => !completedSnapshot.has(step))
+    if (nextIndex < 0) {
+      setPendingFile(null)
+      setSelectedFileName("")
+      setOpenWizardPanel("status")
+      navigateCareerWorkspace("positioning", "#generate-profile")
+      return
+    }
+    const resolvedNextIndex = nextIndex >= 0 ? nextIndex : CAREER_SOURCE_WIZARD_STEPS.length - 1
+    const nextType = CAREER_SOURCE_WIZARD_STEPS[resolvedNextIndex] ?? CAREER_SOURCE_WIZARD_STEPS[0]
+    setStepIndex(resolvedNextIndex)
     setSourceType(nextType)
     setPendingFile(null)
     setSelectedFileName("")
@@ -104,6 +134,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
 
   function jumpToCreateProfileStep() {
     if (typeof window === "undefined") return
+    navigateCareerWorkspace("positioning", "#generate-profile")
     const target = document.querySelector("#generate-profile") as HTMLElement | null
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -122,12 +153,18 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   }
 
   function skipCurrentStep() {
-    const next = Math.min(CAREER_SOURCE_WIZARD_STEPS.length - 1, stepIndex + 1)
-    setStepIndex(next)
-    setSourceType(CAREER_SOURCE_WIZARD_STEPS[next])
+    if (!canSkipCurrentStep) {
+      setMessage(`${selectedOption.label} is a core setup step. Add this source before continuing.`)
+      return
+    }
+    markDone(sourceType)
+    clearActiveDraft()
+    setTitle("")
+    setContentText("")
     setPendingFile(null)
     setSelectedFileName("")
-    setMessage(`Skipped ${selectedOption.label}. You can come back to this step any time.`)
+    setMessage(`Skipped ${selectedOption.label}. You can add it later from Change source type.`)
+    moveToNextMissing(sourceType)
   }
 
   function markCurrentStepComplete() {
@@ -139,7 +176,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
     setSelectedFileName("")
     setMessage(`${selectedOption.label} marked complete.`)
     if (wizardMode) {
-      window.setTimeout(() => moveToNextMissing(), 60)
+      moveToNextMissing(sourceType)
     }
   }
 
@@ -227,7 +264,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) {
-        moveToNextMissing()
+        moveToNextMissing(sourceType)
         setOpenWizardPanel("file")
       } else {
         setOpenWizardPanel("status")
@@ -315,7 +352,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
       notifyCareerWorkspaceRefresh()
       router.refresh()
       if (wizardMode) {
-        moveToNextMissing()
+        moveToNextMissing(sourceType)
         setOpenWizardPanel("file")
       } else {
         setOpenWizardPanel("status")
@@ -347,23 +384,34 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-sky-950">
             <span className="font-semibold">Do next:</span>{" "}
-            {sourceSetupComplete ? "Build the profile from these inputs." : "Finish the next source step."}
+            {doNextText}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (sourceSetupComplete) {
-                jumpToCreateProfileStep()
-                return
-              }
-              if (nextRecommendedType) {
-                openStep(nextRecommendedType)
-              }
-            }}
-            className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
-          >
-            {nextActionLabel}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (sourceSetupComplete) {
+                  jumpToCreateProfileStep()
+                  return
+                }
+                if (nextRecommendedType) {
+                  openStep(nextRecommendedType)
+                }
+              }}
+              className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
+            >
+              {nextActionLabel}
+            </button>
+            {canSkipCurrentStep ? (
+              <button
+                type="button"
+                onClick={skipCurrentStep}
+                className="rounded-full border border-sky-300 bg-sky-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-900 hover:bg-sky-200"
+              >
+                Skip this step
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -420,7 +468,7 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                   <button
                     type="button"
                     onClick={skipCurrentStep}
-                    disabled={stepIndex >= CAREER_SOURCE_WIZARD_STEPS.length - 1}
+                    disabled={!canSkipCurrentStep}
                     className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-900 disabled:opacity-50"
                   >
                     Skip
@@ -503,8 +551,8 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             openWizardPanel === "file" ? "rounded-t-2xl border-b border-neutral-200 bg-neutral-50" : "rounded-2xl"
           }`}
         >
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">2. Upload a file</span>
-          <span className="text-[11px] text-neutral-500">{pendingFile ? pendingFile.name : "Choose + upload"}</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">2. Upload {selectedOption.label}</span>
+          <span className="text-[11px] text-neutral-500">{pendingFile ? pendingFile.name : `Ready for ${selectedOption.label}`}</span>
         </button>
         {openWizardPanel === "file" ? (
           <div className="space-y-3 px-3 py-3">
@@ -529,6 +577,16 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
                       className="rounded-xl border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-800 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Delete latest file
+                    </button>
+                  ) : null}
+                  {canSkipCurrentStep ? (
+                    <button
+                      type="button"
+                      onClick={skipCurrentStep}
+                      disabled={loading || fileLoading}
+                      className="rounded-xl border border-sky-300 bg-white px-4 py-2 text-sm font-medium text-sky-900 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Skip this step
                     </button>
                   ) : null}
                 </div>
