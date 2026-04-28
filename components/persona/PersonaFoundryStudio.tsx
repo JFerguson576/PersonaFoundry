@@ -1151,6 +1151,15 @@ export default function Home() {
     sandbox: false,
     exports: false,
   })
+  const [expandedPersonaSections, setExpandedPersonaSections] = useState<Record<string, boolean>>({
+    presets: false,
+    templates: false,
+    analysis: false,
+    traits: false,
+    sandbox: false,
+    exports: false,
+    share: false,
+  })
   const [selectedPreviewScenario, setSelectedPreviewScenario] = useState(previewScenarios[0].id)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [busyProvider, setBusyProvider] = useState<'google' | 'facebook' | 'linkedin_oidc' | null>(null)
@@ -1664,6 +1673,7 @@ export default function Home() {
     }
 
     saveVersion('manual', undefined, undefined, undefined, 'Saved to cloud')
+    openPersonaSection('exports', '#persona-exports')
     flashMessage('Profile saved.')
   }
 
@@ -1708,6 +1718,7 @@ export default function Home() {
     if (!hasCompletedFirstExport) {
       setHasCompletedFirstExport(true)
       setBeginnerMode(false)
+      openPersonaSection('share', '#persona-share')
       flashMessage('First export complete. Advanced mode unlocked.')
       return
     }
@@ -1753,6 +1764,7 @@ export default function Home() {
     if (!hasCompletedFirstExport) {
       setHasCompletedFirstExport(true)
       setBeginnerMode(false)
+      openPersonaSection('share', '#persona-share')
       flashMessage('First export complete. Advanced mode unlocked.')
     }
   }
@@ -1789,6 +1801,7 @@ export default function Home() {
       })
 
       flashMessage('AI profile analysis completed.')
+      openPersonaSection('traits', '#persona-traits')
     } catch (error) {
       console.error('AI profile analysis failed:', error)
       flashMessage('AI analysis failed.')
@@ -1817,6 +1830,7 @@ export default function Home() {
       setShowQuickStartWizard(false)
       openPersonaSection('analysis', '#persona-analysis')
       await runAiProfileAnalysis(sourceText, `Career Gallup strengths (${selected.candidate_name})`)
+      openPersonaSection('traits', '#persona-traits')
       flashMessage(`Strengths report loaded and mapped from ${selected.candidate_name}.`)
     } finally {
       setIsApplyingGallupSource(false)
@@ -1838,6 +1852,7 @@ export default function Home() {
     })
 
       flashMessage('Profile text analyzed and mapped. Review traits, then save your profile.')
+      openPersonaSection('traits', '#persona-traits')
 
     if (result.confidence === 'Low') {
       void runAiProfileAnalysis(analysisText, uploadedFileName || 'Pasted text (AI refined)')
@@ -1890,6 +1905,7 @@ export default function Home() {
       })
 
       flashMessage(`Source file loaded and mapped: ${file.name}. Review traits, then save your profile.`)
+      openPersonaSection('traits', '#persona-traits')
 
       if (result.confidence === 'Low') {
         void runAiProfileAnalysis(extractedText, `${file.name} (AI refined)`)
@@ -1975,7 +1991,9 @@ export default function Home() {
     setProfileDescription(template.description)
     setActivePreset(`${template.name} (role)`)
     saveVersion('role', template.name, template.description, template.traits, 'Applied role template')
-    flashMessage(`Loaded role template: ${template.name}`)
+    setShowQuickStartWizard(false)
+    openPersonaSection('analysis', '#persona-analysis')
+    flashMessage(`Loaded role template: ${template.name}. Add source writing next.`)
   }
 
   function applyPreset(preset: Preset) {
@@ -1985,6 +2003,9 @@ export default function Home() {
     setProfileDescription(preset.description)
     clearAnalysisState()
     saveVersion('preset', preset.name, preset.description, preset.traits, 'Applied preset')
+    setShowQuickStartWizard(false)
+    openPersonaSection('templates', '#persona-templates')
+    flashMessage(`Loaded preset: ${preset.name}. Pick a role template or continue to source input.`)
   }
 
   function restoreVersion(version: VersionEntry) {
@@ -2006,6 +2027,7 @@ export default function Home() {
   function handleSaveVersionWithNote() {
     const note = window.prompt('Optional version note:', versionNoteDraft) ?? versionNoteDraft
     saveVersion('manual', undefined, undefined, undefined, note)
+    openPersonaSection('sandbox', '#persona-sandbox')
     flashMessage('Version saved.')
   }
 
@@ -2096,7 +2118,54 @@ export default function Home() {
       href: "#persona-exports",
     },
   ] as const
+  const personaSetupChecklist = [
+    {
+      label: "Gallup strengths",
+      description: "Best input for natural working style and motivators.",
+      ready: hasAnalysisSource || careerGallupSources.length > 0,
+      action: "Load strengths",
+      sectionKey: "analysis",
+      href: "#persona-analysis",
+    },
+    {
+      label: "Writing sample",
+      description: "Emails, notes, bios, or prompts help tune the voice.",
+      ready: hasAnalysisText,
+      action: "Add writing",
+      sectionKey: "analysis",
+      href: "#persona-analysis",
+    },
+    {
+      label: "Use case",
+      description: "Choose where this AI personality will be used first.",
+      ready: activePreset !== "Custom" || hasCustomizedTraits,
+      action: "Pick preset",
+      sectionKey: "presets",
+      href: "#persona-presets",
+    },
+    {
+      label: "Tone preference",
+      description: "Start simple; advanced sliders can come later.",
+      ready: hasCustomizedTraits,
+      action: "Shape voice",
+      sectionKey: "traits",
+      href: "#persona-traits",
+    },
+  ] as const
+  const guidedVoiceModes = [
+    { id: "balanced", label: "Balanced", description: "Clear, steady, general purpose." },
+    { id: "direct", label: "Direct", description: "Short, practical, lower fluff." },
+    { id: "warm", label: "Warm", description: "Supportive, patient, coaching-led." },
+    { id: "strategic", label: "Strategic", description: "Executive, structured, decision-focused." },
+    { id: "creative", label: "Creative", description: "Idea-rich, expansive, exploratory." },
+  ] as const
   const personaReadyCount = personaReadinessItems.filter((item) => item.ready).length
+  const profilePreviewRows = [
+    { label: "Current voice", value: voiceSummary(traits) },
+    { label: "Best use", value: personalityExplainer.bestFor[0] ?? profileDescription },
+    { label: "Readiness", value: `${personaReadyCount}/${personaReadinessItems.length} complete` },
+    { label: "Next export", value: activeTab === "custom" ? "ChatGPT custom instructions" : `${activeTab.toUpperCase()} pack` },
+  ]
   const personaStepStatusByKey: Record<(typeof personaQuickLinks)[number]["key"], boolean> = {
     presets: activePreset !== "Custom" || hasCustomizedTraits || hasAnalysisSource,
     templates: hasCustomizedTraits || hasAnalysisSource,
@@ -2106,6 +2175,38 @@ export default function Home() {
     exports: hasSavedProfile,
     share: canImportJson || hasSavedProfile,
   }
+  const personaSubmenuLinks: Record<string, Array<{ label: string; key: string; href: string }>> = {
+    presets: [
+      { label: "Starting presets", key: "presets", href: "#persona-presets" },
+      { label: "Quick start paths", key: "presets", href: "#persona-quick-start" },
+    ],
+    templates: [{ label: "Role templates", key: "templates", href: "#persona-templates" }],
+    analysis: [
+      { label: "Upload source", key: "analysis", href: "#persona-analysis" },
+      { label: "Analyze writing", key: "analysis", href: "#persona-analysis" },
+    ],
+    traits: [
+      { label: "Trait controls", key: "traits", href: "#persona-traits" },
+      { label: "Personality explainer", key: "traits", href: "#persona-traits" },
+      { label: "Saved profiles", key: "traits", href: "#persona-traits" },
+    ],
+    sandbox: [
+      { label: "Test personality", key: "sandbox", href: "#persona-sandbox" },
+      { label: "Saved runs", key: "sandbox", href: "#persona-sandbox" },
+    ],
+    exports: [{ label: "Export pack", key: "exports", href: "#persona-exports" }],
+    share: [{ label: "Share and import", key: "share", href: "#persona-share" }],
+  }
+  const personaStepDescriptions: Record<string, string> = {
+    presets: "Choose a baseline personality.",
+    templates: "Adapt the profile to a role.",
+    analysis: "Load source material and infer style.",
+    traits: "Tune voice, depth, and behaviour.",
+    sandbox: "Test the personality in real prompts.",
+    exports: "Copy the finished profile pack.",
+    share: "Move profiles between workflows.",
+  }
+  const completedPersonaSteps = personaQuickLinks.filter((link) => personaStepStatusByKey[link.key]).length
   const personaSmartCheckTone =
     personaReadyCount === personaReadinessItems.length
       ? "border-emerald-200 bg-emerald-50 text-emerald-900"
@@ -2113,7 +2214,7 @@ export default function Home() {
         ? "border-amber-200 bg-amber-50 text-amber-900"
         : "border-sky-200 bg-sky-50 text-sky-900"
   const showAdvancedPanels = hasCompletedFirstExport && !beginnerMode
-  const isStepVisible = (keys: string[]) => !compactWorkflowMode || keys.includes(activeWorkspaceSection)
+  const isStepVisible = (keys: string[]) => keys.includes(activeWorkspaceSection)
   const showLeftWorkspaceColumn = isStepVisible(['analysis', 'traits'])
   const showRightWorkspaceColumn = isStepVisible(['sandbox', 'exports', 'share'])
   const workspaceGridClass =
@@ -2123,6 +2224,7 @@ export default function Home() {
 
   function openPersonaSection(sectionKey: string, href: string) {
     setActiveWorkspaceSection(sectionKey)
+    setExpandedPersonaSections((current) => ({ ...current, [sectionKey]: true }))
     if (compactWorkflowMode) {
       setIsMenuRolledUp(true)
     }
@@ -2148,6 +2250,15 @@ export default function Home() {
     setCompactWorkflowMode(true)
     setIsMenuRolledUp(true)
     setBeginnerMode(true)
+    setExpandedPersonaSections({
+      presets: true,
+      templates: false,
+      analysis: false,
+      traits: false,
+      sandbox: false,
+      exports: false,
+      share: false,
+    })
     openPersonaSection('presets', '#persona-presets')
     flashMessage('Workspace view reset to guided start.')
   }
@@ -2176,6 +2287,27 @@ export default function Home() {
     setShowQuickStartWizard(false)
     openPersonaSection('traits', '#persona-traits')
     flashMessage('Quick start applied. Fine-tune traits, then export when ready.')
+  }
+
+  function applyGuidedVoiceMode(mode: 'balanced' | 'direct' | 'warm' | 'strategic' | 'creative') {
+    const presetNameByMode: Record<typeof mode, string> = {
+      balanced: '',
+      direct: 'Blunt Engineer',
+      warm: 'Warm Tutor',
+      strategic: 'Strategic Advisor',
+      creative: 'Creative Brainstormer',
+    }
+    const selectedPreset = presets.find((item) => item.name === presetNameByMode[mode])
+    const nextTraits = mode === 'balanced' || !selectedPreset ? defaultTraits : selectedPreset.traits
+    const nextLabel = mode === 'balanced' || !selectedPreset ? 'Balanced' : selectedPreset.name
+    const nextDescription = mode === 'balanced' || !selectedPreset ? 'Clear, steady, general purpose.' : selectedPreset.description
+
+    setTraits(nextTraits)
+    setActivePreset(nextLabel)
+    setProfileName(nextLabel)
+    setProfileDescription(nextDescription)
+    saveVersion('tuning', nextLabel, nextDescription, nextTraits, `Applied guided voice mode: ${nextLabel}`)
+    flashMessage(`${nextLabel} voice applied. Test it next.`)
   }
 
   function dismissWhatsNewPanel() {
@@ -2248,7 +2380,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-6 py-6">
+      <div className="mx-auto max-w-7xl px-6 py-6 lg:ml-[220px] lg:max-w-[calc(100vw-220px)]">
         <PlatformModuleNav />
         <AdaptiveProductTour moduleKey="persona" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Persona Foundry" />
@@ -2346,44 +2478,63 @@ export default function Home() {
                   ) : null}
                 </div>
               </div>
-              <p className="mt-1 max-w-4xl text-xs leading-5 text-[#475569]">
-                Start with Gallup Strengths, tune your voice, then export your profile.
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {personaReadinessItems.map((item) => (
-                  <button
-                    key={`persona-readiness-pill-${item.label}`}
-                    type="button"
-                    onClick={() => openPersonaSection(item.sectionKey, item.href)}
-                    className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
-                      item.ready
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                        : "border-amber-300 bg-amber-50 text-amber-800"
-                    }`}
-                  >
-                    {item.label}: {item.ready ? "Ready" : "Next"}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
-                  className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
-                >
-                  {nextPersonaStep.actionLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowHeaderSetup((current) => !current)}
-                  className="rounded-full border border-neutral-300 bg-white px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {showHeaderSetup ? "Hide helper" : "Show helper"}
-                </button>
+              <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
+                <div className="rounded-xl border border-sky-200 bg-white/85 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700">Next action</div>
+                      <p className="mt-0.5 text-xs text-neutral-700">{nextPersonaStep.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
+                      className="shrink-0 rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                    >
+                      {nextPersonaStep.actionLabel}
+                    </button>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[#d8e4f2] bg-white/80 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#5b6b7c]">Workspace status</div>
+                      <p className="mt-0.5 text-xs text-[#334155]">
+                        {personaReadyCount}/{personaReadinessItems.length} ready · {session?.user ? "Cloud connected" : "Local draft"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowHeaderSetup((current) => !current)}
+                      className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                    >
+                      {showHeaderSetup ? "Hide helper" : "Helper"}
+                    </button>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                    {personaReadinessItems.map((item) => (
+                      <button
+                        key={`persona-readiness-pill-${item.label}`}
+                        type="button"
+                        onClick={() => openPersonaSection(item.sectionKey, item.href)}
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                          item.ready
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                            : "border-amber-300 bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {showHeaderSetup ? (
                 <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-white px-3 py-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Next action</div>
-                  <p className="mt-0.5 text-xs text-neutral-700">{nextPersonaStep.description}</p>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Helper tools</div>
+                  <p className="mt-0.5 text-xs text-neutral-700">
+                    Use saved strengths, analyze source writing, or open the supporting guides only when needed.
+                  </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <select
                       value={selectedGallupSourceId}
@@ -2430,84 +2581,101 @@ export default function Home() {
                       </button>
                     ) : null}
                   </div>
-                </div>
-              ) : null}
-
-              <div className="mt-1 text-[11px] text-[#64748b]">
-                Voice: <span className="font-semibold text-[#334155]">{personaDNA(traits)}</span>
-              </div>
-              <div className="mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setShowGallupExplainer((current) => !current)}
-                  className="rounded-full border border-[#cdd9e5] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#334155] hover:bg-[#f8fbff]"
-                >
-                  {showGallupExplainer ? "Hide why this works" : "Why this works (Gallup-based)"}
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <a
-                  href="/docs/personara-user-explainer-v2.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open persona explainer
-                </a>
-                <a
-                  href="/docs/personara-ai-gallup-strengths-explainer.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open Gallup explainer
-                </a>
-                <a
-                  href="/docs/personara-ai-platform-proposition.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open platform proposition
-                </a>
-                <a
-                  href="/resources#persona-foundry"
-                  className="personara-explainer-chip"
-                >
-                  Open resource hub
-                </a>
-              </div>
-              {showGallupExplainer ? (
-                <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#334155]">
-                  <p className="font-semibold text-[#0f172a]">
-                    A Gallup-based profile makes your AI feel natural from day one.
-                  </p>
-                  <p className="mt-1">Personara tunes your assistant to your strengths, communication style, and decision patterns.</p>
-                  <ul className="mt-1.5 space-y-1 text-[#475569]">
-                    <li>Faster onboarding</li>
-                    <li>Higher trust, engagement, and repeat use</li>
-                    <li>Stronger output quality</li>
-                    <li>Less day-to-day friction</li>
-                  </ul>
-                  <a
-                    href="/docs/personara-ai-gallup-strengths-explainer.docx"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="personara-explainer-chip mt-2"
-                  >
-                    Read full explainer
-                  </a>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[#e2e8f0] pt-2">
+                    <a
+                      href="/docs/personara-user-explainer-v2.docx"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="personara-explainer-chip"
+                    >
+                      Persona explainer
+                    </a>
+                    <a
+                      href="/docs/personara-ai-gallup-strengths-explainer.docx"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="personara-explainer-chip"
+                    >
+                      Gallup explainer
+                    </a>
+                    <a
+                      href="/docs/personara-ai-platform-proposition.docx"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="personara-explainer-chip"
+                    >
+                      Platform proposition
+                    </a>
+                    <a
+                      href="/resources#persona-foundry"
+                      className="personara-explainer-chip"
+                    >
+                      Resource hub
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setShowGallupExplainer((current) => !current)}
+                      className="rounded-full border border-[#cdd9e5] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#334155] hover:bg-[#f8fbff]"
+                    >
+                      {showGallupExplainer ? "Hide Gallup note" : "Gallup note"}
+                    </button>
+                  </div>
+                  {showGallupExplainer ? (
+                    <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] px-3 py-2 text-xs text-[#334155]">
+                      <p className="font-semibold text-[#0f172a]">
+                        Gallup-based profiles make the AI voice feel more natural and consistent.
+                      </p>
+                      <p className="mt-1">
+                        Personara tunes communication style, decision patterns, and working preferences before export.
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
 
-              <div className="mt-1 text-[11px] text-[#64748b]">
-                Mode: <span className="font-semibold text-[#334155]">{activePreset}</span> | Saved versions:{" "}
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#64748b]">
+                <span>Voice: <span className="font-semibold text-[#334155]">{personaDNA(traits)}</span></span>
+                <span>Mode: <span className="font-semibold text-[#334155]">{activePreset}</span></span>
+                <span>Saved versions:{" "}
                 <span className="font-semibold text-[#334155]">{versions.length}</span> | Cloud:{" "}
-                <span className="font-semibold text-[#334155]">{session?.user ? "Connected" : "Local draft mode"}</span>
+                <span className="font-semibold text-[#334155]">{session?.user ? "Connected" : "Local draft mode"}</span></span>
               </div>
           </div>
         </div>
+
+        <section className="mb-3 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Profile preview</div>
+              <h2 className="mt-0.5 text-sm font-semibold text-[#0f172a]">{profileName}</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => openPersonaSection('sandbox', '#persona-sandbox')}
+                className="rounded-full border border-sky-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-50"
+              >
+                Test voice
+              </button>
+              <button
+                type="button"
+                onClick={() => openPersonaSection('exports', '#persona-exports')}
+                className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+              >
+                Export profile
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 grid gap-2 md:grid-cols-4">
+            {profilePreviewRows.map((row) => (
+              <div key={`profile-preview-${row.label}`} className="rounded-xl border border-neutral-200 bg-[#f8fbff] px-3 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#5b6b7c]">{row.label}</div>
+                <div className="mt-0.5 line-clamp-2 text-xs font-medium text-[#0f172a]">{row.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {flashNotice && (
           <div className="mb-6 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -2515,15 +2683,13 @@ export default function Home() {
           </div>
         )}
 
-        <section id="persona-step-menu" data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-2.5 shadow-sm backdrop-blur">
+        <section id="persona-step-menu" data-sticky-nav="true" className="sticky top-3 z-30 mb-3 rounded-2xl border border-[#d8e4f2] bg-[linear-gradient(180deg,#fcfdff_0%,#f4f8fc_100%)] p-2.5 shadow-sm backdrop-blur lg:hidden">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">Step-by-step menu</div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {compactWorkflowMode ? null : (
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                  {activePersonaIndex + 1}/{personaQuickLinks.length} steps
-                </div>
-              )}
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                {activePersonaIndex + 1}/{personaQuickLinks.length} steps
+              </div>
               {savePulse ? (
                 <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
                   {savePulse.label}
@@ -2551,13 +2717,6 @@ export default function Home() {
                 className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
               >
                 Report issue
-              </button>
-              <button
-                type="button"
-                onClick={() => setCompactWorkflowMode((current) => !current)}
-                className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-              >
-                {compactWorkflowMode ? "Simple mode on" : "Simple mode off"}
               </button>
             </div>
           </div>
@@ -2718,8 +2877,46 @@ export default function Home() {
           </div>
         </section>
 
-        {showQuickStartWizard ? (
-          <section className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-3 shadow-sm">
+        {isStepVisible(['presets']) ? (
+          <section className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Before you start</div>
+                <h2 className="mt-0.5 text-sm font-semibold text-emerald-950">Have these ready, then choose your first preset.</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => openPersonaSection('presets', '#persona-presets')}
+                className="rounded-full border border-emerald-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+              >
+                Start with preset
+              </button>
+            </div>
+            <div className="mt-2 grid gap-2 md:grid-cols-4">
+              {personaSetupChecklist.map((item) => (
+                <button
+                  key={`persona-setup-${item.label}`}
+                  type="button"
+                  onClick={() => openPersonaSection(item.sectionKey, item.href)}
+                  className="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-left shadow-sm transition hover:bg-emerald-50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#0f172a]">{item.label}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                      item.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {item.ready ? "Ready" : item.action}
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-neutral-600">{item.description}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {showQuickStartWizard && isStepVisible(['presets']) ? (
+          <section id="persona-quick-start" className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs text-indigo-900">
                 <span className="font-semibold uppercase tracking-[0.08em] text-indigo-700">60-second quick start:</span>{" "}
@@ -2796,6 +2993,9 @@ export default function Home() {
                 setProfileName('My Personality')
                 setProfileDescription('Custom personality profile')
                 clearAnalysisState()
+                setShowQuickStartWizard(false)
+                openPersonaSection('templates', '#persona-templates')
+                flashMessage('Custom baseline selected. Pick a role template or add source input next.')
               }}
               className={`rounded-2xl border p-3 text-left shadow-sm transition ${
                 activePreset === 'Custom' ? 'border-black bg-black text-white' : 'border-neutral-200 bg-white hover:bg-neutral-100'
@@ -2888,6 +3088,18 @@ export default function Home() {
                 )}
               </div>
             ))}
+          </div>
+          <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-sky-900">No exact role fit? Keep your current baseline and add source writing next.</p>
+              <button
+                type="button"
+                onClick={() => openPersonaSection('analysis', '#persona-analysis')}
+                className="rounded-full bg-[#0a66c2] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+              >
+                Continue to source input
+              </button>
+            </div>
           </div>
         </section>
         ) : null}
@@ -3071,7 +3283,7 @@ export default function Home() {
               <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-sky-700">Next steps</div>
                 <p className="mt-1 text-sm text-sky-900">
-                  Step 4: Fine-tune traits to match your voice, then Step 5: Export your final personality profile.
+                  Step 4: Fine-tune traits to match your voice, then Step 6: Export your final personality profile.
                 </p>
                 <div className="ui-action-row mt-3">
                   <button
@@ -3099,21 +3311,21 @@ export default function Home() {
             <div id="persona-traits" className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">Step 4: Tune trait controls</h2>
+                  <h2 className="text-lg font-semibold">Step 4: Shape your AI voice</h2>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Next action:</span> Tune sliders, then save a version.
+                      <span className="font-semibold">Next action:</span> Pick a guided voice mode, or open advanced tuning.
                     </div>
                     <button
                       type="button"
                       onClick={() => togglePersonaStepDetails("traits")}
                       className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                     >
-                      {personaStepDetails.traits ? "Hide" : "Details"}
+                      {personaStepDetails.traits ? "Hide advanced" : "Advanced tuning"}
                     </button>
                   </div>
                   {personaStepDetails.traits ? (
-                    <p className="mt-1 text-sm text-neutral-500">Fine-tune how the assistant behaves.</p>
+                    <p className="mt-1 text-sm text-neutral-500">Fine-tune individual behaviour controls when the guided modes are too broad.</p>
                   ) : null}
                 </div>
 
@@ -3257,38 +3469,93 @@ export default function Home() {
               </div>
               ) : null}
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {(Object.keys(traits) as (keyof Traits)[]).map((key) => (
-                  <div key={key} className="rounded-xl border border-neutral-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="text-sm font-semibold text-[#0f172a]">{labels[key]}</label>
-                      <div className="rounded-full border border-[#d8e4f2] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#334155]">
-                        {traits[key]} | {getTraitTone(traits[key])}
+              {personaStepDetails.traits ? (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {(Object.keys(traits) as (keyof Traits)[]).map((key) => (
+                    <div key={key} className="rounded-xl border border-neutral-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-sm font-semibold text-[#0f172a]">{labels[key]}</label>
+                        <div className="rounded-full border border-[#d8e4f2] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#334155]">
+                          {traits[key]} | {getTraitTone(traits[key])}
+                        </div>
+                      </div>
+                      <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{traitDescriptions[key]}</p>
+
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={traits[key]}
+                        onChange={(e) => {
+                          setTraits((prev) => ({
+                            ...prev,
+                            [key]: Number(e.target.value),
+                          }))
+                          setActivePreset('Custom')
+                        }}
+                        className="mt-2 h-1.5 w-full cursor-pointer accent-[#0a66c2]"
+                      />
+                      <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-neutral-400">
+                        <span>Low</span>
+                        <span>High</span>
                       </div>
                     </div>
-                    <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{traitDescriptions[key]}</p>
-
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={traits[key]}
-                      onChange={(e) => {
-                        setTraits((prev) => ({
-                          ...prev,
-                          [key]: Number(e.target.value),
-                        }))
-                        setActivePreset('Custom')
-                      }}
-                      className="mt-2 h-1.5 w-full cursor-pointer accent-[#0a66c2]"
-                    />
-                    <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-neutral-400">
-                      <span>Low</span>
-                      <span>High</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700">Guided voice modes</div>
+                      <h3 className="mt-0.5 text-sm font-semibold text-sky-950">{voiceSummary(traits)}</h3>
+                      <p className="mt-1 text-xs leading-5 text-sky-900">
+                        Choose a simple mode first. Use advanced tuning only if you need precision.
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => openPersonaSection('sandbox', '#persona-sandbox')}
+                      className="rounded-full bg-[#0a66c2] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                    >
+                      Continue to test voice
+                    </button>
                   </div>
-                ))}
-              </div>
+                  <div className="mt-3 grid gap-2 md:grid-cols-5">
+                    {guidedVoiceModes.map((mode) => (
+                      <button
+                        key={`guided-voice-${mode.id}`}
+                        type="button"
+                        onClick={() => applyGuidedVoiceMode(mode.id)}
+                        className={`rounded-xl border bg-white px-3 py-2 text-left shadow-sm transition hover:bg-sky-50 ${
+                          activePreset === mode.label ? "border-[#0a66c2] ring-2 ring-[#0a66c2]/15" : "border-sky-200"
+                        }`}
+                      >
+                        <div className="text-xs font-semibold text-[#0f172a]">{mode.label}</div>
+                        <p className="mt-1 text-[11px] leading-4 text-neutral-600">{mode.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={saveCurrentProfile}
+                      disabled={!session?.user}
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white ${
+                        session?.user ? "bg-black hover:bg-neutral-800" : "cursor-not-allowed bg-neutral-400"
+                      }`}
+                    >
+                      {session?.user ? "Save profile" : "Sign in to save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPersonaStepDetails((current) => ({ ...current, traits: true }))}
+                      className="rounded-full border border-sky-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
+                    >
+                      Open advanced sliders
+                    </button>
+                  </div>
+                </div>
+              )}
               </>
               ) : null}
             </div>
@@ -3518,7 +3785,7 @@ export default function Home() {
             {isStepVisible(['sandbox']) ? (
             <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-neutral-900">Step 5: Sandbox test</h2>
+                <h2 className="text-lg font-semibold text-neutral-900">Step 5: Test your AI voice</h2>
                 <div className="ui-action-row items-center">
                   <button
                     type="button"
@@ -3533,7 +3800,24 @@ export default function Home() {
                 </div>
               </div>
               <div className="mb-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[11px] text-neutral-700">
-                <span className="font-semibold">Next action:</span> Run one test and save the best output.
+                <span className="font-semibold">Next action:</span> Run one proof test, then save the best output.
+              </div>
+              <div className="mb-3 grid gap-2 md:grid-cols-3">
+                {previewScenarios.map((scenario) => (
+                  <button
+                    key={`sandbox-proof-${scenario.id}`}
+                    type="button"
+                    onClick={() => setSelectedPreviewScenario(scenario.id)}
+                    className={`rounded-xl border px-3 py-2 text-left transition ${
+                      selectedPreviewScenario === scenario.id
+                        ? "border-[#0a66c2] bg-sky-50 text-sky-950"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{scenario.label}</div>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-4">{scenario.prompt}</p>
+                  </button>
+                ))}
               </div>
               {!collapsedPanels.sandbox ? (
               <PersonaChatSandbox
@@ -3546,6 +3830,7 @@ export default function Home() {
                     outputs: run.outputs,
                   }
                   setSandboxRuns((prev) => [entry, ...prev].slice(0, 50))
+                  openPersonaSection('exports', '#persona-exports')
                   flashMessage('Sandbox run saved.')
                 }}
               />
@@ -3732,7 +4017,7 @@ export default function Home() {
             {isStepVisible(['exports']) ? (
             <div id="persona-exports" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Step 5: Export your persona profile</h2>
+              <h2 className="text-lg font-semibold">Step 6: Export your persona profile</h2>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -3751,6 +4036,44 @@ export default function Home() {
               </div>
               {!collapsedPanels.exports ? (
               <>
+              <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                      Final review
+                    </div>
+                    <h3 className="mt-0.5 text-base font-semibold text-emerald-950">
+                      {hasSavedProfile ? "Profile ready to use" : "Profile ready to copy"}
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-emerald-900">
+                      Review the voice, copy the instructions, download a JSON backup, or move to share/import.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyExportPack}
+                      className="rounded-full bg-[#0a66c2] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+                    >
+                      Copy instructions
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportJsonFile}
+                      className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Download JSON
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPersonaSection('share', '#persona-share')}
+                      className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Share / import
+                    </button>
+                  </div>
+                </div>
+              </div>
               <div className="mt-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[11px] text-neutral-700">
                 <span className="font-semibold">Next action:</span> Choose format, copy output, then deploy.
               </div>
@@ -3797,10 +4120,10 @@ export default function Home() {
             </div>
             ) : null}
 
-            {showAdvancedPanels && isStepVisible(['share']) ? (
+            {isStepVisible(['share']) ? (
             <div id="persona-share" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold">Share / Import JSON</h2>
+                <h2 className="text-xl font-semibold">Step 7: Share / import JSON</h2>
                 <button type="button" onClick={() => togglePanel('share')} className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100">
                   {collapsedPanels.share ? 'Expand' : 'Collapse'}
                 </button>
@@ -3843,6 +4166,104 @@ export default function Home() {
           ) : null}
         </div>
       </div>
+      <aside
+        id="persona-left-nav"
+        className="fixed left-0 top-0 z-20 hidden h-screen w-[220px] flex-col border-r border-[#d8e4f2] bg-white/95 px-2.5 pb-4 pt-20 shadow-sm backdrop-blur lg:flex"
+      >
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5b6b7c]">Persona nav</div>
+        <div className="mt-0.5 text-[10px] text-neutral-600">
+          {completedPersonaSteps}/{personaQuickLinks.length} steps ready
+        </div>
+        <div className="mt-1.5 rounded-xl border border-neutral-200 bg-white px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+            <span>Quick actions</span>
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[8px] text-sky-700">
+              Focus
+            </span>
+          </div>
+          <div className="mt-1.5 space-y-1">
+            <button
+              type="button"
+              onClick={() => openPersonaSection(nextPersonaStep.sectionKey, nextPersonaStep.href)}
+              className="w-full rounded-full border border-[#0a66c2] bg-[#0a66c2] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#0958a8]"
+            >
+              {nextPersonaStep.actionLabel}
+            </button>
+            <button
+              type="button"
+              onClick={resetWorkspaceView}
+              className="w-full rounded-full border border-neutral-300 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+            >
+              Reset guided flow
+            </button>
+          </div>
+        </div>
+        <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-0.5">
+          {personaQuickLinks.map((link) => {
+            const isActive = activeWorkspaceSection === link.key
+            const isComplete = personaStepStatusByKey[link.key]
+            const isExpanded = Boolean(expandedPersonaSections[link.key]) || isActive
+            const submenuItems = personaSubmenuLinks[link.key] ?? []
+            const badgeLabel = isActive ? "Current" : isComplete ? "Ready" : "Todo"
+            const badgeClass = isActive
+              ? "bg-sky-100 text-sky-700"
+              : isComplete
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-neutral-100 text-neutral-600"
+
+            return (
+              <div
+                key={`persona-left-step-${link.key}`}
+                className={`rounded-lg border bg-white transition ${
+                  isActive ? "border-sky-300 shadow-sm" : isComplete ? "border-emerald-200" : "border-neutral-200"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => openPersonaSection(link.key, link.href)}
+                  aria-expanded={isExpanded}
+                  className={`flex w-full items-start justify-between gap-2 rounded-lg px-2 py-1 text-left transition ${
+                    isActive
+                      ? "bg-sky-50 text-sky-950"
+                      : isComplete
+                        ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                        : "bg-white text-neutral-800 hover:bg-neutral-50"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[10px] font-semibold">{link.label.replace(/^\d+\.\s*/, "")}</span>
+                    <span className="mt-0.5 block line-clamp-1 text-[9px] font-normal leading-3 text-neutral-500">
+                      {personaStepDescriptions[link.key]}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${badgeClass}`}>
+                      {badgeLabel}
+                    </span>
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
+                      {isExpanded ? "Hide" : "Open"}
+                    </span>
+                  </span>
+                </button>
+                {isExpanded ? (
+                  <div className="space-y-0.5 border-t border-neutral-100 px-2 py-1">
+                    {submenuItems.map((item) => (
+                      <button
+                        key={`persona-left-sub-${link.key}-${item.label}`}
+                        type="button"
+                        onClick={() => openPersonaSection(item.key, item.href)}
+                        className="block w-full rounded-md px-2 py-1 text-left text-[9px] font-semibold text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      </aside>
       {isReportIssueOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/35 px-4"

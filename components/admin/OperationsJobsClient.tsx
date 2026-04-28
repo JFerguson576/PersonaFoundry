@@ -921,6 +921,7 @@ export function OperationsJobsClient() {
   const [loadingTesterFeedback, setLoadingTesterFeedback] = useState(false)
   const [sendingTesterFeedbackOutreach, setSendingTesterFeedbackOutreach] = useState(false)
   const [reviewingTesterFeedbackId, setReviewingTesterFeedbackId] = useState("")
+  const [deletingTesterFeedbackIds, setDeletingTesterFeedbackIds] = useState<string[]>([])
   const [testerAudienceStatus, setTesterAudienceStatus] = useState<"all" | "open" | "in_review" | "resolved">("open")
   const [testerAudienceModule, setTesterAudienceModule] = useState("all")
   const [testerOutreachSubject, setTesterOutreachSubject] = useState("Personara tester follow-up")
@@ -1489,6 +1490,46 @@ export function OperationsJobsClient() {
       setMessage(error instanceof Error ? error.message : "Could not update tester note")
     } finally {
       setReviewingTesterFeedbackId("")
+    }
+  }
+
+  async function deleteResolvedTesterFeedbackNotes(notes: TesterFeedbackNoteRow[], label: string) {
+    const resolvedIds = notes.filter((note) => note.status === "resolved").map((note) => note.id)
+    if (resolvedIds.length === 0) {
+      setMessage("No resolved tester feedback notes selected for deletion.")
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Delete ${resolvedIds.length} resolved tester feedback note${resolvedIds.length === 1 ? "" : "s"} from ${label}? Open and in-review notes will be kept.`
+    )
+    if (!confirmed) return
+
+    setDeletingTesterFeedbackIds(resolvedIds)
+    setMessage("")
+    try {
+      const response = await fetch("/api/admin/tester-notes", {
+        method: "DELETE",
+        headers: {
+          ...(await getAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids: resolvedIds }),
+      })
+      const json = await parseApiJson(response, "delete resolved tester notes")
+      if (!response.ok) {
+        throw new Error(readApiError(json, "Could not delete resolved tester notes"))
+      }
+
+      const deletedIds = new Set((json.deleted_ids ?? []) as string[])
+      setTesterFeedbackNotes((current) => current.filter((note) => !deletedIds.has(note.id)))
+      setMessage(
+        `Deleted ${json.deleted_count ?? deletedIds.size} resolved tester feedback note${(json.deleted_count ?? deletedIds.size) === 1 ? "" : "s"}.`
+      )
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not delete resolved tester notes")
+    } finally {
+      setDeletingTesterFeedbackIds([])
     }
   }
 
@@ -4081,6 +4122,14 @@ export function OperationsJobsClient() {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
+                      onClick={() => void deleteResolvedTesterFeedbackNotes(testerFeedbackNotes, "all loaded tester feedback")}
+                      disabled={testerSignals.resolved === 0 || deletingTesterFeedbackIds.length > 0}
+                      className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingTesterFeedbackIds.length > 0 ? "Deleting..." : `Delete resolved ${testerSignals.resolved}`}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void pushTesterFeedbackToCodex("All active tester feedback", testerFeedbackNotes)}
                       className="rounded-full border border-[#0a66c2] bg-[#e8f3ff] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#dcecff]"
                     >
@@ -4153,6 +4202,16 @@ export function OperationsJobsClient() {
                                   >
                                     Push page to Codex
                                   </button>
+                                  {group.resolved > 0 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => void deleteResolvedTesterFeedbackNotes(group.notes, group.label)}
+                                      disabled={deletingTesterFeedbackIds.length > 0}
+                                      className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      Delete resolved {group.resolved}
+                                    </button>
+                                  ) : null}
                                   {group.notes[0]?.full_url ? (
                                     <a
                                       href={group.notes[0].full_url}
@@ -4208,6 +4267,16 @@ export function OperationsJobsClient() {
                                           <option value="medium">Medium severity</option>
                                           <option value="high">High severity</option>
                                         </select>
+                                        {note.status === "resolved" ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => void deleteResolvedTesterFeedbackNotes([note], "this resolved note")}
+                                            disabled={deletingTesterFeedbackIds.includes(note.id)}
+                                            className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {deletingTesterFeedbackIds.includes(note.id) ? "Deleting..." : "Delete resolved"}
+                                          </button>
+                                        ) : null}
                                       </div>
                                     </div>
                                   </div>

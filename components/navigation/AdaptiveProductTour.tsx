@@ -329,8 +329,16 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
   let panelTop = Math.max(86, viewport.height - panelHeightEstimate - 16)
   let panelLeft = Math.max(16, viewport.width - panelWidthEstimate - 18)
 
-  const rectsOverlap = (a: { left: number; top: number; width: number; height: number }, b: DOMRect) =>
-    a.left < b.right && a.left + a.width > b.left && a.top < b.bottom && a.top + a.height > b.top
+  const clampPanelPlacement = (placement: { left: number; top: number }) => ({
+    left: Math.min(Math.max(16, placement.left), viewport.width - panelWidthEstimate - 16),
+    top: Math.min(Math.max(86, placement.top), viewport.height - panelHeightEstimate - 16),
+  })
+
+  const overlapArea = (a: { left: number; top: number; width: number; height: number }, b: DOMRect) => {
+    const width = Math.max(0, Math.min(a.left + a.width, b.right) - Math.max(a.left, b.left))
+    const height = Math.max(0, Math.min(a.top + a.height, b.bottom) - Math.max(a.top, b.top))
+    return width * height
+  }
 
   if (targetRect) {
     const rightSideFits = targetRect.right + panelWidthEstimate + 20 <= viewport.width
@@ -348,22 +356,27 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
 
     const candidatePlacements = [
       { left: panelLeft, top: panelTop },
-      { left: Math.max(16, viewport.width - panelWidthEstimate - 16), top: Math.max(86, viewport.height - panelHeightEstimate - 16) },
-      { left: Math.max(16, viewport.width - panelWidthEstimate - 16), top: 90 },
-      { left: 16, top: Math.max(86, viewport.height - panelHeightEstimate - 16) },
+      { left: targetRect.left, top: targetRect.bottom + 14 },
+      { left: targetRect.left, top: targetRect.top - panelHeightEstimate - 14 },
+      { left: viewport.width - panelWidthEstimate - 16, top: viewport.height - panelHeightEstimate - 16 },
+      { left: viewport.width - panelWidthEstimate - 16, top: 90 },
+      { left: 16, top: viewport.height - panelHeightEstimate - 16 },
       { left: 16, top: 90 },
-    ]
+    ].map(clampPanelPlacement)
 
-    const firstSafePlacement = candidatePlacements.find((placement) =>
-      !rectsOverlap(
-        { left: placement.left, top: placement.top, width: panelWidthEstimate, height: panelHeightEstimate },
-        targetRect
-      )
-    )
+    const bestPlacement = candidatePlacements
+      .map((placement) => ({
+        placement,
+        overlap: overlapArea(
+          { left: placement.left, top: placement.top, width: panelWidthEstimate, height: panelHeightEstimate },
+          targetRect
+        ),
+      }))
+      .sort((a, b) => a.overlap - b.overlap)[0]?.placement
 
-    if (firstSafePlacement) {
-      panelLeft = firstSafePlacement.left
-      panelTop = firstSafePlacement.top
+    if (bestPlacement) {
+      panelLeft = bestPlacement.left
+      panelTop = bestPlacement.top
     }
   }
 
@@ -400,7 +413,7 @@ export function AdaptiveProductTour({ moduleKey }: { moduleKey: TourModule }) {
             />
           ) : null}
           <section
-            className="fixed z-[61] w-[340px] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[#cfdbf3] bg-white p-3 shadow-[0_28px_46px_-26px_rgba(15,30,70,0.5)]"
+            className="fixed z-[61] max-h-[calc(100vh-1.5rem)] w-[340px] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl border border-[#cfdbf3] bg-white p-3 shadow-[0_28px_46px_-26px_rgba(15,30,70,0.5)]"
             style={{ top: panelTop, left: panelLeft }}
           >
             <div className="flex items-start justify-between gap-2">

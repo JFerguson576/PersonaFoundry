@@ -10,6 +10,10 @@ type AdminTesterNotePatchPayload = {
   admin_note?: string | null
 }
 
+type AdminTesterNoteDeletePayload = {
+  ids?: string[]
+}
+
 function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
@@ -127,4 +131,77 @@ export async function PATCH(request: Request) {
   })
 
   return NextResponse.json({ note: data })
+}
+
+export async function DELETE(request: Request) {
+  const { user, errorMessage } = await getRequestAuth(request)
+  if (!user) {
+    return NextResponse.json({ error: errorMessage || "Unauthorized" }, { status: 401 })
+  }
+
+  const capabilities = await getAdminCapabilities({ userId: user.id, email: user.email })
+  if (!capabilities.isAdmin) {
+    return NextResponse.json({ error: "Admin access required." }, { status: 403 })
+  }
+
+  const admin = createAdminClient()
+  if (!admin) {
+    return NextResponse.json({ error: "Missing SUPABASE_SERVICE_ROLE_KEY." }, { status: 500 })
+  }
+
+  let payload: AdminTesterNoteDeletePayload = {}
+  try {
+    payload = (await request.json()) as AdminTesterNoteDeletePayload
+  } catch {
+    return NextResponse.json({ error: "Invalid request payload." }, { status: 400 })
+  }
+
+  const ids = Array.from(new Set((payload.ids ?? []).map(normalizeText).filter(Boolean)))
+  if (ids.length === 0) {
+    return NextResponse.json({ error: "At least one resolved feedback note id is required." }, { status: 400 })
+  }
+
+  const { data: resolvedRows, error: lookupError } = await admin
+    .from("tester_feedback_notes")
+    .select("id, status")
+    .in("id", ids)
+
+  if (lookupError) {
+    return NextResponse.json({ error: lookupError.message }, { status: 400 })
+  }
+
+  const resolvedIds = (resolvedRows ?? [])
+    .filter((row) => row.status === "resolved")
+    .map((row) => String(row.id))
+
+  if (resolvedIds.length === 0) {
+    return NextResponse.json({ error: "Only resolved feedback notes can be deleted." }, { status: 400 })
+  }
+
+  const { error } = await admin
+    .from("tester_feedback_notes")
+    .delete()
+    .in("id", resolvedIds)
+    .eq("status", "resolved")
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+
+  await logUsageEvent(admin, {
+    userId: user.id,
+    module: "admin",
+    eventType: "tester_feedback_notes_deleted",
+    metadata: {
+      requested_count: ids.length,
+      deleted_count: resolvedIds.length,
+      unresolved_skipped_count: ids.length - resolvedIds.length,
+    },
+  })
+
+  return NextResponse.json({
+    deleted_ids: resolvedIds,
+    deleted_count: resolvedIds.length,
+    skipped_count: ids.length - resolvedIds.length,
+  })
 }

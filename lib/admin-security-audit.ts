@@ -28,6 +28,7 @@ export const SECURITY_WRITE_ROUTE_AUDIT: SecurityWriteRouteAuditItem[] = [
   { route: "/api/admin/notebook", method: "POST", access: "admin", area: "operations" },
   { route: "/api/admin/notebook", method: "PATCH", access: "admin", area: "operations" },
   { route: "/api/admin/tester-notes", method: "PATCH", access: "admin", area: "operations" },
+  { route: "/api/admin/tester-notes", method: "DELETE", access: "admin", area: "operations" },
 ]
 
 export function summarizeSecurityWriteRouteAudit(routes: SecurityWriteRouteAuditItem[]) {
