@@ -14,6 +14,9 @@ import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWi
 type NavChild = { label: string; href: string; detail?: string; badge?: string }
 type NavItem = { key: string; label: string; href: string; items?: NavChild[] }
 
+const CAREER_ACTIVE_WORKSPACE_URL_KEY = "personara-career-active-workspace-url"
+const CAREER_HOME_HREF = "/career-intelligence"
+
 const navItems: NavItem[] = [
   {
     key: "tools",
@@ -21,8 +24,8 @@ const navItems: NavItem[] = [
     href: "/platform#modules",
     items: [
       { label: "Career Intelligence", href: "/career-intelligence", detail: "Career strategy and execution" },
-      { label: "Persona Foundry", href: "/persona-foundry", detail: "Custom AI personality studio" },
       { label: "TeamSync", href: "/teamsync", detail: "Team and executive simulations" },
+      { label: "Persona Foundry", href: "/persona-foundry", detail: "Custom AI personality studio" },
       { label: "Module overview", href: "/platform#modules", detail: "Compare all modules", badge: "Platform" },
     ],
   },
@@ -60,12 +63,17 @@ function isActive(pathname: string, href: string) {
   return pathname === baseHref || pathname.startsWith(`${baseHref}/`)
 }
 
+function isCareerWorkspaceHref(value: string | null) {
+  return Boolean(value && /^\/career\/[^/?#]+/.test(value))
+}
+
 export function PlatformModuleNav() {
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [roleBadge, setRoleBadge] = useState<"Superuser" | "Admin" | "Support" | null>(null)
   const [authProviderBadge, setAuthProviderBadge] = useState<AuthProviderLabel>(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
+  const [careerReturnHref, setCareerReturnHref] = useState(CAREER_HOME_HREF)
   const [showReferralModal, setShowReferralModal] = useState(false)
   const [inviteeName, setInviteeName] = useState("")
   const [inviteeEmail, setInviteeEmail] = useState("")
@@ -93,6 +101,28 @@ export function PlatformModuleNav() {
   const showGlobalMarketingNav = !isInternalWorkspace
   const showSectionReturnMenu = isSignedIn && isModulePage
 
+  const displayNavItems = useMemo(() => {
+    return navItems.map((item) => {
+      if (item.key !== "tools" || !item.items?.length) return item
+
+      return {
+        ...item,
+        items: item.items.map((child) =>
+          child.href === CAREER_HOME_HREF
+            ? {
+                ...child,
+                href: careerReturnHref,
+                detail:
+                  careerReturnHref === CAREER_HOME_HREF
+                    ? child.detail
+                    : "Return to your active Career workspace",
+              }
+            : child
+        ),
+      }
+    })
+  }, [careerReturnHref])
+
   useEffect(() => {
     setOpenDropdownKey(null)
     setShowReturnMenu(false)
@@ -101,6 +131,13 @@ export function PlatformModuleNav() {
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const storedHref = window.localStorage.getItem(CAREER_ACTIVE_WORKSPACE_URL_KEY)
+    setCareerReturnHref(isCareerWorkspaceHref(storedHref) ? storedHref || CAREER_HOME_HREF : CAREER_HOME_HREF)
+  }, [pathname])
 
   useEffect(() => {
     function closeMenus(event: MouseEvent) {
@@ -350,9 +387,9 @@ export function PlatformModuleNav() {
                 <div className="absolute right-0 top-10 z-[75] w-56 rounded-xl border border-[#d8e4f2] bg-white p-2 shadow-lg">
                   {[
                     { label: "Platform hub", href: "/platform#modules" },
-                    { label: "Career Intelligence", href: "/career-intelligence" },
-                    { label: "Persona Foundry", href: "/persona-foundry" },
+                    { label: "Career Intelligence", href: careerReturnHref },
                     { label: "TeamSync", href: "/teamsync" },
+                    { label: "Persona Foundry", href: "/persona-foundry" },
                     { label: "Operations Hub", href: "/operations" },
                     { label: "Operations Summary", href: "/control-center" },
                   ].map((item) => (
@@ -370,7 +407,7 @@ export function PlatformModuleNav() {
             </div>
           ) : null}
           {showGlobalMarketingNav
-            ? navItems.map((item) => {
+            ? displayNavItems.map((item) => {
                 const active = isActive(pathname, item.href)
                 const hasMenu = Boolean(item.items?.length)
                 const menuOpen = openDropdownKey === item.key

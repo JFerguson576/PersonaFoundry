@@ -1,5 +1,7 @@
 "use client"
 
+import { navigateCareerWorkspace } from "@/lib/career-client"
+
 type Props = {
   message: string
   tone?: "success" | "info" | "notice" | "progress" | "error"
@@ -36,6 +38,11 @@ export function CareerStatusBanner({ message, tone = "info", className = "" }: P
 
   if (isProgress) {
     const processingStages = ["Queued", "Generating", "Saving"]
+    const waitingActions = [
+      { label: "Review saved outputs", sectionKey: "documents", href: "#saved-library" },
+      { label: "Check target role", sectionKey: "documents", href: "#document-workbench" },
+      { label: "Add more context", sectionKey: "source", href: "#source-material" },
+    ]
 
     return (
       <div
@@ -68,7 +75,22 @@ export function CareerStatusBanner({ message, tone = "info", className = "" }: P
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-xs text-current/75">This can take up to a minute. You can keep working while it runs.</div>
+            <div className="mt-3 rounded-xl border border-current/10 bg-white/70 p-2.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/70">Useful while you wait</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {waitingActions.map((action) => (
+                  <button
+                    key={action.label}
+                    type="button"
+                    onClick={() => navigateCareerWorkspace(action.sectionKey, action.href)}
+                    className="rounded-full border border-current/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-current/80 transition hover:bg-current/5"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-current/75">This can take up to a minute. Results save automatically, so you do not need to stay on this exact card.</div>
           </div>
         </div>
       </div>

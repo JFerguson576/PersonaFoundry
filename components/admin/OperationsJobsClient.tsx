@@ -344,7 +344,7 @@ function readApiError(json: Record<string, unknown>, fallback: string) {
 type CodexBacklogItem = {
   id: string
   priority: "P0" | "P1" | "P2"
-  status: "planned" | "in_progress" | "blocked" | "completed"
+  status: "planned" | "ready_for_codex" | "in_progress" | "blocked" | "completed"
   title: string
   owner: string
   target: string
@@ -824,6 +824,7 @@ function normalizeCustomBacklogItems(value: unknown): CodexBacklogItem[] {
       priority: item.priority === "P0" || item.priority === "P1" || item.priority === "P2" ? item.priority : "P1",
       status:
         item.status === "planned" ||
+        item.status === "ready_for_codex" ||
         item.status === "in_progress" ||
         item.status === "blocked" ||
         item.status === "completed"
@@ -1228,11 +1229,11 @@ export function OperationsJobsClient() {
 
     try {
       await navigator.clipboard.writeText(prompt)
-      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "in_progress" }))
-      setMessage("Codex handoff copied to clipboard. Paste it into Codex to run execution.")
+      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "ready_for_codex" }))
+      setMessage("Codex brief copied. Paste it into Codex to start the work, then mark this item in progress.")
     } catch {
-      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "in_progress" }))
-      setMessage("Codex handoff prepared. Clipboard access failed in this browser session.")
+      setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "ready_for_codex" }))
+      setMessage("Codex brief prepared. Clipboard access failed in this browser session, so copy the item details manually before marking it in progress.")
     }
   }
 
@@ -3316,6 +3317,7 @@ export function OperationsJobsClient() {
                         className="rounded-md border border-[#c6d6eb] bg-white px-2 py-1.5 text-xs text-[#1d3c67]"
                       >
                         <option value="planned">Planned</option>
+                        <option value="ready_for_codex">Ready for Codex</option>
                         <option value="in_progress">In progress</option>
                         <option value="blocked">Blocked</option>
                         <option value="completed">Completed</option>
@@ -3372,6 +3374,8 @@ export function OperationsJobsClient() {
                             className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
                               item.status === "in_progress"
                                 ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                : item.status === "ready_for_codex"
+                                ? "border-violet-300 bg-violet-50 text-violet-700"
                                 : item.status === "completed"
                                 ? "border-sky-300 bg-sky-50 text-sky-700"
                                 : item.status === "blocked"
@@ -3379,7 +3383,7 @@ export function OperationsJobsClient() {
                                 : "border-neutral-300 bg-neutral-50 text-neutral-600"
                             }`}
                           >
-                            {item.status.replace("_", " ")}
+                            {item.status === "ready_for_codex" ? "ready for Codex" : item.status.replace("_", " ")}
                           </span>
                           <h3 className="text-sm font-semibold text-[#142c4f]">{item.title}</h3>
                           <div className="ml-auto flex flex-wrap items-center gap-1.5">
@@ -3404,8 +3408,32 @@ export function OperationsJobsClient() {
                               onClick={() => void runBacklogItemInCodex(item, allAssets)}
                               className="rounded-full border border-[#9ec1ee] bg-[#e8f3ff] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1c4d92] hover:bg-[#ddecff]"
                             >
-                              Run in Codex
+                              Copy Codex brief
                             </button>
+                            {item.status === "ready_for_codex" ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "in_progress" }))
+                                  setMessage("Roadmap item marked in progress.")
+                                }}
+                                className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700 hover:bg-emerald-100"
+                              >
+                                Mark in progress
+                              </button>
+                            ) : null}
+                            {item.status === "in_progress" ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExecutionBacklogStatusOverrides((current) => ({ ...current, [item.id]: "completed" }))
+                                  setMessage("Roadmap item marked complete.")
+                                }}
+                                className="rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 hover:bg-sky-100"
+                              >
+                                Mark complete
+                              </button>
+                            ) : null}
                             {executionBacklogArchivedIds.includes(item.id) ? (
                               <button
                                 type="button"

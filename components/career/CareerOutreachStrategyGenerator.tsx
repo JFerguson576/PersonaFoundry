@@ -7,6 +7,7 @@ import { CAREER_WORKSPACE_NAVIGATE_EVENT, careerActionErrorMessage, careerBackgr
 
 type Props = {
   candidateId: string
+  completedCount?: number
   initialPrefill?: {
     companyName?: string
     location?: string
@@ -15,7 +16,7 @@ type Props = {
   }
 }
 
-export function CareerOutreachStrategyGenerator({ candidateId, initialPrefill }: Props) {
+export function CareerOutreachStrategyGenerator({ candidateId, completedCount = 0, initialPrefill }: Props) {
   const router = useRouter()
   const [companyName, setCompanyName] = useState(initialPrefill?.companyName || "")
   const [location, setLocation] = useState(initialPrefill?.location || "")
@@ -24,6 +25,7 @@ export function CareerOutreachStrategyGenerator({ candidateId, initialPrefill }:
   const [notes, setNotes] = useState(initialPrefill?.notes || "")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [pendingBaselineCount, setPendingBaselineCount] = useState<number | null>(null)
   const canGenerate = Boolean(companyName.trim())
 
   useEffect(() => {
@@ -65,10 +67,19 @@ export function CareerOutreachStrategyGenerator({ candidateId, initialPrefill }:
     }
   }, [jobTitle])
 
+  useEffect(() => {
+    if (pendingBaselineCount === null || completedCount <= pendingBaselineCount) return
+    if (getCareerMessageTone(message) === "progress") {
+      setMessage("Outreach strategy saved. Open the current outreach plan below.")
+      setPendingBaselineCount(null)
+    }
+  }, [completedCount, message, pendingBaselineCount])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
     setMessage("")
+    setPendingBaselineCount(completedCount)
 
     try {
       await startCareerBackgroundJob(candidateId, "generate_outreach_strategy", {

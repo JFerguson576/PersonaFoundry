@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh } from "@/lib/career-client"
@@ -19,6 +19,7 @@ export function CareerAssetEditor({ candidateId, assetType, initialTitle, initia
   const [content, setContent] = useState(initialContent)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [isReaderOpen, setIsReaderOpen] = useState(false)
   const hasExportableContent = Boolean(content.trim())
 
   async function handleSave() {
@@ -112,6 +113,24 @@ export function CareerAssetEditor({ candidateId, assetType, initialTitle, initia
 
   const links = extractLinks(content)
 
+  useEffect(() => {
+    if (!isReaderOpen || typeof window === "undefined") return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsReaderOpen(false)
+      }
+    }
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [isReaderOpen])
+
   return (
     <div className="rounded-2xl border border-neutral-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -122,6 +141,20 @@ export function CareerAssetEditor({ candidateId, assetType, initialTitle, initia
         <div className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-600">
           Version-safe editing
         </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Better reading view</div>
+          <div className="mt-0.5 text-sm text-sky-950">Open the full document in a larger panel, then return here to edit or keep working.</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsReaderOpen(true)}
+          disabled={!hasExportableContent}
+          className="rounded-full border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Open reader view
+        </button>
       </div>
       <input
         value={title}
@@ -201,6 +234,49 @@ export function CareerAssetEditor({ candidateId, assetType, initialTitle, initia
       <p className="mt-3 text-xs leading-5 text-neutral-500">
         Saving creates a new version inside this candidate workspace. Download actions export a copy for use outside the platform.
       </p>
+      {isReaderOpen ? (
+        <div className="fixed inset-0 z-[95] bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-label="Document reader view">
+          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-[1.5rem] border border-sky-200 bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 bg-[linear-gradient(180deg,#f8fbff_0%,#eef6ff_100%)] px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">{formatAssetType(assetType)}</div>
+                <h2 className="mt-1 max-w-3xl truncate text-lg font-semibold text-neutral-950">{title || formatAssetType(assetType)}</h2>
+                <p className="mt-1 text-xs text-neutral-600">Reading view only. Return to the workflow to edit, save, or generate the next output.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReaderOpen(false)}
+                className="rounded-full border border-sky-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-50"
+              >
+                Return to workflow
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6">
+              <article className="mx-auto max-w-4xl whitespace-pre-wrap text-[15px] leading-7 text-neutral-800">
+                {content}
+              </article>
+              {links.length > 0 ? (
+                <div className="mx-auto mt-6 max-w-4xl rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Links in this document</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {links.map((link) => (
+                      <a
+                        key={`reader-${link}`}
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+                      >
+                        {truncateLink(link)}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

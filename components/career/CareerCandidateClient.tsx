@@ -151,6 +151,20 @@ type Props = {
   previewOwnerUserId?: string | null
 }
 
+const CAREER_ACTIVE_WORKSPACE_URL_KEY = "personara-career-active-workspace-url"
+const CAREER_ACTIVE_CANDIDATE_ID_KEY = "personara-career-active-candidate-id"
+
+function normalizeTrackedRoleField(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase()
+}
+
+function applicationMatchesOpportunity(application: ApplicationRow, opportunity: ParsedLiveOpportunity) {
+  const sameCompany = normalizeTrackedRoleField(application.company_name) === normalizeTrackedRoleField(opportunity.company)
+  const sameTitle = normalizeTrackedRoleField(application.job_title) === normalizeTrackedRoleField(opportunity.title)
+  const isClosed = ["offer", "rejected", "archived"].includes(application.status ?? "")
+  return sameCompany && sameTitle && !isClosed
+}
+
 export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }: Props) {
   const [session, setSession] = useState<Session | null>(null)
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null)
@@ -173,6 +187,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   const [showRecentFilesDetails, setShowRecentFilesDetails] = useState(false)
   const [savingOpportunityKey, setSavingOpportunityKey] = useState<string | null>(null)
   const [quickSavedApplicationIds, setQuickSavedApplicationIds] = useState<string[]>([])
+  const [quickSavedOpportunityStatuses, setQuickSavedOpportunityStatuses] = useState<Record<string, "targeting" | "shortlisted">>({})
   const [openGuideHintId, setOpenGuideHintId] = useState<string | null>(null)
   const [isWorkflowGuideExpanded, setIsWorkflowGuideExpanded] = useState(false)
   const [isGuidedMode, setIsGuidedMode] = useState(() => {
@@ -260,6 +275,15 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const currentHref = `${window.location.pathname}${window.location.search || ""}`
+    const workspaceHref = currentHref.startsWith(`/career/${candidateId}`) ? currentHref : `/career/${candidateId}`
+    window.localStorage.setItem(CAREER_ACTIVE_WORKSPACE_URL_KEY, workspaceHref)
+    window.localStorage.setItem(CAREER_ACTIVE_CANDIDATE_ID_KEY, candidateId)
+  }, [candidateId])
+
   const loadWorkspace = useCallback(async () => {
     const {
       data: { session: currentSession },
@@ -322,6 +346,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       setShowSectionContext((current) => ({ ...current, interview: true }))
     }
     if (
+      href === "#deep-prospect-research" ||
+      href === "#recruiter-match-search" ||
+      href === "#salary-analysis" ||
+      href === "#fit-analysis" ||
       href === "#current-live-opportunities" ||
       href === "#current-recruiter-match-searches" ||
       href === "#current-salary-analysis" ||
@@ -844,6 +872,32 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       ready: hasCoverLetterExamples || documents.length >= 4,
       hint: hasCoverLetterExamples || documents.length >= 4 ? "The workspace has additional proof and examples." : "Add old letters, recruiter notes, achievements, or target-role notes.",
       tone: hasCoverLetterExamples || documents.length >= 4 ? "success" as const : "info" as const,
+    },
+  ]
+  const sourcePrepItems = [
+    {
+      label: "CV or resume",
+      status: hasCv ? "Ready" : "Have ready",
+      detail: "Use the latest version with role history, dates, achievements, and qualifications.",
+      ready: hasCv,
+    },
+    {
+      label: "Gallup Strengths",
+      status: hasGallupStrengths ? "Ready" : "Best input",
+      detail: "Upload the full report if available. It gives the profile a stronger strengths-led voice.",
+      ready: hasGallupStrengths,
+    },
+    {
+      label: "LinkedIn profile",
+      status: hasLinkedIn ? "Ready" : "Prepare text",
+      detail: "Download your profile PDF from LinkedIn or copy the About, Experience, Skills, and headline text.",
+      ready: hasLinkedIn,
+    },
+    {
+      label: "Useful examples",
+      status: hasCoverLetterExamples || documents.length >= 4 ? "Ready" : "Optional",
+      detail: "Old cover letters, recruiter feedback, achievements, target roles, and notes all improve tailoring.",
+      ready: hasCoverLetterExamples || documents.length >= 4,
     },
   ]
   const sourcePackStrength =
@@ -1503,8 +1557,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     jobs: [
       { label: "Start search", sectionKey: "jobs", href: "#live-job-search" },
       { label: "Saved opportunities", sectionKey: "jobs", href: "#current-live-opportunities" },
-      { label: "Salary check", sectionKey: "jobs", href: "#current-salary-analysis" },
-      { label: "Fit check", sectionKey: "jobs", href: "#current-fit-analysis" },
+      { label: "Salary check", sectionKey: "jobs", href: latestSalaryAnalysis[0] ? "#current-salary-analysis" : "#salary-analysis" },
+      { label: "Fit check", sectionKey: "jobs", href: latestFitAnalysis[0] ? "#current-fit-analysis" : "#fit-analysis" },
     ],
   }
   const activeSectionSubmenuLinks = sectionSubmenuLinks[activeStep] ?? []
@@ -1544,12 +1598,12 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       href: "#source-material",
     },
     positioning: {
-      statusLabel: hasProfile ? "Narrative ready" : "Generate profile",
+      statusLabel: hasProfile ? "Profile ready" : "Generate profile",
       summary: hasProfile
-        ? "The reusable market narrative exists and can now power document drafting, company tailoring, and live search."
+        ? "The profile is ready. Next, create the CV and LinkedIn assets, then use them for job search and company tailoring."
         : "Generate the positioning brief after the source pack is loaded so the story is clear before creating outward-facing assets.",
-      actionLabel: hasProfile ? "Review positioning" : "Generate profile",
-      href: hasProfile ? "#positioning" : "#generate-profile",
+      actionLabel: hasProfile ? "Create CV + LinkedIn" : "Generate profile",
+      href: hasProfile ? "#document-workbench" : "#generate-profile",
     },
     documents: {
       statusLabel: hasDraftDocuments || coverLetterHistory.length > 0 ? "Assets active" : "Create base assets",
@@ -1607,7 +1661,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       title: "Next action",
       label: sectionActionGuides.positioning.actionLabel,
       detail: sectionActionGuides.positioning.summary,
-      sectionKey: "positioning",
+      sectionKey: hasProfile ? "documents" : "positioning",
       href: sectionActionGuides.positioning.href,
     },
     documents: {
@@ -2425,14 +2479,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       return
     }
 
-    const alreadyTracked = applications.some((application) => {
-      const sameCompany = (application.company_name || "").trim().toLowerCase() === normalizedCompany.toLowerCase()
-      const sameTitle = (application.job_title || "").trim().toLowerCase() === normalizedTitle.toLowerCase()
-      const isClosed = ["offer", "rejected", "archived"].includes(application.status ?? "")
-      return sameCompany && sameTitle && !isClosed
-    })
+    const alreadyTrackedApplication = applications.find((application) => applicationMatchesOpportunity(application, opportunity))
 
-    if (alreadyTracked) {
+    if (alreadyTrackedApplication) {
+      const existingStatus = alreadyTrackedApplication.status === "shortlisted" ? "shortlisted" : "targeting"
+      setQuickSavedOpportunityStatuses((current) => ({ ...current, [opportunityKey]: existingStatus }))
       const info = `${normalizedTitle} at ${normalizedCompany} is already in the tracker.`
       setTrackerMessage(info)
       showToast({ tone: "info", message: info })
@@ -2470,6 +2521,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       if (savedApplicationId) {
         setQuickSavedApplicationIds((current) => [savedApplicationId, ...current.filter((id) => id !== savedApplicationId)].slice(0, 6))
       }
+      setQuickSavedOpportunityStatuses((current) => ({ ...current, [opportunityKey]: nextStatus }))
 
       const success =
         nextStatus === "shortlisted"
@@ -2813,7 +2865,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
             </div>
           ) : null}
-          {!showApplicationWorkspacePanel && workflowActionLane.length > 0 ? (
+          {!showApplicationWorkspacePanel && workflowActionLane.length > 0 && !(latestCompletedBackgroundJob && latestCompletedOutputTarget) ? (
             <div className="mt-1 rounded-xl border border-[#d8e4f2] bg-[#f7fbff] px-2 py-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -4510,7 +4562,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 2</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 1</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Load career inputs</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -4543,6 +4595,42 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 >
                   {showSectionContext.source ? "Hide details" : "Show details"}
                 </button>
+              </div>
+              <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">Before you start</div>
+                    <h3 className="mt-1 text-sm font-semibold text-neutral-950">Have these files ready</h3>
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-neutral-600">
+                      Start with the CV, then add strengths and public profile evidence. Optional proof can be skipped and added later.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">
+                    {sourceChecklist.filter((item) => item.ready).length}/{sourceChecklist.length} ready
+                  </span>
+                </div>
+                <div className="mt-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-4">
+                  {sourcePrepItems.map((item) => (
+                    <div
+                      key={item.label}
+                      className={`rounded-lg border px-2.5 py-2 ${
+                        item.ready ? "border-emerald-200 bg-emerald-50" : "border-neutral-200 bg-neutral-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-xs font-semibold text-neutral-900">{item.label}</div>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+                            item.ready ? "bg-emerald-100 text-emerald-700" : "bg-white text-neutral-600"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-4 text-neutral-600">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
               {showSectionContext.source && showStepGuidance && !sourceWizardFocusMode ? (
                 <>
@@ -4692,7 +4780,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 3</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 2</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Build your profile</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -4711,8 +4799,20 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
                     <div className="text-[11px] text-neutral-700">
-                      <span className="font-semibold">Next:</span> Generate your profile, then refine positioning.
+                      <span className="font-semibold">Next:</span>{" "}
+                      {latestProfile
+                        ? "Create CV and LinkedIn assets from this profile, then move into job search."
+                        : "Generate your profile, then refine positioning."}
                     </div>
+                    {latestProfile ? (
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll("documents", "#document-workbench")}
+                        className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                      >
+                        Create CV + LinkedIn
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => toggleSectionContext("positioning")}
@@ -4728,7 +4828,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         summary={sectionActionGuides.positioning.summary}
                         actionLabel={sectionActionGuides.positioning.actionLabel}
                         tone="positioning"
-                        onClick={() => openAndScroll("positioning", sectionActionGuides.positioning.href)}
+                        onClick={() =>
+                          openAndScroll(hasProfile ? "documents" : "positioning", sectionActionGuides.positioning.href)
+                        }
                       />
                       <SectionSubnav
                         title="Inside profile builder"
@@ -4746,7 +4848,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-700">Profile builder</div>
                   <h2 className="mt-1 text-lg font-semibold">Current career positioning</h2>
-                  <p className="mt-1 text-sm text-neutral-600">Generate the professional narrative before creating outward-facing assets.</p>
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {latestProfile
+                      ? "Profile is ready. Use it to generate a refreshed CV, LinkedIn profile, cover letters, and job-search materials."
+                      : "Generate the professional narrative before creating outward-facing assets."}
+                  </p>
                 </div>
                 {latestProfile ? (
                   <CareerGenerateProfileButton candidateId={candidate.id} variant="inline" label="Generate new version" />
@@ -5023,7 +5129,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 4</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 3</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Create CV + LinkedIn assets</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -5399,7 +5505,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 5</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 4</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Research target companies</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -5479,7 +5585,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     <CareerCompanyDossierGenerator candidateId={candidate.id} initialPrefill={currentTargetBrief} />
                   </div>
                   <div id="outreach-strategy" className="mt-5">
-                    <CareerOutreachStrategyGenerator candidateId={candidate.id} initialPrefill={currentTargetBrief} />
+                    <CareerOutreachStrategyGenerator
+                      candidateId={candidate.id}
+                      completedCount={outreachStrategyHistory.length}
+                      initialPrefill={currentTargetBrief}
+                    />
                   </div>
                   {showSectionContext.company ? (
                     <>
@@ -5654,7 +5764,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 6</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 5</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Prepare interviews</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -5891,7 +6001,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 7</span>
+                    <span className="rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Step 6</span>
                     <h2 className="text-base font-semibold tracking-tight text-[#0f172a]">Search live opportunities</h2>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -5941,8 +6051,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       { label: "Premium autopilot", href: "#premium-autopilot" },
                       { label: "Live opportunities", href: "#current-live-opportunities" },
                       { label: "Recruiter routes", href: "#current-recruiter-match-searches" },
-                      { label: "Salary analysis", href: "#current-salary-analysis" },
-                      { label: "Fit analysis", href: "#current-fit-analysis" },
+                      { label: "Salary analysis", href: latestSalaryAnalysis[0] ? "#current-salary-analysis" : "#salary-analysis" },
+                      { label: "Fit analysis", href: latestFitAnalysis[0] ? "#current-fit-analysis" : "#fit-analysis" },
                     ]}
                     onClick={(href) => openAndScroll("jobs", href)}
                   />
@@ -6412,6 +6522,16 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         {(() => {
                           const opportunityKey = `${opportunity.company}-${opportunity.title}-${index}`
                           const isSavingThisOpportunity = savingOpportunityKey === opportunityKey
+                          const trackedApplication = applications.find((application) => applicationMatchesOpportunity(application, opportunity))
+                          const savedStatus =
+                            quickSavedOpportunityStatuses[opportunityKey] ||
+                            (trackedApplication?.status === "shortlisted"
+                              ? "shortlisted"
+                              : trackedApplication
+                                ? "targeting"
+                                : null)
+                          const isShortlisted = savedStatus === "shortlisted"
+                          const isTracked = Boolean(savedStatus)
                           return (
                             <>
                         <div className="flex items-start justify-between gap-3">
@@ -6423,27 +6543,46 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                               {opportunity.location ? ` | ${opportunity.location}` : ""}
                             </div>
                           </div>
-                          <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-violet-700">
-                            Shortlist ready
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${
+                              isShortlisted
+                                ? "bg-emerald-100 text-emerald-700"
+                                : isTracked
+                                  ? "bg-sky-100 text-sky-700"
+                                  : "bg-violet-100 text-violet-700"
+                            }`}
+                          >
+                            {isShortlisted ? "Shortlisted" : isTracked ? "In tracker" : "Shortlist ready"}
                           </span>
                         </div>
                         {opportunity.whyFit ? <p className="mt-3 text-sm leading-6 text-neutral-600">{opportunity.whyFit}</p> : null}
+                        {isTracked ? (
+                          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                            {isShortlisted
+                              ? "Saved to the priority shortlist. You can open the tracker to tailor or apply."
+                              : "Saved in the tracker. Open the tracker when you are ready to prioritise it."}
+                          </div>
+                        ) : null}
                         <div className="ui-action-row mt-4">
                           <button
                             type="button"
                             onClick={() => void handleQuickSaveOpportunity(opportunityKey, opportunity, "shortlisted")}
-                            disabled={isSavingThisOpportunity}
-                            className="rounded-full border border-violet-300 bg-violet-600 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white hover:bg-violet-700"
+                            disabled={isSavingThisOpportunity || isTracked}
+                            className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] ${
+                              isTracked
+                                ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                                : "border-violet-300 bg-violet-600 text-white hover:bg-violet-700"
+                            }`}
                           >
-                            {isSavingThisOpportunity ? "Saving..." : "Save to shortlist"}
+                            {isSavingThisOpportunity ? "Saving..." : isShortlisted ? "Shortlisted" : isTracked ? "Saved" : "Save to shortlist"}
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleQuickSaveOpportunity(opportunityKey, opportunity, "targeting")}
-                            disabled={isSavingThisOpportunity}
+                            disabled={isSavingThisOpportunity || isTracked}
                             className="rounded-full border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
                           >
-                            {isSavingThisOpportunity ? "Saving..." : "Save as targeting"}
+                            {isSavingThisOpportunity ? "Saving..." : isTracked ? "Already saved" : "Save as targeting"}
                           </button>
                           <button
                             type="button"
@@ -6829,7 +6968,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-0.5">
           {displayedLeftWorkflowLinks.map((link) => {
             const sectionKey = link.sectionKey as keyof typeof expandedLeftSections
-            const isExpanded = Boolean(expandedLeftSections[sectionKey])
+            const isExpanded = Boolean(expandedLeftSections[sectionKey]) || link.isActive
             const submenuItems = sectionSubmenuLinks[link.sectionKey] ?? []
 
             return (
