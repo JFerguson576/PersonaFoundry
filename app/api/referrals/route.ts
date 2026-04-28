@@ -22,6 +22,15 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+function isMissingReferralTableError(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? ""
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    (message.includes("referral_invites") && (message.includes("schema cache") || message.includes("does not exist")))
+  )
+}
+
 export async function GET(request: Request) {
   const { user, accessToken, errorMessage } = await getRequestAuth(request)
 
@@ -39,6 +48,9 @@ export async function GET(request: Request) {
     .limit(20)
 
   if (error) {
+    if (isMissingReferralTableError(error)) {
+      return NextResponse.json({ referrals: [], unavailable: true })
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
@@ -84,14 +96,36 @@ export async function POST(request: Request) {
     note: note || null,
   }
 
-  const { data: referral, error } = await supabase
+  const { data: savedReferral, error } = await supabase
     .from("referral_invites")
     .insert([referralInsert])
     .select("id, invitee_email, invitee_name, relationship, note, status, sent_at, created_at")
     .single()
 
+  let inviteSaved = true
+  let referral =
+    savedReferral ??
+    ({
+      id: null,
+      invitee_email: inviteeEmail,
+      invitee_name: inviteeName || null,
+      relationship,
+      note: note || null,
+      status: "not_saved",
+      sent_at: null,
+      created_at: new Date().toISOString(),
+    } as const)
+
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    if (isMissingReferralTableError(error)) {
+      inviteSaved = false
+    } else {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+  }
+
+  if (!referral) {
+    return NextResponse.json({ error: "Could not prepare referral invite." }, { status: 400 })
   }
 
   let emailSent = false
@@ -128,7 +162,9 @@ export async function POST(request: Request) {
 
     if (resendResponse.ok) {
       emailSent = true
-      await supabase.from("referral_invites").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", referral.id)
+      if (inviteSaved && referral.id) {
+        await supabase.from("referral_invites").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", referral.id)
+      }
     }
   }
 
@@ -140,6 +176,7 @@ export async function POST(request: Request) {
       invitee_email: inviteeEmail,
       relationship,
       email_sent: emailSent,
+      invite_saved: inviteSaved,
     },
   })
 
@@ -150,5 +187,7 @@ export async function POST(request: Request) {
       sent_at: emailSent ? new Date().toISOString() : referral.sent_at,
     },
     email_sent: emailSent,
+    invite_saved: inviteSaved,
+    fallback_required: !emailSent && !inviteSaved,
   })
 }

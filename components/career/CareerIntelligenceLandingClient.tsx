@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { getAuthHeaders, toCareerUserMessage } from "@/lib/career-client"
 import { PlatformModuleNav } from "@/components/navigation/PlatformModuleNav"
 import { ModuleExplainerPanel } from "@/components/navigation/ModuleExplainerPanel"
+import { ModuleIntroGuide } from "@/components/navigation/ModuleIntroGuide"
 import { WelcomeBackNotice } from "@/components/navigation/WelcomeBackNotice"
 import { extractLinkedInProfile } from "@/lib/linkedin-profile"
 import { clearOAuthReturnParamsFromUrl, getOAuthRedirectTo, getOAuthReturnErrorFromUrl } from "@/lib/oauth-return"
@@ -404,6 +405,14 @@ export function CareerIntelligenceLandingClient() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-neutral-900">
+      <ModuleIntroGuide
+        moduleKey="career-intelligence"
+        title="How to use Career Intelligence"
+        subtitle="See the flow from source files to profile, documents, interviews, and role execution."
+        imageSrc="/images/module-guides/how-to-use-career-intelligence.png"
+        startLabel="Start Career Intelligence"
+        accent="blue"
+      />
       <div className="mx-auto max-w-6xl px-6 py-10">
         <PlatformModuleNav />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />

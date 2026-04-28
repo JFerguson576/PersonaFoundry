@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js'
 import PersonaChatSandbox from '@/components/PersonaChatSandbox'
 import { PlatformModuleNav } from '@/components/navigation/PlatformModuleNav'
 import { AdaptiveProductTour } from '@/components/navigation/AdaptiveProductTour'
+import { ModuleIntroGuide } from '@/components/navigation/ModuleIntroGuide'
 import { WelcomeBackNotice } from '@/components/navigation/WelcomeBackNotice'
 import type { AuthProviderStatus } from '@/lib/auth-provider-status'
 import { getAuthHeaders } from '@/lib/career-client'
@@ -2227,6 +2228,14 @@ export default function Home() {
 
   return (
     <main id="persona-workspace-root" className="min-h-screen bg-[#f7f8fb] text-neutral-900">
+      <ModuleIntroGuide
+        moduleKey="persona-foundry"
+        title="How to use Persona Foundry"
+        subtitle="A quick visual walkthrough before you build your custom AI personality."
+        imageSrc="/images/module-guides/how-to-use-persona-foundry.png"
+        startLabel="Start Persona Foundry"
+        accent="blue"
+      />
       {uploadingFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="rounded-3xl bg-white px-8 py-7 shadow-2xl">

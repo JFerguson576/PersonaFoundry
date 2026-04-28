@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Persona Foundry Platform",
-  description: "Career Intelligence, AI Personality Generator, and TeamSync modules in one platform.",
+  title: "Personara.ai",
+  description: "Strengths-based intelligence for identity, careers, and teams.",
+  icons: {
+    icon: "/brand/personara-logo-icon.png",
+  },
 };
 
 export default function RootLayout({

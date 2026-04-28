@@ -510,17 +510,17 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     const latestProfile = workspace.profiles[0]
     const hasProfile = Boolean(latestProfile)
     const hasCv = workspace.documents.some((doc) => doc.source_type === "cv")
-    const hasGallupStrengths = workspace.documents.some((doc) => doc.source_type === "gallup_strengths")
+    const hasGallupStrengths = workspace.documents.some((doc) => doc.source_type === "gallup_strengths" || doc.source_type === "strengths")
     const hasDraftDocuments = workspace.assets.length > 0
     const hasLiveSearch = workspace.assets.some((asset) => asset.asset_type === "live_job_search")
     const showOnboardingGuide = !hasCv || !hasGallupStrengths || !hasProfile
     if (!showOnboardingGuide) return
     const firstFiveChecklist = [
-      { sectionKey: "source", href: "#source-pack", done: hasCv },
-      { sectionKey: "source", href: "#source-pack", done: hasGallupStrengths },
-      { sectionKey: "positioning", href: "#profile-generator", done: hasProfile },
+      { sectionKey: "source", href: "#source-material", done: hasCv },
+      { sectionKey: "source", href: "#source-material", done: hasGallupStrengths },
+      { sectionKey: "positioning", href: "#generate-profile", done: hasProfile },
       { sectionKey: "documents", href: "#document-workbench", done: hasDraftDocuments },
-      { sectionKey: "jobs", href: "#job-market-lab", done: hasLiveSearch },
+      { sectionKey: "jobs", href: "#live-job-search", done: hasLiveSearch },
     ] as const
     const nextStep = firstFiveChecklist.find((item) => !item.done)
     if (!nextStep) return
@@ -868,21 +868,21 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       label: "Load CV",
       done: hasCv,
       sectionKey: "source",
-      href: "#source-pack",
+      href: "#source-material",
     },
     {
       key: "strengths",
       label: "Load Gallup Strengths",
       done: hasGallupStrengths,
       sectionKey: "source",
-      href: "#source-pack",
+      href: "#source-material",
     },
     {
       key: "profile",
       label: "Generate profile",
       done: hasProfile,
       sectionKey: "positioning",
-      href: "#profile-generator",
+      href: "#generate-profile",
     },
     {
       key: "assets",
@@ -896,7 +896,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       label: "Run live job search",
       done: hasLiveSearch,
       sectionKey: "jobs",
-      href: "#job-market-lab",
+      href: "#live-job-search",
     },
   ]
   const firstFiveCompleteCount = firstFiveChecklist.filter((item) => item.done).length
@@ -1576,7 +1576,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           ? "Interview rehearsal and learning notes are saved here so the next conversation can improve on the last one."
           : "Generate a practice pack for a real role, then save post-interview reflections to improve the next round.",
       actionLabel: interviewPrepHistory.length > 0 ? "Open interview prep" : "Create interview prep",
-      href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#interview-prep",
+      href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#interview",
     },
     jobs: {
       statusLabel: hasLiveSearch || recruiterMatchSearchHistory.length > 0 || salaryAnalysisHistory.length > 0 ? "Market tools active" : "Search not started",
@@ -2204,6 +2204,51 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         : []),
   ].slice(0, 3)
 
+  const workspacePrimaryAction = runningOutputItem
+    ? {
+        title: `${runningOutputItem.label} is being saved`,
+        detail: "Background work is running. Open the related area only if you need to check it.",
+        label: "Open running work",
+        sectionKey: runningOutputItem.sectionKey,
+        href: runningOutputItem.href,
+      }
+    : latestCompletedBackgroundJob && latestCompletedOutputTarget
+      ? {
+          title: `${formatBackgroundJobType(latestCompletedBackgroundJob.job_type)} ready`,
+          detail: latestCompletedOutputFollowUp?.label
+            ? `Recommended next step: ${latestCompletedOutputFollowUp.label}.`
+            : latestCompletedBackgroundJob.result_summary || "Review the latest saved output.",
+          label: latestCompletedOutputFollowUp?.label || latestCompletedOutputOpenLabel,
+          sectionKey: latestCompletedOutputFollowUp?.sectionKey || latestCompletedOutputTarget.sectionKey,
+          href: latestCompletedOutputFollowUp?.href || latestCompletedOutputTarget.href,
+        }
+      : nextOutputPromptItem
+        ? {
+            title: `Create ${nextOutputPromptItem.label}`,
+            detail: "Fill the next useful gap in the candidate output set.",
+            label: runningOutputItem ? "Open area" : "Create output",
+            sectionKey: nextOutputPromptItem.sectionKey,
+            href: nextOutputPromptItem.href,
+          }
+        : {
+            title: "Workspace ready",
+            detail: "Review saved assets, track roles, or start another targeted output.",
+            label: "Review assets",
+            sectionKey: "documents",
+            href: "#saved-library",
+          }
+
+  const workspaceQuickActions = [
+    { label: "Review assets", detail: `${assets.length} saved`, sectionKey: "documents", href: "#saved-library" },
+    { label: "Track roles", detail: `${activeApplications.length} active`, sectionKey: "documents", href: "#document-workbench" },
+    {
+      label: "Research company",
+      detail: companyDossiers.length > 0 ? "Dossier ready" : "Build dossier",
+      sectionKey: "company",
+      href: "#company-dossier",
+    },
+  ]
+
   function toggleSection(sectionKey: string) {
     const isCollapsingCurrentSection = activeStep === sectionKey && openSections[sectionKey]
     if (isCollapsingCurrentSection) {
@@ -2574,7 +2619,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       case "generate_company_dossier":
         return { sectionKey: "company", href: "#company-dossier" }
       case "generate_interview_prep":
-        return { sectionKey: "interview", href: "#interview-prep" }
+        return { sectionKey: "interview", href: "#interview" }
       case "generate_assets":
       case "generate_cover_letter":
       case "generate_strategy_document":
@@ -2637,7 +2682,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
 
   return (
     <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className={`candidate-compact-workspace w-full px-4 py-5 lg:pl-[240px] lg:pr-4 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
+      <div className={`candidate-compact-workspace w-full px-4 py-3 lg:pl-[240px] lg:pr-4 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
         <PlatformModuleNav />
         <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
@@ -2646,14 +2691,14 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             Admin preview mode active. You are viewing this workspace as candidate owner <span className="font-semibold">{previewOwnerUserId}</span>.
           </div>
         ) : null}
-        <div id="career-header" className="mb-2 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-2 shadow-sm">
+        <div id="career-header" className="mb-1.5 rounded-2xl border border-[#d8e4f2] bg-white px-3 py-1.5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Link href="/career" className="text-[11px] font-medium text-neutral-500 hover:text-neutral-900">
               Back to Career Intelligence
               </Link>
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-lg font-semibold tracking-tight md:text-xl">{candidate.full_name || "Untitled candidate"}</h1>
+                <h1 className="truncate text-base font-semibold tracking-tight md:text-lg">{candidate.full_name || "Untitled candidate"}</h1>
                 {authProviderBadge ? (
                   <span className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
                     {authProviderBadge} login
@@ -2686,7 +2731,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         </div>
 
         {!isWizardFocusActive ? (
-        <section className="mb-2 rounded-2xl border border-[#d8e4f2] bg-white px-2.5 py-2 shadow-sm">
+        <section className="mb-1.5 rounded-2xl border border-[#d8e4f2] bg-white px-2 py-1.5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6b7c]">
@@ -2703,7 +2748,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   type="button"
                   onClick={() => {
                     if (showApplicationWorkspacePanel) {
-                      openAndScroll("documents", "#saved-library")
+                      openAndScroll(workspacePrimaryAction.sectionKey, workspacePrimaryAction.href)
                       return
                     }
                     if (firstFiveNextItem) {
@@ -2717,7 +2762,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   }`}
                 >
                   {showApplicationWorkspacePanel
-                    ? "Review saved assets"
+                    ? workspacePrimaryAction.label
                     : firstFiveNextItem
                     ? `Next step: ${firstFiveNextItem.label}`
                     : `Setup wizard${showOnboardingGuide ? ` (${firstFiveRemainingCount} left)` : ""}`}
@@ -2736,8 +2781,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : null}
             </div>
           </div>
-          {latestCompletedBackgroundJob && latestCompletedOutputTarget ? (
-            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5">
+          {!showApplicationWorkspacePanel && latestCompletedBackgroundJob && latestCompletedOutputTarget ? (
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1">
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">Latest completed output</div>
                 <div className="mt-0.5 truncate text-sm font-semibold text-emerald-950">
@@ -2768,8 +2813,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
             </div>
           ) : null}
-          {workflowActionLane.length > 0 ? (
-            <div className="mt-1.5 rounded-xl border border-[#d8e4f2] bg-[#f7fbff] px-2 py-1.5">
+          {!showApplicationWorkspacePanel && workflowActionLane.length > 0 ? (
+            <div className="mt-1 rounded-xl border border-[#d8e4f2] bg-[#f7fbff] px-2 py-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#56708d]">Today's workflow</div>
@@ -2779,13 +2824,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   {workflowActionLane.length} active
                 </span>
               </div>
-              <div className="mt-1.5 grid gap-1.5 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+              <div className="mt-1 grid gap-1 lg:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
                 {workflowActionLane.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => openAndScroll(item.sectionKey, item.href)}
-                    className={`rounded-lg border px-2.5 py-1.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${workflowActionToneClass(item.tone)}`}
+                    className={`rounded-lg border px-2.5 py-1 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${workflowActionToneClass(item.tone)}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-neutral-500">{item.label}</span>
@@ -2802,129 +2847,44 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           ) : null}
           {showApplicationWorkspacePanel ? (
             <>
-              <div className="mt-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 py-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Current target</div>
-                    <div className="mt-0.5 truncate text-sm font-semibold text-sky-950">{targetSummaryTitle}</div>
-                    <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-sky-900">
-                      <span>Location: {currentTargetBrief.location || "Not set"}</span>
-                      <span>Status: {targetStageLabel}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openAndScroll("documents", "#target-role-tracker")}
-                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
-                    >
-                      Change target
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openAndScroll("documents", "#document-workbench")}
-                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
-                    >
-                      Open tracker
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openAndScroll("company", "#company-dossier")}
-                      className="rounded-full border border-sky-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-100"
-                    >
-                      Use in generators
-                    </button>
+              <div className="mt-1.5 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)]">
+                <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">Current focus</div>
+                  <div className="mt-0.5 truncate text-sm font-semibold text-sky-950">{targetSummaryTitle}</div>
+                  <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-sky-900">
+                    <span>{currentTargetBrief.location || "Location not set"}</span>
+                    <span>{targetStageLabel}</span>
+                    <span>{outputReadyCount}/{outputCompletionItems.length} outputs ready</span>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => openAndScroll(workspacePrimaryAction.sectionKey, workspacePrimaryAction.href)}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300 hover:bg-emerald-100"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                    {runningOutputItem ? "Working now" : "Recommended next"}
+                  </div>
+                  <div className="mt-0.5 text-sm font-semibold text-emerald-950">{workspacePrimaryAction.title}</div>
+                  <div className="mt-0.5 line-clamp-1 text-[11px] text-emerald-900">{workspacePrimaryAction.detail}</div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800">{workspacePrimaryAction.label}</div>
+                </button>
               </div>
-              <div className="mt-1.5 grid gap-1.5 md:grid-cols-5">
-                {[
-                  { label: "Review assets", detail: `${assets.length} saved`, sectionKey: "documents", href: "#saved-library" },
-                  { label: "Track roles", detail: `${activeApplications.length} active`, sectionKey: "documents", href: "#document-workbench" },
-                  { label: "Research company", detail: companyDossiers.length > 0 ? "Dossier ready" : "Build dossier", sectionKey: "company", href: "#company-dossier" },
-                  { label: "Prepare interview", detail: interviewPrepHistory.length > 0 ? "Prep ready" : "Create prep", sectionKey: "interview", href: "#interview" },
-                  { label: "Search jobs", detail: liveJobRuns.length > 0 ? "Review matches" : "Run search", sectionKey: "jobs", href: "#live-job-search" },
-                ].map((item) => (
+              <div className="mt-1.5 grid gap-1.5 md:grid-cols-3">
+                {workspaceQuickActions.map((item) => (
                   <button
                     key={`workspace-action-${item.label}`}
                     type="button"
                     onClick={() => openAndScroll(item.sectionKey, item.href)}
-                    className="group rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-white"
+                    className="group flex items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-white"
                   >
-                    <span className="block truncate text-[11px] font-semibold text-neutral-900">{item.label}</span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2 text-[10px]">
-                      <span className="truncate text-neutral-500">{item.detail}</span>
-                      <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">Open</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[11px] font-semibold text-neutral-900">{item.label}</span>
+                      <span className="block truncate text-[10px] text-neutral-500">{item.detail}</span>
                     </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">Open</span>
                   </button>
                 ))}
-              </div>
-              <div className="mt-1.5 rounded-xl border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Output status</div>
-                  <div className="text-[10px] text-neutral-500">
-                    {outputReadyCount}/{outputCompletionItems.length} ready
-                  </div>
-                </div>
-                {nextOutputPromptItem ? (
-                  <div className={`mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
-                    runningOutputItem
-                      ? "border-sky-200 bg-sky-50 text-sky-900"
-                      : "border-amber-200 bg-amber-50 text-amber-900"
-                  }`}>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.08em]">
-                        {runningOutputItem ? "Processing now" : "Next output to create"}
-                      </div>
-                      <div className="mt-0.5 truncate text-[11px] font-semibold">
-                        {runningOutputItem ? `${nextOutputPromptItem.label} is being saved` : nextOutputPromptItem.label}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openAndScroll(nextOutputPromptItem.sectionKey, nextOutputPromptItem.href)}
-                      className="rounded-full border border-white bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-800 hover:bg-neutral-50"
-                    >
-                      {runningOutputItem ? "Open area" : "Create"}
-                    </button>
-                  </div>
-                ) : null}
-                <div className="mt-1.5 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
-                  {outputCompletionItems.map((item) => {
-                    const isReady = item.count > 0
-                    const statusLabel = item.running ? "Running" : isReady ? "Ready" : "Missing"
-                    const actionLabel = item.running ? "Open area" : isReady ? "Review" : "Create"
-                    const statusClass = item.running
-                      ? "bg-sky-100 text-sky-800"
-                      : isReady
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-neutral-200 text-neutral-600"
-
-                    return (
-                      <button
-                        key={`workspace-output-status-${item.id}`}
-                        type="button"
-                        onClick={() => openAndScroll(item.sectionKey, item.href)}
-                        className="group rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-sky-50"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="truncate text-[11px] font-semibold text-neutral-900">{item.label}</div>
-                          <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${statusClass}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
-                          <span className="text-neutral-500">
-                            {isReady ? `${item.count} saved` : item.running ? "Saving soon" : "Not created"}
-                          </span>
-                          <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">
-                            {actionLabel}
-                          </span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
             </>
           ) : !showFirstFiveCompact ? (
@@ -3053,7 +3013,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
           </div>
         </section>
 
-        {showSetupCelebration && !isWizardFocusActive ? (
+        {showSetupCelebration && !isWizardFocusActive && !showApplicationWorkspacePanel ? (
           <section
             className={`border border-emerald-300 bg-emerald-50 shadow-sm ${
               showApplicationWorkspacePanel
@@ -3566,7 +3526,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
         </section>
         ) : null}
 
-        <section id="workflow-guide" className={`${useCompactWorkflowGuide ? "mb-2 rounded-2xl p-2" : "mb-3 rounded-[1.25rem] p-2.5"} border border-[#d7e3f4] bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_100%)] shadow-sm ${isFirstTimeMinimalMode ? "hidden" : activeStep === "workflow" ? "" : "hidden"}`}>
+        <section id="workflow-guide" className={`${useCompactWorkflowGuide ? "mb-2 rounded-2xl p-2" : "mb-3 rounded-[1.25rem] p-2.5"} border border-[#d7e3f4] bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_100%)] shadow-sm ${isFirstTimeMinimalMode || useCompactWorkflowGuide ? "hidden" : activeStep === "workflow" ? "" : "hidden"}`}>
           <button
             type="button"
             onClick={() => toggleSection("workflow")}
@@ -6065,7 +6025,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 />
               </div>
 
-              <div className="mt-5">
+              <div id="premium-autopilot" className="mt-5">
                 <CareerPremiumAutopilotPanel
                   candidateId={candidate.id}
                   suggestedTargetRole={suggestedTargetRole}
@@ -6684,7 +6644,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       timestamp={asset.created_at ? new Date(asset.created_at).toLocaleString() : ""}
                       preview={summarizeAssetContent(asset.content)}
                       actionLabel="Open current prospect research"
-                      onClick={() => openAndScroll("jobs", "#current-prospect-research")}
+                      onClick={() => openAndScroll("jobs", "#current-deep-prospect-research")}
                     />
                   ))}
                 </HistoryArchiveSection>

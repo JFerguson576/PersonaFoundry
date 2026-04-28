@@ -75,6 +75,17 @@ type CandidateHealthRow = {
   readiness_score: number
 }
 
+type CandidateArchiveRow = {
+  id: string
+  user_id: string | null
+  full_name: string | null
+  city: string | null
+  primary_goal: string | null
+  created_at: string | null
+  deleted_at: string | null
+  purge_after: string | null
+}
+
 type CandidateHealthItem = {
   candidate: CandidateHealthRow
   riskScore: number
@@ -843,6 +854,10 @@ export function OperationsJobsClient() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [retryingKey, setRetryingKey] = useState("")
   const [candidateHealth, setCandidateHealth] = useState<CandidateHealthRow[]>([])
+  const [candidateArchive, setCandidateArchive] = useState<CandidateArchiveRow[]>([])
+  const [candidateArchiveFilter, setCandidateArchiveFilter] = useState<"active" | "archived" | "all">("active")
+  const [candidateArchiveSearch, setCandidateArchiveSearch] = useState("")
+  const [candidateArchiveActionId, setCandidateArchiveActionId] = useState("")
   const [healthInboxState, setHealthInboxState] = useState<Record<string, HealthInboxState>>({})
   const [showDismissedHealthItems, setShowDismissedHealthItems] = useState(false)
   const [healthInboxTableMissing, setHealthInboxTableMissing] = useState(false)
@@ -866,6 +881,7 @@ export function OperationsJobsClient() {
   >("overview")
   const [collapsedPanels, setCollapsedPanels] = useState({
     controlCenter: false,
+    candidateArchive: false,
     marketing: false,
     testerFeedback: false,
     digest: false,
@@ -955,6 +971,7 @@ export function OperationsJobsClient() {
         if (window.matchMedia("(max-width: 767px)").matches) {
           setCollapsedPanels({
             controlCenter: false,
+            candidateArchive: true,
             marketing: true,
             testerFeedback: true,
             digest: false,
@@ -1280,6 +1297,22 @@ export function OperationsJobsClient() {
     }
   }, [])
 
+  const loadCandidateArchive = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/overview", {
+        cache: "no-store",
+        headers: await getAuthHeaders(),
+      })
+      const json = await parseApiJson(response, "candidate archive")
+      if (!response.ok) {
+        throw new Error(readApiError(json, "Failed to load candidate archive"))
+      }
+      setCandidateArchive((json.candidate_directory ?? []) as CandidateArchiveRow[])
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load candidate archive")
+    }
+  }, [])
+
   const loadHealthInboxState = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/health-inbox", {
@@ -1496,6 +1529,7 @@ export function OperationsJobsClient() {
       if (currentSession?.access_token) {
         await loadOverview()
         await loadCandidateHealth()
+        await loadCandidateArchive()
         await loadHealthInboxState()
         await loadEconomics()
         await loadSecurityAudit()
@@ -1509,7 +1543,7 @@ export function OperationsJobsClient() {
       setSession(nextSession)
     })
     return () => subscription.unsubscribe()
-  }, [loadCandidateHealth, loadEconomics, loadHealthInboxState, loadOverview, loadSecurityAudit])
+  }, [loadCandidateArchive, loadCandidateHealth, loadEconomics, loadHealthInboxState, loadOverview, loadSecurityAudit])
 
   useEffect(() => {
     if (!overview?.permissions.is_superuser) return
@@ -1609,6 +1643,38 @@ export function OperationsJobsClient() {
       .sort((a, b) => b.riskScore - a.riskScore)
       .slice(0, 16)
   }, [candidateHealth, healthInboxState, showDismissedHealthItems])
+
+  const candidateArchiveCounts = useMemo(() => {
+    const archived = candidateArchive.filter((candidate) => Boolean(candidate.deleted_at)).length
+    return {
+      active: candidateArchive.length - archived,
+      archived,
+      total: candidateArchive.length,
+    }
+  }, [candidateArchive])
+
+  const filteredCandidateArchive = useMemo(() => {
+    const query = candidateArchiveSearch.trim().toLowerCase()
+    return candidateArchive.filter((candidate) => {
+      const isArchived = Boolean(candidate.deleted_at)
+      if (candidateArchiveFilter === "active" && isArchived) return false
+      if (candidateArchiveFilter === "archived" && !isArchived) return false
+      if (!query) return true
+
+      const haystack = [
+        candidate.full_name,
+        candidate.city,
+        candidate.primary_goal,
+        candidate.user_id,
+        candidate.id,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join(" ")
+        .toLowerCase()
+
+      return haystack.includes(query)
+    })
+  }, [candidateArchive, candidateArchiveFilter, candidateArchiveSearch])
 
   const digest = useMemo(() => {
     const now = new Date()
@@ -2095,6 +2161,62 @@ export function OperationsJobsClient() {
     }
   }
 
+  async function archiveCandidate(candidate: CandidateArchiveRow) {
+    if (candidate.deleted_at) return
+    const name = candidate.full_name || candidate.id
+    const confirmation = window.prompt(
+      `Type ARCHIVE to archive candidate workspace${name ? ` for ${name}` : ""}. This is reversible during the retention window.`
+    )
+    if (confirmation !== "ARCHIVE") {
+      setMessage("Candidate archive cancelled.")
+      return
+    }
+
+    setCandidateArchiveActionId(candidate.id)
+    setMessage("")
+
+    try {
+      const response = await fetch(`/api/admin/candidates/${candidate.id}`, {
+        method: "DELETE",
+        headers: await getAuthHeaders(),
+      })
+      const json = await parseApiJson(response, "archive candidate")
+      if (!response.ok) {
+        throw new Error(readApiError(json, "Failed to archive candidate"))
+      }
+      setMessage(`Candidate archived: ${name}`)
+      await Promise.all([loadCandidateArchive(), loadCandidateHealth()])
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to archive candidate")
+    } finally {
+      setCandidateArchiveActionId("")
+    }
+  }
+
+  async function restoreCandidate(candidate: CandidateArchiveRow) {
+    if (!candidate.deleted_at) return
+    const name = candidate.full_name || candidate.id
+    setCandidateArchiveActionId(candidate.id)
+    setMessage("")
+
+    try {
+      const response = await fetch(`/api/admin/candidates/${candidate.id}/restore`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+      })
+      const json = await parseApiJson(response, "restore candidate")
+      if (!response.ok) {
+        throw new Error(readApiError(json, "Failed to restore candidate"))
+      }
+      setMessage(`Candidate restored: ${name}`)
+      await Promise.all([loadCandidateArchive(), loadCandidateHealth()])
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to restore candidate")
+    } finally {
+      setCandidateArchiveActionId("")
+    }
+  }
+
   function togglePanel(panel: keyof typeof collapsedPanels) {
     setCollapsedPanels((current) => ({ ...current, [panel]: !current[panel] }))
   }
@@ -2380,6 +2502,10 @@ export function OperationsJobsClient() {
                 {candidateMenuOpen ? (
                   <div className="px-2 pb-2">
                     <button type="button" onClick={() => focusPanel("controlCenter")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "controlCenter" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate control</button>
+                    <button type="button" onClick={() => focusPanel("candidateArchive")} className={`mb-1 flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "candidateArchive" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>
+                      <span>Candidate archive</span>
+                      <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-[#5f7595]">{candidateArchiveCounts.archived}</span>
+                    </button>
                     <button type="button" onClick={() => focusPanel("live")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "live" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate preview</button>
                     <button type="button" onClick={() => focusPanel("digest")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "digest" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Onboarding completion</button>
                     <button type="button" onClick={() => focusPanel("healthInbox")} className={`mb-1 w-full rounded-lg border px-2.5 py-1.5 text-left text-xs font-semibold ${activePanel === "healthInbox" ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]" : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"}`}>Candidate risk inbox</button>
@@ -2476,6 +2602,7 @@ export function OperationsJobsClient() {
                   <button type="button" onClick={() => {
                     void loadOverview()
                     void loadCandidateHealth()
+                    void loadCandidateArchive()
                     void loadHealthInboxState()
                     void loadEconomics()
                     void loadSecurityAudit()
@@ -2536,6 +2663,132 @@ export function OperationsJobsClient() {
                       {overview.permissions.is_superuser ? "Campaign queue, analytics, and follow-up actions." : "Monitor active candidate opportunities."}
                     </div>
                   </button>
+                </div>
+              ) : null}
+            </section>
+            <section id="operations-candidateArchive" className={`mt-2 rounded-2xl border border-[#bfd2ed] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-2.5 shadow-[0_14px_30px_-26px_rgba(26,54,93,0.5)] ${isPanelVisible("candidateArchive") ? "" : "hidden"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#3d567d]">Candidate management</div>
+                  <h2 className="mt-1 text-sm font-semibold text-[#142c4f]">Candidate archive and restore</h2>
+                  <p className="mt-1 text-xs text-[#4c668c]">
+                    Archive removes a candidate from the active workspace list without hard-deleting it. Superusers can restore records during the retention window.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void loadCandidateArchive()}
+                    className="rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#36537d] hover:bg-[#f4f8ff]"
+                  >
+                    Refresh archive
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel("candidateArchive")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {collapsedPanels.candidateArchive ? "Expand" : "Collapse"}
+                  </button>
+                </div>
+              </div>
+              {!collapsedPanels.candidateArchive ? (
+                <div className="mt-2 space-y-2">
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <SnapshotStat label="Active candidates" value={String(candidateArchiveCounts.active)} />
+                    <SnapshotStat label="Archived candidates" value={String(candidateArchiveCounts.archived)} />
+                    <SnapshotStat label="Showing" value={String(filteredCandidateArchive.length)} />
+                  </div>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Use this for cleanup, duplicate workspaces, and tester records that should leave the live flow. It is a soft archive, not a permanent purge.
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={candidateArchiveSearch}
+                      onChange={(event) => setCandidateArchiveSearch(event.target.value)}
+                      placeholder="Search name, city, goal, user id..."
+                      className="min-w-[220px] flex-1 rounded-xl border border-[#cbd8eb] bg-white px-3 py-2 text-sm text-[#142c4f] outline-none focus:border-[#8fb4ef]"
+                    />
+                    {(["active", "archived", "all"] as const).map((filter) => (
+                      <button
+                        key={`candidate-archive-filter-${filter}`}
+                        type="button"
+                        onClick={() => setCandidateArchiveFilter(filter)}
+                        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                          candidateArchiveFilter === filter
+                            ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                            : "border-[#cbd8eb] bg-white text-[#36537d] hover:bg-[#f4f8ff]"
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                  {!overview.permissions.is_superuser ? (
+                    <div className="rounded-xl border border-[#cbd8eb] bg-[#f7fbff] px-3 py-2 text-xs text-[#36537d]">
+                      Superuser access is required to archive or restore candidate records. Admins can still inspect the directory.
+                    </div>
+                  ) : null}
+                  <div className="space-y-1.5">
+                    {filteredCandidateArchive.length === 0 ? (
+                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
+                        No candidate records match this view.
+                      </div>
+                    ) : null}
+                    {filteredCandidateArchive.map((candidate) => {
+                      const isArchived = Boolean(candidate.deleted_at)
+                      const name = candidate.full_name || "Untitled candidate"
+                      return (
+                        <div key={candidate.id} className={`rounded-xl border px-3 py-2 ${isArchived ? "border-amber-200 bg-amber-50" : "border-[#d7e4f5] bg-white"}`}>
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-sm font-semibold text-[#142c4f]">{name}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${isArchived ? "border-amber-200 bg-white text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+                                  {isArchived ? "Archived" : "Active"}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-xs text-[#4c668c]">
+                                {candidate.primary_goal || "No goal set"} {candidate.city ? `| ${candidate.city}` : ""}
+                              </div>
+                              <div className="mt-1 text-[11px] text-[#6b7f9f]">
+                                Created: {formatDate(candidate.created_at)}
+                                {isArchived ? ` | Archived: ${formatDate(candidate.deleted_at)} | Restore by: ${formatDate(candidate.purge_after)}` : ""}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Link
+                                href={`/career/${candidate.id}`}
+                                className="rounded-full border border-[#cbd8eb] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#36537d] hover:bg-[#f4f8ff]"
+                              >
+                                Open workspace
+                              </Link>
+                              {overview.permissions.is_superuser && isArchived ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void restoreCandidate(candidate)}
+                                  disabled={candidateArchiveActionId === candidate.id}
+                                  className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {candidateArchiveActionId === candidate.id ? "Restoring..." : "Restore"}
+                                </button>
+                              ) : null}
+                              {overview.permissions.is_superuser && !isArchived ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void archiveCandidate(candidate)}
+                                  disabled={candidateArchiveActionId === candidate.id}
+                                  className="rounded-full border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {candidateArchiveActionId === candidate.id ? "Archiving..." : "Archive"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               ) : null}
             </section>

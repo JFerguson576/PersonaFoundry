@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent a
 import { supabase } from "@/lib/supabase"
 import { getAuthHeaders } from "@/lib/career-client"
 import { getAuthProviderLabel, type AuthProviderLabel } from "@/lib/auth-provider"
+import { PersonaraLogo } from "@/components/brand/PersonaraLogo"
 import { TesterNotesWidget } from "@/components/navigation/TesterNotesWidget"
 import { ExperienceAgentWidget } from "@/components/navigation/ExperienceAgentWidget"
 
@@ -230,11 +231,17 @@ export function PlatformModuleNav() {
       }
 
       setReferralTone(json.email_sent ? "success" : "info")
-      setReferralMessage(json.email_sent ? "Invite sent." : "Invite saved. Email delivery is not configured yet.")
-      setInviteeName("")
-      setInviteeEmail("")
-      setRelationship("friend")
-      setNote("")
+      if (json.email_sent) {
+        setReferralMessage(json.invite_saved === false ? "Invite sent. Referral tracking is not configured yet." : "Invite sent.")
+        setInviteeName("")
+        setInviteeEmail("")
+        setRelationship("friend")
+        setNote("")
+      } else if (json.fallback_required) {
+        setReferralMessage("Invite is ready, but automated sending is not configured yet. Use Open email draft or Copy link.")
+      } else {
+        setReferralMessage("Invite saved. Email delivery is not configured yet, so use Open email draft or Copy link.")
+      }
     } catch (error) {
       setReferralTone("error")
       setReferralMessage(error instanceof Error ? error.message : "Could not send referral")
@@ -294,8 +301,16 @@ export function PlatformModuleNav() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-[180px]">
           <Link href="/platform" className="group inline-flex flex-col">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5b6d8f] group-hover:text-[#415a82]">Personara</p>
-            <p className="text-sm font-semibold text-[var(--brand-navy)] group-hover:text-[var(--brand-blue-deep)]">Identity. Decisions. Intelligence.</p>
+            <PersonaraLogo
+              variant="horizontal"
+              width={516}
+              height={147}
+              priority
+              className="h-[108px] w-auto object-contain"
+            />
+            <p className="mt-0.5 text-[11px] font-semibold text-[var(--brand-navy)] group-hover:text-[var(--brand-blue-deep)]">
+              Identity. Decisions. Intelligence.
+            </p>
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {isSignedIn ? (

@@ -105,6 +105,8 @@ function ResourceTile({
 }
 
 export default function ResourcesPage() {
+  const moduleGuideItems = resourceItems.filter((item) => item.id.startsWith("how-to-use-"))
+
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <div className="mx-auto max-w-6xl px-5 py-7">
@@ -117,6 +119,9 @@ export default function ResourcesPage() {
             Every asset is available as a readable resource page and as a direct download from Personara paths.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
+            <a href="#module-guides" className="personara-explainer-chip">
+              How to use guides
+            </a>
             {resourceSections.map((section) => (
               <a key={section.key} href={`#${section.key}`} className="personara-explainer-chip">
                 {section.label}
@@ -125,6 +130,26 @@ export default function ResourcesPage() {
             <a href="#visual-library" className="personara-explainer-chip">
               Visual library
             </a>
+          </div>
+        </section>
+
+        <section id="module-guides" className="mt-4 rounded-2xl border border-[#c9d8ef] bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#64748b]">How to use guides</p>
+              <h2 className="mt-1 text-xl font-semibold text-[#142c4f]">Start here before entering a module</h2>
+              <p className="mt-1 max-w-3xl text-sm text-[#475569]">
+                These visual guides explain what users add, what Personara analyses, and what each module creates.
+              </p>
+            </div>
+            <Link href="/help" className="personara-explainer-chip">
+              Open Help Center
+            </Link>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {moduleGuideItems.map((guide) => (
+              <ResourceTile key={`module-guide-${guide.id}`} {...guide} />
+            ))}
           </div>
         </section>
 

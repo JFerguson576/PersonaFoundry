@@ -44,6 +44,14 @@ export const resourceSections: ResourceSection[] = [
 
 export const resourceItems: ResourceItem[] = [
   {
+    id: "how-to-use-career-intelligence",
+    title: "How to Use Career Intelligence",
+    description: "Visual first-use guide from career inputs to profile, documents, interviews, and role execution.",
+    href: "/images/module-guides/how-to-use-career-intelligence.png",
+    type: "image",
+    sectionKey: "career",
+  },
+  {
     id: "candidate-journey-explainer-v2",
     title: "Candidate Journey Explainer (v2)",
     description: "End-to-end onboarding and execution guide.",
@@ -132,6 +140,14 @@ export const resourceItems: ResourceItem[] = [
     sectionKey: "career",
   },
   {
+    id: "how-to-use-persona-foundry",
+    title: "How to Use Persona Foundry",
+    description: "Visual first-use guide for turning strengths, goals, and context into a custom AI personality.",
+    href: "/images/module-guides/how-to-use-persona-foundry.png",
+    type: "image",
+    sectionKey: "persona",
+  },
+  {
     id: "user-experience-explainer-v2",
     title: "User Experience Explainer (v2)",
     description: "Why custom AI personalities improve consistency and speed.",
@@ -157,6 +173,14 @@ export const resourceItems: ResourceItem[] = [
     thumbnailHref: "/images/roxy-ferguson-about.jpg",
     type: "doc",
     sectionKey: "persona",
+  },
+  {
+    id: "how-to-use-teamsync",
+    title: "How to Use TeamSync",
+    description: "Visual first-use guide for loading group strengths, choosing scenarios, and using simulation outputs.",
+    href: "/images/module-guides/how-to-use-teamsync.png",
+    type: "image",
+    sectionKey: "teamsync",
   },
   {
     id: "analyst-intelligence-explainer-v2",
