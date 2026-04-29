@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient, getAdminCapabilities } from "@/lib/admin"
 import { getRequestAuth } from "@/lib/supabase/auth"
+import { getOpenAIOrganizationUsageSummary } from "@/lib/openai-organization-usage"
 import { estimateOpenAICost } from "@/lib/telemetry"
 
 type BillingStatus = "trial" | "active" | "past_due" | "cancelled"
@@ -77,6 +78,11 @@ function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function normalizeProvider(value: unknown) {
+  const normalized = normalizeText(value).toLowerCase()
+  return normalized === "codex" || normalized === "openai" ? normalized : ""
+}
+
 function normalizeKey(value: string) {
   return value
     .toLowerCase()
@@ -85,12 +91,21 @@ function normalizeKey(value: string) {
 }
 
 function resolveProvider(provider: unknown, model: unknown) {
-  const providerText = normalizeText(provider).toLowerCase()
-  if (providerText === "codex") return "codex"
-  if (providerText === "openai") return "openai"
+  const forcedProvider = normalizeProvider(process.env.OPENAI_USAGE_PROVIDER_FORCE)
+  if (forcedProvider) return forcedProvider
+
+  const providerText = normalizeProvider(provider)
+  if (providerText) return providerText
 
   const modelText = normalizeText(model).toLowerCase()
   if (modelText.includes("codex")) return "codex"
+
+  const defaultProvider = normalizeProvider(process.env.OPENAI_USAGE_PROVIDER_DEFAULT)
+  if (defaultProvider === "codex" && /^gpt-5([.-]|$)/.test(modelText)) {
+    return "codex"
+  }
+
+  if (defaultProvider) return defaultProvider
   return "openai"
 }
 
@@ -130,6 +145,10 @@ function dayKeyFromIso(value: string) {
   return value.slice(0, 10)
 }
 
+function dateFromDayKey(dayKey: string) {
+  return new Date(`${dayKey}T00:00:00.000Z`)
+}
+
 function bucketForDay(dayBuckets: Map<string, CostBucket>, key: string) {
   const existing = dayBuckets.get(key)
   if (existing) return existing
@@ -144,6 +163,106 @@ function bucketForDay(dayBuckets: Map<string, CostBucket>, key: string) {
 
 function toDayStart(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0))
+}
+
+function toHourStart(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), 0, 0, 0))
+}
+
+function hourKeyFromDate(date: Date) {
+  return toHourStart(date).toISOString().slice(0, 13)
+}
+
+function monthKeyFromDate(date: Date) {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+  return `${year}-${month}`
+}
+
+function toWeekStart(date: Date) {
+  const dayStart = toDayStart(date)
+  const day = dayStart.getUTCDay()
+  const distanceToMonday = (day + 6) % 7
+  return new Date(Date.UTC(dayStart.getUTCFullYear(), dayStart.getUTCMonth(), dayStart.getUTCDate() - distanceToMonday, 0, 0, 0, 0))
+}
+
+function incrementBucket(map: Map<string, number>, key: string, amount: number) {
+  map.set(key, (map.get(key) ?? 0) + amount)
+}
+
+function buildCodexSpendSeries(
+  hourBuckets: Map<string, number>,
+  dayBuckets: Map<string, number>,
+  weekBuckets: Map<string, number>,
+  monthBuckets: Map<string, number>
+) {
+  const now = new Date()
+  const hour = Array.from({ length: 24 }, (_, index) => {
+    const offset = 23 - index
+    const bucket = toHourStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours() - offset,
+      0,
+      0,
+      0
+    )))
+    const key = hourKeyFromDate(bucket)
+    return {
+      label: bucket.toLocaleTimeString("en-US", { hour: "numeric" }),
+      codex_spend_usd: Number((hourBuckets.get(key) ?? 0).toFixed(4)),
+    }
+  })
+
+  const day = Array.from({ length: 30 }, (_, index) => {
+    const offset = 29 - index
+    const bucket = toDayStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - offset,
+      0,
+      0,
+      0,
+      0
+    )))
+    const key = dayKeyFromIso(bucket.toISOString())
+    return {
+      label: bucket.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      codex_spend_usd: Number((dayBuckets.get(key) ?? 0).toFixed(4)),
+    }
+  })
+
+  const week = Array.from({ length: 12 }, (_, index) => {
+    const offset = 11 - index
+    const anchor = toDayStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - offset * 7,
+      0,
+      0,
+      0,
+      0
+    )))
+    const weekStart = toWeekStart(anchor)
+    const key = dayKeyFromIso(weekStart.toISOString())
+    return {
+      label: `Wk ${weekStart.toLocaleDateString("en-US", { month: "numeric", day: "numeric" })}`,
+      codex_spend_usd: Number((weekBuckets.get(key) ?? 0).toFixed(4)),
+    }
+  })
+
+  const month = Array.from({ length: 12 }, (_, index) => {
+    const offset = 11 - index
+    const bucket = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1, 0, 0, 0, 0))
+    const key = monthKeyFromDate(bucket)
+    return {
+      label: bucket.toLocaleDateString("en-US", { month: "short" }),
+      codex_spend_usd: Number((monthBuckets.get(key) ?? 0).toFixed(4)),
+    }
+  })
+
+  return { hour, day, week, month }
 }
 
 function sumCostsForRange(dayBuckets: Map<string, CostBucket>, rangeStart: Date, rangeEnd: Date) {
@@ -264,7 +383,7 @@ export async function GET(request: Request) {
 
   const { startIso, monthLabel } = monthWindow()
   const trendStartIso = yearWindowStartIso()
-  const [apiLogsResult, subscriptionsResult, usersResponse] = await Promise.all([
+  const [apiLogsResult, subscriptionsResult, usersResponse, openaiOrgMonthlyUsage] = await Promise.all([
     admin
       .from("api_usage_logs")
       .select("user_id, input_tokens, output_tokens, total_tokens, estimated_cost_usd, created_at, provider, model")
@@ -275,6 +394,7 @@ export async function GET(request: Request) {
       .from("user_subscriptions")
       .select("user_id, plan_code, billing_status, monthly_subscription_usd, monthly_api_budget_usd, notes, updated_at"),
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    getOpenAIOrganizationUsageSummary(30),
   ])
 
   if (apiLogsResult.error) {
@@ -283,7 +403,6 @@ export async function GET(request: Request) {
   if (subscriptionsResult.error) {
     return NextResponse.json({ error: subscriptionsResult.error.message }, { status: 400 })
   }
-
   const users = usersResponse.data?.users ?? []
   const emailByUserId = new Map(users.map((item) => [item.id, item.email ?? null]))
   const nameByUserId = new Map(
@@ -325,6 +444,8 @@ export async function GET(request: Request) {
     }
   >()
   const costByDay = new Map<string, CostBucket>()
+  const codexCostByHour = new Map<string, number>()
+  const codexCostByDay = new Map<string, number>()
 
   for (const log of apiLogsResult.data ?? []) {
     if (!log.created_at) continue
@@ -344,6 +465,9 @@ export async function GET(request: Request) {
     dayBucket.api_cost_usd += estimatedCost
     if (provider === "codex") {
       dayBucket.codex_api_cost_usd += estimatedCost
+      const timestamp = new Date(log.created_at)
+      incrementBucket(codexCostByHour, hourKeyFromDate(timestamp), estimatedCost)
+      incrementBucket(codexCostByDay, dayKey, estimatedCost)
     } else {
       dayBucket.openai_api_cost_usd += estimatedCost
     }
@@ -456,10 +580,39 @@ export async function GET(request: Request) {
   )
 
   const totalMonthlyRevenue = rows.reduce((sum, row) => sum + row.monthly_subscription_usd, 0)
+  const codexDevelopmentChargesUsd = openaiOrgMonthlyUsage.available
+    ? Math.max(0, Number(openaiOrgMonthlyUsage.total_cost_usd || 0) - summary.total_api_cost_usd)
+    : Math.max(0, toNumber(process.env.CODEX_DEVELOPMENT_CHARGES_USD))
+  const codexDevelopmentChargesSource = openaiOrgMonthlyUsage.available
+    ? "openai_org_total_minus_in_app_usage"
+    : "environment_fallback"
+  const totalCombinedAiSpendUsd = summary.total_api_cost_usd + codexDevelopmentChargesUsd
+  const marginAfterCodexDevelopmentUsd = summary.total_revenue_usd - totalCombinedAiSpendUsd
+  const codexDisplayByDay = new Map<string, number>()
+  for (const [dayKey, codexInAppCost] of codexCostByDay.entries()) {
+    incrementBucket(codexDisplayByDay, dayKey, codexInAppCost)
+  }
+  if (openaiOrgMonthlyUsage.available && (openaiOrgMonthlyUsage.daily_costs?.length ?? 0) > 0) {
+    for (const bucket of openaiOrgMonthlyUsage.daily_costs ?? []) {
+      const dayKey = bucket.day_key
+      const orgTotal = toNumber(bucket.total_cost_usd)
+      const inAppTotal = costByDay.get(dayKey)?.api_cost_usd ?? 0
+      const codexDevelopmentDay = Math.max(0, orgTotal - inAppTotal)
+      if (codexDevelopmentDay > 0) incrementBucket(codexDisplayByDay, dayKey, codexDevelopmentDay)
+    }
+  }
+  const codexDisplayByWeek = new Map<string, number>()
+  const codexDisplayByMonth = new Map<string, number>()
+  for (const [dayKey, totalCost] of codexDisplayByDay.entries()) {
+    const dayDate = dateFromDayKey(dayKey)
+    incrementBucket(codexDisplayByWeek, dayKeyFromIso(toWeekStart(dayDate).toISOString()), totalCost)
+    incrementBucket(codexDisplayByMonth, monthKeyFromDate(dayDate), totalCost)
+  }
   const trends = {
     daily: buildTrendSeries(costByDay, totalMonthlyRevenue, "daily"),
     weekly: buildTrendSeries(costByDay, totalMonthlyRevenue, "weekly"),
     monthly: buildTrendSeries(costByDay, totalMonthlyRevenue, "monthly"),
+    codex_spend: buildCodexSpendSeries(codexCostByHour, codexDisplayByDay, codexDisplayByWeek, codexDisplayByMonth),
     module_lines: buildRevenueLineSeries(moduleRevenueMonthly, MODULE_LABELS),
     tier_lines: buildRevenueLineSeries(tierRevenueMonthly, TIER_LABELS),
     seeded_weekly_revenue_usd: DEMO_WEEKLY_REVENUE_USD,
@@ -474,7 +627,12 @@ export async function GET(request: Request) {
       total_api_cost_usd: Number(summary.total_api_cost_usd.toFixed(4)),
       total_openai_api_cost_usd: Number(summary.total_openai_api_cost_usd.toFixed(4)),
       total_codex_api_cost_usd: Number(summary.total_codex_api_cost_usd.toFixed(4)),
+      total_codex_development_cost_usd: Number(codexDevelopmentChargesUsd.toFixed(4)),
+      codex_development_cost_source: codexDevelopmentChargesSource,
+      codex_development_cost_source_error: openaiOrgMonthlyUsage.available ? null : openaiOrgMonthlyUsage.error ?? null,
+      total_combined_ai_spend_usd: Number(totalCombinedAiSpendUsd.toFixed(4)),
       total_margin_usd: Number(summary.total_margin_usd.toFixed(4)),
+      total_margin_after_codex_development_usd: Number(marginAfterCodexDevelopmentUsd.toFixed(4)),
     },
     trends,
     users: rows,
@@ -506,7 +664,6 @@ export async function PATCH(request: Request) {
 
   let userId = normalizeText(payload.user_id)
   const email = normalizeText(payload.email).toLowerCase()
-
   if (!userId && email) {
     const usersResponse = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const match = (usersResponse.data?.users ?? []).find((candidate) => (candidate.email ?? "").toLowerCase() === email)

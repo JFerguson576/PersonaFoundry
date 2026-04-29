@@ -191,24 +191,7 @@ export default function PlatformLandingPage() {
                         {busyProvider === "google" ? "Connecting..." : "Continue with Google"}
                       </button>
                       {!providerStatus.google.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.google.reason || "Not configured yet."}</p> : null}
-                      <button
-                        type="button"
-                        onClick={() => void handleSignIn("facebook")}
-                        disabled={busyProvider !== null || !providerStatus.facebook.enabled}
-                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {busyProvider === "facebook" ? "Connecting..." : "Continue with Facebook"}
-                      </button>
-                      {!providerStatus.facebook.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.facebook.reason || "Not configured yet."}</p> : null}
-                      <button
-                        type="button"
-                        onClick={() => void handleSignIn("linkedin_oidc")}
-                        disabled={busyProvider !== null || !providerStatus.linkedin_oidc.enabled}
-                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {busyProvider === "linkedin_oidc" ? "Connecting..." : "Continue with LinkedIn"}
-                      </button>
-                      {!providerStatus.linkedin_oidc.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.linkedin_oidc.reason || "Not configured yet."}</p> : null}
+                      <p className="text-[11px] text-neutral-500">Google sign-in is the active login path for current user testing.</p>
                     </div>
                   )}
                 </div>

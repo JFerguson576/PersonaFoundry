@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
-import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh, toCareerUserMessage } from "@/lib/career-client"
+import {
+  careerActionErrorMessage,
+  getAuthHeaders,
+  getCareerMessageTone,
+  navigateCareerWorkspace,
+  notifyCareerWorkspaceRefresh,
+  toCareerUserMessage,
+} from "@/lib/career-client"
 
 type Props = {
   candidateId: string
@@ -40,6 +47,7 @@ export function CareerGenerateProfileButton({ candidateId, variant = "card", lab
 
       setMessage("Career positioning generated. The workspace is refreshing with the new profile.")
       notifyCareerWorkspaceRefresh()
+      navigateCareerWorkspace("documents", "#base-asset-generator")
       router.refresh()
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {

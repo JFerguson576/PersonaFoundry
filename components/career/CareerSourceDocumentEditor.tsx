@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CareerStatusBanner } from "@/components/career/CareerStatusBanner"
 import { careerActionErrorMessage, getAuthHeaders, getCareerMessageTone, notifyCareerWorkspaceRefresh } from "@/lib/career-client"
 
@@ -94,7 +94,27 @@ export function CareerSourceDocumentEditor({ documentId, initialSourceType, init
   const [content, setContent] = useState(initialContent)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [isReaderOpen, setIsReaderOpen] = useState(false)
   const selectedSourceType = sourceTypeOptions.find((option) => option.value === sourceType) ?? sourceTypeOptions[sourceTypeOptions.length - 1]
+  const hasReadableContent = Boolean(content.trim())
+
+  useEffect(() => {
+    if (!isReaderOpen || typeof window === "undefined") return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsReaderOpen(false)
+      }
+    }
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", closeOnEscape)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener("keydown", closeOnEscape)
+    }
+  }, [isReaderOpen])
 
   async function handleSave() {
     setLoading(true)
@@ -141,6 +161,20 @@ export function CareerSourceDocumentEditor({ documentId, initialSourceType, init
           </div>
         </div>
       </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Better reading view</div>
+          <div className="mt-1 text-sm text-sky-950">Open this source document in a larger panel, then return here to keep editing.</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsReaderOpen(true)}
+          disabled={!hasReadableContent}
+          className="rounded-full border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Open reader view
+        </button>
+      </div>
 
       <div className="grid gap-3 md:grid-cols-[0.8fr_1.2fr]">
         <select value={sourceType} onChange={(event) => setSourceType(event.target.value)} className="rounded-xl border border-neutral-300 px-3 py-2 text-sm">
@@ -176,6 +210,31 @@ export function CareerSourceDocumentEditor({ documentId, initialSourceType, init
         </button>
         {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
       </div>
+      {isReaderOpen ? (
+        <div className="fixed inset-0 z-[95] bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-label="Source document reader view">
+          <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-[1.5rem] border border-sky-200 bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 bg-[linear-gradient(180deg,#f8fbff_0%,#eef6ff_100%)] px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">{selectedSourceType.label}</div>
+                <h2 className="mt-1 max-w-3xl truncate text-lg font-semibold text-neutral-950">{title || selectedSourceType.label}</h2>
+                <p className="mt-1 text-xs text-neutral-600">Reading view only. Return to the workflow to edit or save changes.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReaderOpen(false)}
+                className="rounded-full border border-sky-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-800 hover:bg-sky-50"
+              >
+                Return to workflow
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6">
+              <article className="mx-auto max-w-4xl whitespace-pre-wrap text-[15px] leading-7 text-neutral-800">
+                {content}
+              </article>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

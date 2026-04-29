@@ -19,6 +19,7 @@ type OpenAICostBucketResult = {
 }
 
 type OpenAICostBucket = {
+  start_time?: number | null
   results?: OpenAICostBucketResult[] | null
 }
 
@@ -35,6 +36,7 @@ export type OpenAIOrganizationUsageSummary = {
   total_tokens: number
   total_requests: number
   total_cost_usd: number
+  daily_costs: { day_key: string; total_cost_usd: number }[]
   error?: string | null
 }
 
@@ -49,7 +51,21 @@ async function fetchJson<T>(url: string, adminKey: string) {
 
   if (!response.ok) {
     const text = await response.text()
-    throw new Error(`OpenAI usage request failed (${response.status}): ${text || response.statusText}`)
+    let detail = response.statusText || "Request failed"
+    try {
+      const parsed = JSON.parse(text) as { error?: { message?: string; type?: string; code?: string } }
+      const message = parsed?.error?.message || ""
+      if (message.toLowerCase().includes("incorrect api key") || message.toLowerCase().includes("invalid_api_key")) {
+        detail = "Invalid OPENAI_ADMIN_KEY for organization usage endpoints"
+      } else if (message) {
+        detail = message
+      }
+    } catch {
+      if (response.status === 401) {
+        detail = "Invalid OPENAI_ADMIN_KEY for organization usage endpoints"
+      }
+    }
+    throw new Error(`OpenAI usage request failed (${response.status}): ${detail}`)
   }
 
   return (await response.json()) as T
@@ -68,6 +84,7 @@ export async function getOpenAIOrganizationUsageSummary(windowDays = 7): Promise
       total_tokens: 0,
       total_requests: 0,
       total_cost_usd: 0,
+      daily_costs: [],
       error: "Missing OPENAI_ADMIN_KEY",
     }
   }
@@ -96,10 +113,21 @@ export async function getOpenAIOrganizationUsageSummary(windowDays = 7): Promise
     }
 
     let totalCostUsd = 0
+    const dailyCosts: { day_key: string; total_cost_usd: number }[] = []
 
     for (const bucket of costResponse.data ?? []) {
+      let bucketCost = 0
       for (const result of bucket.results ?? []) {
-        totalCostUsd += Number(result.amount?.value ?? 0)
+        bucketCost += Number(result.amount?.value ?? 0)
+      }
+      totalCostUsd += bucketCost
+      const startTime = Number(bucket.start_time ?? 0)
+      if (Number.isFinite(startTime) && startTime > 0) {
+        const dayKey = new Date(startTime * 1000).toISOString().slice(0, 10)
+        dailyCosts.push({
+          day_key: dayKey,
+          total_cost_usd: Number(bucketCost.toFixed(6)),
+        })
       }
     }
 
@@ -112,6 +140,7 @@ export async function getOpenAIOrganizationUsageSummary(windowDays = 7): Promise
       total_tokens: inputTokens + outputTokens,
       total_requests: totalRequests,
       total_cost_usd: Number(totalCostUsd.toFixed(6)),
+      daily_costs: dailyCosts,
       error: null,
     }
   } catch (error) {
@@ -124,6 +153,7 @@ export async function getOpenAIOrganizationUsageSummary(windowDays = 7): Promise
       total_tokens: 0,
       total_requests: 0,
       total_cost_usd: 0,
+      daily_costs: [],
       error: error instanceof Error ? error.message : "Failed to load OpenAI organization usage",
     }
   }

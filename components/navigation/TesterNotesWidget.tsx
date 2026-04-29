@@ -37,6 +37,20 @@ function findVisibleSectionAnchor() {
   return ""
 }
 
+function toTesterFriendlyError(rawMessage: string | null | undefined) {
+  const message = (rawMessage || "").trim()
+  if (!message) return "Could not save the note just now."
+
+  const normalized = message.toLowerCase()
+  if (normalized.includes("unauthorized") || normalized.includes("jwt") || normalized.includes("token") || normalized.includes("session")) {
+    return "Please sign in again, then resend the note."
+  }
+  if (normalized.includes("more detail") || normalized.includes("at least 6 characters")) {
+    return "Please add a little more detail so the team can reproduce the issue."
+  }
+  return message
+}
+
 export function TesterNotesWidget({
   enabled = true,
   buttonClassName = "",
@@ -56,8 +70,13 @@ export function TesterNotesWidget({
   const [statusTone, setStatusTone] = useState<"success" | "error" | "info">("info")
   const [recentNotes, setRecentNotes] = useState<TesterNote[]>([])
   const [loadingRecent, setLoadingRecent] = useState(false)
+  const [lastSubmittedContext, setLastSubmittedContext] = useState("")
 
   const moduleName = useMemo(() => resolveModuleFromPath(pathname), [pathname])
+  const fallbackNote = useMemo(() => {
+    const routeLabel = pathname || "/"
+    return `Tester feedback\nType: ${noteType}\nSeverity: ${severity}\nModule: ${moduleName}\nRoute: ${routeLabel}\nNote: ${message.trim() || "[add detail here]"}`.trim()
+  }, [message, moduleName, noteType, pathname, severity])
 
   async function loadRecentNotes() {
     setLoadingRecent(true)
@@ -72,7 +91,7 @@ export function TesterNotesWidget({
       setRecentNotes(Array.isArray(json.notes) ? (json.notes as TesterNote[]) : [])
     } catch (error) {
       setStatusTone("error")
-      setStatusMessage(error instanceof Error ? error.message : "Could not load notes")
+      setStatusMessage(toTesterFriendlyError(error instanceof Error ? error.message : "Could not load notes"))
     } finally {
       setLoadingRecent(false)
     }
@@ -119,13 +138,17 @@ export function TesterNotesWidget({
       if (!response.ok) {
         throw new Error(json.error || "Could not save note")
       }
+      const savedContext = [moduleName, pathname, sectionAnchor || (typeof window !== "undefined" ? window.location.hash.replace("#", "") : "")]
+        .filter(Boolean)
+        .join(" / ")
       setMessage("")
+      setLastSubmittedContext(savedContext)
       setStatusTone("success")
-      setStatusMessage("Saved. Thanks for helping improve Personara.")
+      setStatusMessage("Feedback saved. Thanks — the team can now review it with page context attached.")
       await loadRecentNotes()
     } catch (error) {
       setStatusTone("error")
-      setStatusMessage(error instanceof Error ? error.message : "Could not save note")
+      setStatusMessage(toTesterFriendlyError(error instanceof Error ? error.message : "Could not save note"))
     } finally {
       setLoading(false)
     }
@@ -224,13 +247,31 @@ export function TesterNotesWidget({
           </div>
 
           {statusMessage ? (
-            <p
-              className={`mt-2 text-xs ${
-                statusTone === "success" ? "text-emerald-700" : statusTone === "error" ? "text-rose-700" : "text-neutral-700"
+            <div
+              className={`mt-2 rounded-xl border px-3 py-2 text-xs ${
+                statusTone === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : statusTone === "error"
+                    ? "border-rose-200 bg-rose-50 text-rose-800"
+                    : "border-neutral-200 bg-neutral-50 text-neutral-700"
               }`}
             >
-              {statusMessage}
-            </p>
+              <p>{statusMessage}</p>
+              {statusTone === "success" && lastSubmittedContext ? (
+                <p className="mt-1 text-[11px] text-emerald-700">Saved with context: {lastSubmittedContext}</p>
+              ) : null}
+              {statusTone === "error" ? (
+                <div className="mt-2 rounded-lg border border-rose-200 bg-white p-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-700">Fallback</p>
+                  <p className="mt-1 text-[11px] text-neutral-600">If saving still fails, copy this note and send it to the team manually.</p>
+                  <textarea
+                    readOnly
+                    value={fallbackNote}
+                    className="mt-2 min-h-[84px] w-full rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-2 text-[11px] text-neutral-700"
+                  />
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">

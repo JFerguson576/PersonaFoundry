@@ -221,6 +221,7 @@ export function CareerIntelligenceLandingClient() {
       return bTime - aTime
     })
     .slice(0, 3)
+  const isFirstCareerSetup = !loadingCareerCandidates && careerCandidates.length === 0
   const activeCareerApplicationCount = careerCandidates.reduce((sum, candidate) => sum + (candidate.active_application_count ?? 0), 0)
   const readyCareerWorkspaceCount = careerCandidates.filter((candidate) => (candidate.readiness_score ?? 0) >= 70).length
   const runningCareerWorkspaceCount = careerCandidates.filter((candidate) => (candidate.active_run_count ?? 0) > 0).length
@@ -724,6 +725,11 @@ export function CareerIntelligenceLandingClient() {
             <div className="space-y-4 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold">Step 1: Sign in</h2>
             <p className="text-sm text-neutral-600">Sign in first, then return to Step 2 to create the workspace.</p>
+            {isFirstCareerSetup && !session?.user ? (
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-5 text-sky-900">
+                Recommended for first-time setup: sign in with Google, then load your CV, Gallup Strengths, LinkedIn content, and supporting proof.
+              </div>
+            ) : null}
 
             {session?.user ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -760,24 +766,7 @@ export function CareerIntelligenceLandingClient() {
                 </button>
               ) : null}
               {!providerStatus.google.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.google.reason || "Not configured yet."}</p> : null}
-              <button
-                type="button"
-                onClick={() => void signInWithProvider("facebook")}
-                disabled={busyProvider !== null || testLoginLoading || !providerStatus.facebook.enabled}
-                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyProvider === "facebook" ? "Connecting..." : "Continue with Facebook"}
-              </button>
-              {!providerStatus.facebook.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.facebook.reason || "Not configured yet."}</p> : null}
-              <button
-                type="button"
-                onClick={() => void signInWithProvider("linkedin_oidc")}
-                disabled={busyProvider !== null || testLoginLoading || !providerStatus.linkedin_oidc.enabled}
-                className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {busyProvider === "linkedin_oidc" ? "Connecting..." : "Continue with LinkedIn"}
-              </button>
-              {!providerStatus.linkedin_oidc.enabled ? <p className="text-[11px] text-neutral-500">{providerStatus.linkedin_oidc.reason || "Not configured yet."}</p> : null}
+              <p className="text-[11px] text-neutral-500">Google sign-in is the active login path for current user testing.</p>
             </div>
 
             <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs leading-5 text-sky-900">
@@ -790,7 +779,7 @@ export function CareerIntelligenceLandingClient() {
             <p className="mt-2 text-sm text-neutral-600">Quick setup now. You can add detailed files after creation.</p>
             {linkedInProfile.available ? (
               <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
-                LinkedIn sign-in detected. We pre-filled what we could from your profile, and you can adjust anything before creating your workspace.
+                LinkedIn sign-in detected. We imported the basics we could from login, such as name and location. For stronger outputs, add your full LinkedIn profile text or PDF export after workspace creation.
               </div>
             ) : null}
 

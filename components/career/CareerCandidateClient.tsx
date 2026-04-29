@@ -388,6 +388,21 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     }
   }, [openSectionsFor])
 
+  const openSavedAsset = useCallback((asset: AssetRow, options?: { closeMyFilesDrawer?: boolean }) => {
+    const target = getSectionTargetForAssetType(asset.asset_type)
+    if (asset.asset_type) {
+      setSavedAssetTypeFilter(asset.asset_type)
+    }
+    setIsSavedWorkExpanded(true)
+    if (target.sectionKey === "documents") {
+      setIsFindSavedWorkExpanded(true)
+    }
+    if (options?.closeMyFilesDrawer) {
+      setIsMyFilesDrawerOpen(false)
+    }
+    openAndScroll(target.sectionKey, target.href)
+  }, [openAndScroll])
+
   const revealLeftSection = useCallback((sectionKey: string, shouldExpand = true) => {
     setExpandedLeftSections((current) => {
       const next = { ...current }
@@ -884,13 +899,13 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     {
       label: "Gallup Strengths",
       status: hasGallupStrengths ? "Ready" : "Best input",
-      detail: "Upload the full report if available. It gives the profile a stronger strengths-led voice.",
+      detail: "Upload the full report if available. This is the highest-value input after the CV and gives the whole workspace a stronger strengths-led voice.",
       ready: hasGallupStrengths,
     },
     {
       label: "LinkedIn profile",
       status: hasLinkedIn ? "Ready" : "Prepare text",
-      detail: "Download your profile PDF from LinkedIn or copy the About, Experience, Skills, and headline text.",
+      detail: "Best: download your LinkedIn profile PDF. Or paste your headline, About, Experience, and Skills text.",
       ready: hasLinkedIn,
     },
     {
@@ -1073,6 +1088,63 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       href: interviewPrepHistory.length > 0 ? "#current-interview-prep" : "#interview",
     },
   ] as const
+  function getOutputMissingLabel(item: (typeof outputCompletionItems)[number]) {
+    switch (item.id) {
+      case "cv-linkedin":
+        return "Needs base drafts"
+      case "dossier":
+        return "Needs company research"
+      case "cover-letter":
+        return "Needs tailored letter"
+      case "fit":
+        return "Needs fit check"
+      case "salary":
+        return "Needs salary check"
+      case "interview":
+        return "Needs interview prep"
+      default:
+        return "Needs setup"
+    }
+  }
+
+  function getOutputActionLabel(item: (typeof outputCompletionItems)[number]) {
+    if (item.running) return "Open running work"
+    if (item.count > 0) {
+      switch (item.id) {
+        case "cv-linkedin":
+          return "Open drafts"
+        case "dossier":
+          return "Open dossier"
+        case "cover-letter":
+          return "Open letter"
+        case "fit":
+          return "Open fit check"
+        case "salary":
+          return "Open salary view"
+        case "interview":
+          return "Open interview prep"
+        default:
+          return "Open output"
+      }
+    }
+    switch (item.id) {
+      case "cv-linkedin":
+        return "Create drafts"
+      case "dossier":
+        return "Create dossier"
+      case "cover-letter":
+        return "Create letter"
+      case "fit":
+        return "Run fit check"
+      case "salary":
+        return "Run salary check"
+      case "interview":
+        return "Create prep"
+      default:
+        return "Open next step"
+    }
+  }
+
   const outputReadyCount = outputCompletionItems.filter((item) => item.count > 0).length
   const runningOutputItem = outputCompletionItems.find((item) => item.running) ?? null
   const nextMissingOutputItem = outputCompletionItems.find((item) => item.count === 0 && !item.running) ?? null
@@ -1518,7 +1590,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
     { href: "#jobs", sectionKey: "jobs", label: "Search jobs", description: "Run job search, recruiter search, salary checks, and fit checks." },
   ]
   const activeModeSections = modeSections[activeMode] ?? modeSections.plan
-  const menuQuickLinks = quickLinks.filter((link) => activeModeSections.includes(link.sectionKey))
+  const menuQuickLinks = quickLinks
   const activeWorkflowLink =
     menuQuickLinks.find((link) => link.sectionKey === activeStep) ??
     quickLinks.find((link) => link.sectionKey === activeStep) ??
@@ -2302,6 +2374,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
       href: "#company-dossier",
     },
   ]
+  const workspaceSecondaryActivity = workflowActionLane.slice(1)
 
   function toggleSection(sectionKey: string) {
     const isCollapsingCurrentSection = activeStep === sectionKey && openSections[sectionKey]
@@ -2938,6 +3011,35 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   </button>
                 ))}
               </div>
+              {workspaceSecondaryActivity.length > 0 ? (
+                <div className="mt-1.5 rounded-xl border border-neutral-200 bg-white px-2.5 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Also active</div>
+                    <div className="text-[10px] text-neutral-500">
+                      {workspaceSecondaryActivity.length} item{workspaceSecondaryActivity.length === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  <div className="mt-1.5 space-y-1.5">
+                    {workspaceSecondaryActivity.map((item) => (
+                      <button
+                        key={`workspace-secondary-${item.id}`}
+                        type="button"
+                        onClick={() => openAndScroll(item.sectionKey, item.href)}
+                        className="group flex w-full items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-sky-300 hover:bg-white"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{item.label}</span>
+                          <span className="block truncate text-[11px] font-semibold text-neutral-900">{item.title}</span>
+                          <span className="block truncate text-[10px] text-neutral-500">{item.detail}</span>
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">
+                          {item.actionLabel}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : !showFirstFiveCompact ? (
             <>
@@ -2974,9 +3076,14 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               </div>
               <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Output status</div>
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">Outputs</div>
+                    <div className="mt-0.5 text-[11px] text-neutral-600">
+                      {outputReadyCount}/{outputCompletionItems.length} ready. Work from the next missing output first.
+                    </div>
+                  </div>
                   <div className="text-[10px] text-neutral-500">
-                    {outputReadyCount}/{outputCompletionItems.length} ready
+                    {nextOutputPromptItem ? "Next output selected" : "All core outputs are in place"}
                   </div>
                 </div>
                 {nextOutputPromptItem ? (
@@ -2987,10 +3094,10 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   }`}>
                     <div className="min-w-0 flex-1">
                       <div className="text-[10px] font-semibold uppercase tracking-[0.08em]">
-                        {runningOutputItem ? "Processing now" : "Next output to create"}
+                        {runningOutputItem ? "Processing now" : "Do this next"}
                       </div>
                       <div className="mt-0.5 truncate text-[11px] font-semibold">
-                        {runningOutputItem ? `${nextOutputPromptItem.label} is being saved` : nextOutputPromptItem.label}
+                        {runningOutputItem ? `${nextOutputPromptItem.label} is being saved` : `Create ${nextOutputPromptItem.label}`}
                       </div>
                     </div>
                     <button
@@ -2998,20 +3105,20 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       onClick={() => openAndScroll(nextOutputPromptItem.sectionKey, nextOutputPromptItem.href)}
                       className="rounded-full border border-white bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-800 hover:bg-neutral-50"
                     >
-                      {runningOutputItem ? "Open area" : "Create"}
+                      {runningOutputItem ? "Open area" : "Open next step"}
                     </button>
                   </div>
                 ) : null}
                 <div className="mt-1.5 grid gap-1.5 md:grid-cols-3 xl:grid-cols-6">
                   {outputCompletionItems.map((item) => {
                     const isReady = item.count > 0
-                    const statusLabel = item.running ? "Running" : isReady ? "Ready" : "Missing"
-                    const actionLabel = item.running ? "Open area" : isReady ? "Review" : "Create"
+                    const statusLabel = item.running ? "Running" : isReady ? "Ready to use" : getOutputMissingLabel(item)
+                    const actionLabel = getOutputActionLabel(item)
                     const statusClass = item.running
                       ? "bg-sky-100 text-sky-800"
                       : isReady
                         ? "bg-emerald-100 text-emerald-700"
-                        : "bg-neutral-200 text-neutral-600"
+                        : "bg-amber-100 text-amber-800"
 
                     return (
                       <button
@@ -3028,7 +3135,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2 text-[10px]">
                           <span className="text-neutral-500">
-                            {isReady ? `${item.count} saved` : item.running ? "Saving soon" : "Not created"}
+                            {isReady ? `${item.count} saved` : item.running ? "Saving soon" : "Action needed"}
                           </span>
                           <span className="font-semibold uppercase tracking-[0.08em] text-sky-700 opacity-80 group-hover:opacity-100">
                             {actionLabel}
@@ -3795,7 +3902,8 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700">
               {latestSavedAsset ? (
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-neutral-900">{latestSavedAsset.title || "Untitled file"}</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">Latest saved output</div>
+                  <div className="mt-0.5 truncate font-semibold text-neutral-900">{latestSavedAsset.title || "Untitled file"}</div>
                   <div className="mt-0.5 truncate text-[11px] text-neutral-500">
                     Latest saved | {formatAssetType(latestSavedAsset.asset_type)}
                     {latestSavedAsset.created_at ? ` | ${new Date(latestSavedAsset.created_at).toLocaleString()}` : ""}
@@ -3807,7 +3915,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {latestSavedAssetTarget ? (
                 <button
                   type="button"
-                  onClick={() => openAndScroll(latestSavedAssetTarget.sectionKey, latestSavedAssetTarget.href)}
+                  onClick={() => latestSavedAsset ? openSavedAsset(latestSavedAsset) : null}
                   className="rounded-full border border-[#0a66c2] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2] hover:bg-[#e8f3ff]"
                 >
                   Open latest
@@ -3843,18 +3951,18 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 ) : (
                   <div className="space-y-1.5">
                     {recentSavedAssets.slice(0, 8).map((asset) => {
-                      const target = getSectionTargetForAssetType(asset.asset_type)
                       return (
                         <button
                           key={`recent-row-${asset.id}`}
                           type="button"
-                          onClick={() => openAndScroll(target.sectionKey, target.href)}
+                          onClick={() => openSavedAsset(asset)}
                           className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-left transition hover:border-neutral-300 hover:bg-white"
                         >
                           <div className="min-w-0 flex-1">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{formatAssetType(asset.asset_type)}</div>
                             <div className="truncate text-xs font-semibold text-neutral-900">{asset.title || "Untitled file"}</div>
                             <div className="mt-0.5 text-[11px] text-neutral-600">
-                              {formatAssetType(asset.asset_type)} • {asset.created_at ? new Date(asset.created_at).toLocaleString() : "Recently"}
+                              {asset.created_at ? new Date(asset.created_at).toLocaleString() : "Recently"}
                             </div>
                           </div>
                           <span className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
@@ -3926,10 +4034,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     <button
                       key={asset.id}
                       type="button"
-                      onClick={() => {
-                        const target = getSectionTargetForAssetType(asset.asset_type)
-                        openAndScroll(target.sectionKey, target.href)
-                      }}
+                      onClick={() => openSavedAsset(asset)}
                       className="rounded-xl border border-neutral-200 bg-white p-3 text-left transition hover:border-neutral-300 hover:shadow-sm"
                     >
                       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-600">{formatAssetType(asset.asset_type)}</div>
@@ -4206,16 +4311,23 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     {latestOutputHighlights.slice(0, 4).map((asset) => {
-                      const target = getSectionTargetForAssetType(asset.asset_type)
                       return (
                         <button
                           key={`recent-compact-${asset.id}`}
                           type="button"
-                          onClick={() => openAndScroll(target.sectionKey, target.href)}
-                          className="min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left hover:bg-white"
+                          onClick={() => openSavedAsset(asset)}
+                          className={`min-w-0 rounded-xl border px-3 py-2 text-left hover:bg-white ${asset.id === latestSavedAsset?.id ? "border-emerald-200 bg-emerald-50" : "border-neutral-200 bg-neutral-50"}`}
                         >
-                          <div className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{formatAssetType(asset.asset_type)}</div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">{formatAssetType(asset.asset_type)}</div>
+                            {asset.id === latestSavedAsset?.id ? (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                                Newest
+                              </span>
+                            ) : null}
+                          </div>
                           <div className="mt-1 text-[11px] font-semibold text-neutral-900 [overflow-wrap:anywhere]">{asset.title || "Untitled output"}</div>
+                          <div className="mt-1 text-[10px] text-neutral-500">{asset.created_at ? new Date(asset.created_at).toLocaleString() : "Recently"}</div>
                         </button>
                       )
                     })}
@@ -4239,20 +4351,26 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                   {showRecentFilesDetails ? (
                     <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {latestOutputHighlights.map((asset) => {
-                        const target = getSectionTargetForAssetType(asset.asset_type)
                         return (
                           <button
                             key={`latest-${asset.id}`}
                             type="button"
-                            onClick={() => openAndScroll(target.sectionKey, target.href)}
+                            onClick={() => openSavedAsset(asset)}
                             className={`min-w-0 overflow-hidden rounded-2xl border p-4 text-left transition hover:shadow-sm ${assetToneClass(asset.asset_type)}`}
                           >
-                            <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-neutral-600">{formatAssetType(asset.asset_type)}</div>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-neutral-600">{formatAssetType(asset.asset_type)}</div>
+                              {asset.id === latestSavedAsset?.id ? (
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+                                  Newest
+                                </span>
+                              ) : null}
+                            </div>
                             <div className="mt-2 text-sm font-semibold leading-5 text-neutral-900 [overflow-wrap:anywhere]">
                               {asset.title || "Untitled output"}
                             </div>
                             <div className="mt-2 text-xs leading-5 text-neutral-500 [overflow-wrap:anywhere]">
-                              Version {asset.version ?? "?"} {asset.created_at ? `| ${new Date(asset.created_at).toLocaleString()}` : ""}
+                              {formatAssetType(asset.asset_type)} | Version {asset.version ?? "?"} {asset.created_at ? `| ${new Date(asset.created_at).toLocaleString()}` : ""}
                             </div>
                             <div className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-600">Open saved file</div>
                           </button>
@@ -4442,24 +4560,64 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : (
                 <div className="mt-4 space-y-3">
                   {backgroundJobs.map((job) => (
-                    <div key={job.id} className={`rounded-2xl border p-4 ${backgroundStatusCardClass(job.status)}`}>
+                    <div
+                      key={job.id}
+                      className={`rounded-2xl border p-4 ${backgroundRunCardClass(job.status, isRunTakingLongerThanExpected(job))}`}
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="font-semibold">{formatBackgroundJobType(job.job_type)}</div>
-                          <div className="mt-1 text-sm text-neutral-700">{job.result_summary || "This background job is processing or waiting."}</div>
+                          <div className="mt-1 text-sm text-neutral-700">
+                            {job.status === "queued" || job.status === "running"
+                              ? isRunTakingLongerThanExpected(job)
+                                ? `This job is taking longer than expected. It may still finish, but the user should be able to keep moving or retry.`
+                                : job.result_summary || "This background job is processing in the background. You can keep working while it finishes."
+                              : job.result_summary || "This background job is processing or waiting."}
+                          </div>
                           {job.error_message ? <p className="mt-2 text-sm text-rose-700">{job.error_message}</p> : null}
                         </div>
                         <div className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${
-                          job.status === "completed" ? "bg-emerald-100 text-emerald-700" : job.status === "failed" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"
+                          backgroundRunBadgeClass(job.status, isRunTakingLongerThanExpected(job))
                         }`}>
-                          {formatRunStatus(job.status)}
+                          {isRunTakingLongerThanExpected(job) ? "Needs attention" : formatRunStatus(job.status)}
                         </div>
                       </div>
                       <div className="mt-3 text-xs text-neutral-400">
                         Started: {job.created_at ? new Date(job.created_at).toLocaleString() : "Unknown"}
+                        {["queued", "running"].includes(job.status || "") ? ` | Running: ${formatElapsedRunTime(job)}` : ""}
                         {job.completed_at ? ` | Finished: ${new Date(job.completed_at).toLocaleString()}` : ""}
                       </div>
+                      {job.status === "queued" || job.status === "running" ? (
+                        <div className="mt-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-neutral-700">
+                          <div className="font-semibold uppercase tracking-[0.08em] text-neutral-600">Progress stage</div>
+                          <div className="mt-1">{getBackgroundRunStage(job.status, isRunTakingLongerThanExpected(job))}</div>
+                          <div className="mt-2 text-neutral-600">{getWhileYouWaitSuggestionForBackgroundJob(job.job_type)}</div>
+                        </div>
+                      ) : null}
                       <div className="ui-action-row mt-4">
+                        {job.status === "queued" || job.status === "running" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const target = getResultAnchorForBackgroundJob(job.job_type)
+                                openAndScroll(target.sectionKey, target.href)
+                              }}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Open related area
+                            </button>
+                            {isRunTakingLongerThanExpected(job) ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleRetryBackgroundJob(job.id)}
+                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                              >
+                                Retry now
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
                         {job.status === "completed" ? (
                           <button
                             type="button"
@@ -4497,26 +4655,59 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     </div>
                   ))}
                   {liveJobRuns.map((run) => (
-                    <div key={run.id} className="rounded-2xl border border-neutral-200 p-4">
+                    <div
+                      key={run.id}
+                      className={`rounded-2xl border p-4 ${backgroundRunCardClass(run.status, isRunTakingLongerThanExpected(run))}`}
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="font-semibold">Live job search</div>
                           <div className="mt-1 text-sm text-neutral-700">
-                            {run.target_role || "Untitled role search"}{run.location ? ` | ${run.location}` : ""} | {formatRunStatus(run.status)}
+                            {run.target_role || "Untitled role search"}
+                            {run.location ? ` | ${run.location}` : ""} |{" "}
+                            {isRunTakingLongerThanExpected(run) ? "Taking longer than expected" : formatRunStatus(run.status)}
                           </div>
                           {run.error_message ? <p className="mt-2 text-sm text-rose-700">{run.error_message}</p> : null}
                         </div>
                         <div className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${
-                          run.status === "completed" ? "bg-emerald-100 text-emerald-700" : run.status === "failed" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"
+                          backgroundRunBadgeClass(run.status, isRunTakingLongerThanExpected(run))
                         }`}>
-                          {formatRunStatus(run.status)}
+                          {isRunTakingLongerThanExpected(run) ? "Needs attention" : formatRunStatus(run.status)}
                         </div>
                       </div>
                       <div className="mt-3 text-xs text-neutral-400">
                         Started: {run.created_at ? new Date(run.created_at).toLocaleString() : "Unknown"}
+                        {["queued", "running"].includes(run.status || "") ? ` | Running: ${formatElapsedRunTime(run)}` : ""}
                         {run.completed_at ? ` | Finished: ${new Date(run.completed_at).toLocaleString()}` : ""}
                       </div>
+                      {run.status === "queued" || run.status === "running" ? (
+                        <div className="mt-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-neutral-700">
+                          <div className="font-semibold uppercase tracking-[0.08em] text-neutral-600">Progress stage</div>
+                          <div className="mt-1">{getBackgroundRunStage(run.status, isRunTakingLongerThanExpected(run))}</div>
+                          <div className="mt-2 text-neutral-600">{getWhileYouWaitSuggestionForLiveRun(run)}</div>
+                        </div>
+                      ) : null}
                       <div className="ui-action-row mt-4">
+                        {run.status === "queued" || run.status === "running" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openAndScroll("jobs", "#current-live-opportunities")}
+                              className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                            >
+                              Open search area
+                            </button>
+                            {isRunTakingLongerThanExpected(run) ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleRetryLiveJobRun(run.id)}
+                                className="rounded-xl border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                              >
+                                Retry now
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
                         {run.status === "completed" ? (
                           <button
                             type="button"
@@ -4586,7 +4777,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className={stepContentCompactClass}>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5">
                 <div className="text-[10px] text-neutral-700">
-                  <span className="font-semibold">Next:</span> Load CV, Gallup Strengths, LinkedIn, then supporting proof.
+                  <span className="font-semibold">Start here:</span> Add CV, Gallup Strengths, LinkedIn, then any extra proof.
                 </div>
                 <button
                   type="button"
@@ -4600,14 +4791,17 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">Before you start</div>
-                    <h3 className="mt-1 text-sm font-semibold text-neutral-950">Have these files ready</h3>
+                    <h3 className="mt-1 text-sm font-semibold text-neutral-950">Have these ready before you begin</h3>
                     <p className="mt-1 max-w-3xl text-xs leading-5 text-neutral-600">
-                      Start with the CV, then add strengths and public profile evidence. Optional proof can be skipped and added later.
+                      Keep the first pass simple. Load the CV first, add Gallup Strengths second, then add LinkedIn and any supporting proof you already have.
                     </p>
                   </div>
                   <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-700">
                     {sourceChecklist.filter((item) => item.ready).length}/{sourceChecklist.length} ready
                   </span>
+                </div>
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-950">
+                  <span className="font-semibold">Do not miss:</span> Gallup Strengths is the strongest personalization input in Career Intelligence. If you have it, add it early.
                 </div>
                 <div className="mt-2 grid gap-1.5 md:grid-cols-2 xl:grid-cols-4">
                   {sourcePrepItems.map((item) => (
@@ -4630,6 +4824,20 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       <p className="mt-1 text-[11px] leading-4 text-neutral-600">{item.detail}</p>
                     </div>
                   ))}
+                </div>
+                <div className="mt-2 grid gap-1.5 lg:grid-cols-3">
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Best order</div>
+                    <p className="mt-1 text-[11px] leading-4 text-neutral-600">1. CV  2. Gallup Strengths  3. LinkedIn  4. Extra proof</p>
+                  </div>
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">LinkedIn tip</div>
+                    <p className="mt-1 text-[11px] leading-4 text-neutral-600">Use a LinkedIn PDF export or paste your headline, About, Experience, and Skills.</p>
+                  </div>
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">Optional proof</div>
+                    <p className="mt-1 text-[11px] leading-4 text-neutral-600">Old cover letters, recruiter feedback, achievements, and target-role notes can all be added later.</p>
+                  </div>
                 </div>
               </div>
               {showSectionContext.source && showStepGuidance && !sourceWizardFocusMode ? (
@@ -4656,7 +4864,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               ) : null}
               <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700">
-                  Core inputs first: CV, Gallup Strengths, LinkedIn, and supporting proof.
+                  Core inputs first: CV and Gallup Strengths. Then add LinkedIn and any supporting proof you have.
                   <span
                     title={loadedSourceSummaryTitle}
                     className="ml-2 inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700"
@@ -4798,19 +5006,19 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
               {openSections.positioning ? (
                 <div className={stepContentCompactClass}>
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
-                    <div className="text-[11px] text-neutral-700">
+                  <div className="text-[11px] text-neutral-700">
                       <span className="font-semibold">Next:</span>{" "}
                       {latestProfile
-                        ? "Create CV and LinkedIn assets from this profile, then move into job search."
+                        ? "Create the first CV and LinkedIn drafts from this profile, then move into job search."
                         : "Generate your profile, then refine positioning."}
                     </div>
                     {latestProfile ? (
                       <button
                         type="button"
-                        onClick={() => openAndScroll("documents", "#document-workbench")}
+                        onClick={() => openAndScroll("documents", "#base-asset-generator")}
                         className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
                       >
-                        Create CV + LinkedIn
+                        Create first CV + LinkedIn
                       </button>
                     ) : null}
                     <button
@@ -6185,13 +6393,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 ) : (
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     {savedMarketComparisons.map((asset) => {
-                      const target = getSectionTargetForAssetType(asset.asset_type)
-
                       return (
                         <button
                           key={`market-compare-${asset.id}`}
                           type="button"
-                          onClick={() => openAndScroll(target.sectionKey, target.href)}
+                          onClick={() => openSavedAsset(asset)}
                           className={`rounded-2xl border p-4 text-left transition hover:shadow-sm ${assetToneClass(asset.asset_type)}`}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -7086,15 +7292,11 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
             ) : (
               <div className="mt-2 space-y-2">
                 {recentSavedAssets.map((asset) => {
-                  const target = getSectionTargetForAssetType(asset.asset_type)
                   return (
                     <button
                       key={`my-files-recent-${asset.id}`}
                       type="button"
-                      onClick={() => {
-                        setIsMyFilesDrawerOpen(false)
-                        openAndScroll(target.sectionKey, target.href)
-                      }}
+                      onClick={() => openSavedAsset(asset, { closeMyFilesDrawer: true })}
                       className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left hover:bg-neutral-50"
                     >
                       <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
@@ -7967,6 +8169,84 @@ function backgroundStatusCardClass(status: string | null | undefined) {
   if (status === "completed") return "border-emerald-200 bg-emerald-50"
   if (status === "failed") return "border-rose-200 bg-rose-50"
   return "border-sky-200 bg-sky-50"
+}
+
+const LONG_RUNNING_WARNING_MINUTES = 20
+
+function getRunStartedTimestamp(value: { created_at: string | null; started_at?: string | null; completed_at?: string | null }) {
+  return Date.parse(value.started_at || value.created_at || value.completed_at || "") || 0
+}
+
+function isRunTakingLongerThanExpected(
+  value: { status: string | null; created_at: string | null; started_at?: string | null; completed_at?: string | null },
+  thresholdMinutes = LONG_RUNNING_WARNING_MINUTES
+) {
+  if (!["queued", "running"].includes(value.status || "")) return false
+  const started = getRunStartedTimestamp(value)
+  if (!started) return false
+  return Date.now() - started > thresholdMinutes * 60 * 1000
+}
+
+function formatElapsedRunTime(
+  value: { created_at: string | null; started_at?: string | null; completed_at?: string | null },
+  now = Date.now()
+) {
+  const started = getRunStartedTimestamp(value)
+  if (!started) return ""
+  const diffMinutes = Math.max(1, Math.round((now - started) / 60000))
+  if (diffMinutes < 60) return `${diffMinutes} min`
+  const hours = Math.floor(diffMinutes / 60)
+  const minutes = diffMinutes % 60
+  return minutes > 0 ? `${hours} hr ${minutes} min` : `${hours} hr`
+}
+
+function backgroundRunBadgeClass(status: string | null | undefined, takingLongerThanExpected = false) {
+  if (status === "completed") return "bg-emerald-100 text-emerald-700"
+  if (status === "failed") return "bg-rose-100 text-rose-700"
+  if (takingLongerThanExpected) return "bg-amber-100 text-amber-800"
+  return "bg-sky-100 text-sky-700"
+}
+
+function backgroundRunCardClass(status: string | null | undefined, takingLongerThanExpected = false) {
+  if (status === "completed") return "border-emerald-200 bg-emerald-50"
+  if (status === "failed") return "border-rose-200 bg-rose-50"
+  if (takingLongerThanExpected) return "border-amber-200 bg-amber-50"
+  return "border-sky-200 bg-sky-50"
+}
+
+function getBackgroundRunStage(status: string | null | undefined, takingLongerThanExpected = false) {
+  if (takingLongerThanExpected) return "Queued -> Generating -> Saving -> Needs attention"
+  if (status === "queued") return "Queued -> Generating -> Saving"
+  if (status === "running") return "Generating -> Saving"
+  if (status === "completed") return "Ready"
+  if (status === "failed") return "Stopped before save"
+  return "Processing"
+}
+
+function getWhileYouWaitSuggestionForBackgroundJob(jobType: string | null | undefined) {
+  switch (jobType) {
+    case "generate_company_dossier":
+      return "While you wait: review the target role and company notes so the dossier is easier to apply when it lands."
+    case "generate_cover_letter":
+      return "While you wait: tighten the tracked role details so the final letter is easier to review quickly."
+    case "generate_assets":
+      return "While you wait: gather one strong achievement example you want to see reflected in the drafts."
+    case "generate_application_fit_analysis":
+      return "While you wait: open the role brief so you can compare the fit score against the actual requirements."
+    case "generate_salary_analysis":
+      return "While you wait: note your target range and negotiation angle so the salary view is easier to act on."
+    case "generate_interview_prep":
+      return "While you wait: jot down the real interview concerns you want the prep pack to answer."
+    default:
+      return "While you wait: keep moving in the workspace. This result will save back into the right section when it finishes."
+  }
+}
+
+function getWhileYouWaitSuggestionForLiveRun(run: LiveJobRunRow) {
+  if (run.target_role || run.location) {
+    return `While you wait: confirm the search target${run.target_role ? ` (${run.target_role})` : ""}${run.location ? ` and location (${run.location})` : ""} before the next run.`
+  }
+  return "While you wait: tighten the role or location filters so the next search is even cleaner."
 }
 
 const GALLUP_THEME_KEYWORDS = [

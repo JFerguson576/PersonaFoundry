@@ -35,6 +35,31 @@ function parseNumeric(value: string | undefined) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function normalizeProvider(value: string | undefined) {
+  const normalized = (value || "").trim().toLowerCase()
+  return normalized === "codex" || normalized === "openai" ? normalized : ""
+}
+
+function inferUsageProvider(explicitProvider: "openai" | "codex" | undefined, model: string) {
+  if (explicitProvider === "codex" || explicitProvider === "openai") {
+    return explicitProvider
+  }
+
+  const forcedProvider = normalizeProvider(process.env.OPENAI_USAGE_PROVIDER_FORCE)
+  if (forcedProvider) return forcedProvider
+
+  const modelText = (model || "").toLowerCase()
+  if (modelText.includes("codex")) return "codex"
+
+  const defaultProvider = normalizeProvider(process.env.OPENAI_USAGE_PROVIDER_DEFAULT)
+  if (defaultProvider === "codex" && /^gpt-5([.-]|$)/.test(modelText)) {
+    return "codex"
+  }
+
+  if (defaultProvider) return defaultProvider
+  return "openai"
+}
+
 type ModelPrice = {
   inputPer1M: number
   outputPer1M: number
@@ -43,9 +68,25 @@ type ModelPrice = {
 const FALLBACK_MODEL_PRICES: Record<string, ModelPrice> = {
   GPT_5: { inputPer1M: 1.25, outputPer1M: 10 },
   GPT_5_3: { inputPer1M: 1.25, outputPer1M: 10 },
-  GPT_5_4: { inputPer1M: 1.25, outputPer1M: 10 },
+  GPT_5_4: { inputPer1M: 2.5, outputPer1M: 15 },
+  GPT_5_4_LOW: { inputPer1M: 2.5, outputPer1M: 15 },
+  GPT_5_4_MEDIUM: { inputPer1M: 2.5, outputPer1M: 15 },
+  GPT_5_4_HIGH: { inputPer1M: 2.5, outputPer1M: 15 },
+  GPT_5_4_XHIGH: { inputPer1M: 2.5, outputPer1M: 15 },
+  GPT_5_5: { inputPer1M: 5, outputPer1M: 30 },
+  GPT_5_5_LOW: { inputPer1M: 5, outputPer1M: 30 },
+  GPT_5_5_MEDIUM: { inputPer1M: 5, outputPer1M: 30 },
+  GPT_5_5_HIGH: { inputPer1M: 5, outputPer1M: 30 },
+  GPT_5_5_XHIGH: { inputPer1M: 5, outputPer1M: 30 },
   GPT_5_3_MEDIUM: { inputPer1M: 1.25, outputPer1M: 10 },
-  GPT_5_4_MINI: { inputPer1M: 0.25, outputPer1M: 2 },
+  GPT_5_4_MINI: { inputPer1M: 0.75, outputPer1M: 4.5 },
+  GPT_5_4_MINI_LOW: { inputPer1M: 0.75, outputPer1M: 4.5 },
+  GPT_5_4_MINI_MEDIUM: { inputPer1M: 0.75, outputPer1M: 4.5 },
+  GPT_5_2_CODEX: { inputPer1M: 1.75, outputPer1M: 14 },
+  GPT_5_2_CODEX_LOW: { inputPer1M: 1.75, outputPer1M: 14 },
+  GPT_5_2_CODEX_MEDIUM: { inputPer1M: 1.75, outputPer1M: 14 },
+  GPT_5_2_CODEX_HIGH: { inputPer1M: 1.75, outputPer1M: 14 },
+  GPT_5_2_CODEX_XHIGH: { inputPer1M: 1.75, outputPer1M: 14 },
   GPT_5_MINI: { inputPer1M: 0.25, outputPer1M: 2 },
 }
 
@@ -122,7 +163,7 @@ export async function logUsageEvent(client: TelemetryClient, input: UsageEventIn
 
 export async function logApiUsage(client: TelemetryClient, input: ApiUsageInput) {
   try {
-    const inferredProvider = input.provider ?? (input.model.toLowerCase().includes("codex") ? "codex" : "openai")
+    const inferredProvider = inferUsageProvider(input.provider, input.model)
     await client.from("api_usage_logs").insert([
       {
         user_id: input.userId ?? null,

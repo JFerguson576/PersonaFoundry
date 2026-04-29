@@ -237,7 +237,12 @@ type OperationsEconomicsResponse = {
     total_api_cost_usd: number
     total_openai_api_cost_usd: number
     total_codex_api_cost_usd: number
+    total_codex_development_cost_usd: number
+    codex_development_cost_source: string
+    codex_development_cost_source_error: string | null
+    total_combined_ai_spend_usd: number
     total_margin_usd: number
+    total_margin_after_codex_development_usd: number
     unprofitable_users: number
     over_budget_users: number
   }
@@ -266,6 +271,12 @@ type OperationsEconomicsResponse = {
       codex_api_cost_usd: number
       margin_usd: number
     }[]
+    codex_spend?: {
+      hour: { label: string; codex_spend_usd: number }[]
+      day: { label: string; codex_spend_usd: number }[]
+      week: { label: string; codex_spend_usd: number }[]
+      month: { label: string; codex_spend_usd: number }[]
+    }
     module_lines?: RevenueLineSeries[]
     tier_lines?: RevenueLineSeries[]
     seeded_weekly_revenue_usd?: number
@@ -440,6 +451,17 @@ function formatDate(value: string | null) {
 
 function formatUsd(value: number) {
   return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function formatCodexSourceError(value: string | null | undefined) {
+  if (!value) return ""
+  const text = String(value)
+  const normalized = text.toLowerCase()
+  if (normalized.includes("invalid openai_admin_key") || normalized.includes("incorrect api key") || normalized.includes("invalid_api_key")) {
+    return "OpenAI admin key is invalid or does not have organization cost access."
+  }
+  if (text.length > 160) return `${text.slice(0, 160)}...`
+  return text
 }
 
 const CODEX_EXECUTION_BACKLOG: CodexBacklogItem[] = [
@@ -876,6 +898,7 @@ export function OperationsJobsClient() {
   const [contentLibraryMenuOpen, setContentLibraryMenuOpen] = useState(false)
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
   const [activeFinancialRange, setActiveFinancialRange] = useState<"daily" | "weekly" | "monthly">("weekly")
+  const [activeCodexSpendRange, setActiveCodexSpendRange] = useState<"hour" | "day" | "week" | "month">("day")
   const [activeFinancialRevenueLines, setActiveFinancialRevenueLines] = useState<"total" | "module" | "tier">("total")
   const [activeMarketingView, setActiveMarketingView] = useState<
     "overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager" | "practitioner_outreach_data"
@@ -1933,6 +1956,14 @@ export function OperationsJobsClient() {
     if (activeFinancialRevenueLines === "tier") return tierRevenueTrendSeries
     return []
   }, [activeFinancialRevenueLines, moduleRevenueTrendSeries, tierRevenueTrendSeries])
+  const codexSpendTrendSeries = useMemo(() => {
+    const codexSeries = economics?.trends?.codex_spend
+    if (!codexSeries) return []
+    if (activeCodexSpendRange === "hour") return codexSeries.hour
+    if (activeCodexSpendRange === "week") return codexSeries.week
+    if (activeCodexSpendRange === "month") return codexSeries.month
+    return codexSeries.day
+  }, [economics, activeCodexSpendRange])
   const seededWeeklyRevenue = useMemo(() => Number(economics?.trends?.seeded_weekly_revenue_usd || 100), [economics])
   const negativeMarginRows = useMemo(
     () => economicsRows.filter((row) => row.profitability === "negative"),
@@ -2980,17 +3011,17 @@ export function OperationsJobsClient() {
                   </div>
                 ) : economics ? (
                   <>
-                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-7">
+                    <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-9">
                       <SnapshotStat
                         label="Customer revenue"
                         value={formatUsd(Number(economics.summary.total_revenue_usd || 0))}
                       />
                       <SnapshotStat
-                        label="API spend"
+                        label="API spend (in-app total)"
                         value={formatUsd(Number(economics.summary.total_api_cost_usd || 0))}
                       />
                       <SnapshotStat
-                        label="OpenAI spend"
+                        label="OpenAI spend (in-app usage)"
                         value={formatUsd(Number(economics.summary.total_openai_api_cost_usd || 0))}
                       />
                       <SnapshotStat
@@ -2998,8 +3029,20 @@ export function OperationsJobsClient() {
                         value={formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
                       />
                       <SnapshotStat
-                        label="Margin"
+                        label="Codex development charges"
+                        value={formatUsd(Number(economics.summary.total_codex_development_cost_usd || 0))}
+                      />
+                      <SnapshotStat
+                        label="Total AI spend (in-app + Codex dev)"
+                        value={formatUsd(Number(economics.summary.total_combined_ai_spend_usd || 0))}
+                      />
+                      <SnapshotStat
+                        label="Margin (in-app only)"
                         value={formatUsd(Number(economics.summary.total_margin_usd || 0))}
+                      />
+                      <SnapshotStat
+                        label="Margin (after Codex dev)"
+                        value={formatUsd(Number(economics.summary.total_margin_after_codex_development_usd || 0))}
                       />
                       <SnapshotStat label="Over budget users" value={String(economics.summary.over_budget_users || 0)} />
                       <SnapshotStat label="Unprofitable users" value={String(economics.summary.unprofitable_users || 0)} />
@@ -3015,10 +3058,17 @@ export function OperationsJobsClient() {
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2 text-[11px] text-[#486387]">
                       <span className="font-semibold uppercase tracking-[0.08em] text-[#304e79]">Pricing source</span>: OpenAI PAYG model rates.{" "}
-                      <span className="font-semibold">Codex spend</span> is calculated from in-app Codex logs only.
+                      <span className="font-semibold">Codex development charges</span> are now tracked automatically from OpenAI org spend.
                       <div className="mt-1">
                         Environment keys used: <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_PRICE_{"{MODEL}"}_INPUT_PER_1M</code>{" "}
-                        and <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_PRICE_{"{MODEL}"}_OUTPUT_PER_1M</code>.
+                        and <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_PRICE_{"{MODEL}"}_OUTPUT_PER_1M</code>, plus{" "}
+                        <code className="rounded bg-[#eef4ff] px-1 py-0.5">OPENAI_ADMIN_KEY</code>.
+                      </div>
+                      <div className="mt-1 text-[10px] text-[#5a7399]">
+                        Codex source: <span className="font-semibold">{economics.summary.codex_development_cost_source || "unknown"}</span>
+                        {economics.summary.codex_development_cost_source_error ? (
+                          <span className="ml-1 text-rose-700">({formatCodexSourceError(economics.summary.codex_development_cost_source_error)})</span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
@@ -3106,6 +3156,61 @@ export function OperationsJobsClient() {
                         revenueSeries={visibleRevenueTrendSeries}
                         revenueMode={activeFinancialRevenueLines}
                       />
+                      <div className="mt-2 rounded-xl border border-[#dbe6f4] bg-[#fafdff] px-2.5 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Codex spend trend</div>
+                            <div className="mt-0.5 text-xs text-[#4a6388]">Day/week/month include in-app Codex logs plus auto development delta from org costs.</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setActiveCodexSpendRange("hour")}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                activeCodexSpendRange === "hour"
+                                  ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                  : "border-[#cbd8eb] bg-white text-[#36537d]"
+                              }`}
+                            >
+                              Hour
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveCodexSpendRange("day")}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                activeCodexSpendRange === "day"
+                                  ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                  : "border-[#cbd8eb] bg-white text-[#36537d]"
+                              }`}
+                            >
+                              Day
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveCodexSpendRange("week")}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                activeCodexSpendRange === "week"
+                                  ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                  : "border-[#cbd8eb] bg-white text-[#36537d]"
+                              }`}
+                            >
+                              Week
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveCodexSpendRange("month")}
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                activeCodexSpendRange === "month"
+                                  ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                  : "border-[#cbd8eb] bg-white text-[#36537d]"
+                              }`}
+                            >
+                              Month
+                            </button>
+                          </div>
+                        </div>
+                        <CodexSpendTrendChart points={codexSpendTrendSeries} label={activeCodexSpendRange} />
+                      </div>
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -3146,15 +3251,27 @@ export function OperationsJobsClient() {
                       {activeFinancialView === "api" ? (
                         <div className="mt-2 text-xs text-[#36537d]">
                           <p>
-                            OpenAI spend:{" "}
+                            OpenAI spend (in-app usage):{" "}
                             <span className="font-semibold">
                               {formatUsd(Number(economics.summary.total_openai_api_cost_usd || 0))}
                             </span>
                           </p>
                           <p className="mt-1">
-                            Codex spend (in-app Codex logs):{" "}
+                            Codex spend (in-app logs):{" "}
                             <span className="font-semibold">
                               {formatUsd(Number(economics.summary.total_codex_api_cost_usd || 0))}
+                            </span>
+                          </p>
+                          <p className="mt-1">
+                            Codex development charges:{" "}
+                            <span className="font-semibold">
+                              {formatUsd(Number(economics.summary.total_codex_development_cost_usd || 0))}
+                            </span>
+                          </p>
+                          <p className="mt-1">
+                            Total AI spend (in-app + Codex dev):{" "}
+                            <span className="font-semibold">
+                              {formatUsd(Number(economics.summary.total_combined_ai_spend_usd || 0))}
                             </span>
                           </p>
                           <p>Users currently over API budget: <span className="font-semibold">{overBudgetRows.length}</span></p>
@@ -4726,6 +4843,74 @@ function FinancialTrendChart({
         )}
         <span className="rounded-full border border-[#f2cccc] bg-[#fff5f5] px-2 py-0.5 text-[#a12626]">API cost</span>
         <span className="rounded-full border border-[#ccebd8] bg-[#f2fff6] px-2 py-0.5 text-[#1d7f4b]">Margin</span>
+      </div>
+    </div>
+  )
+}
+
+function CodexSpendTrendChart({
+  points,
+  label,
+}: {
+  points: { label: string; codex_spend_usd: number }[]
+  label: "hour" | "day" | "week" | "month"
+}) {
+  const width = 760
+  const height = 190
+  const padding = { top: 12, right: 20, bottom: 34, left: 46 }
+  const innerWidth = width - padding.left - padding.right
+  const innerHeight = height - padding.top - padding.bottom
+
+  const safePoints = points.length > 0 ? points : [{ label: "-", codex_spend_usd: 0 }]
+  const xAt = (index: number) =>
+    safePoints.length <= 1 ? padding.left + innerWidth / 2 : padding.left + (index / (safePoints.length - 1)) * innerWidth
+  const maxValue = Math.max(...safePoints.map((point) => point.codex_spend_usd), 1)
+  const yAt = (value: number) => padding.top + innerHeight - (value / maxValue) * innerHeight
+  const spendPath = safePoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.codex_spend_usd)}`)
+    .join(" ")
+  const filledPath = `${spendPath} L ${xAt(safePoints.length - 1)} ${padding.top + innerHeight} L ${xAt(0)} ${padding.top + innerHeight} Z`
+
+  return (
+    <div className="mt-2 rounded-xl border border-[#dbe6f4] bg-white px-2.5 py-2">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[190px] w-full">
+        <rect x={0} y={0} width={width} height={height} fill="transparent" />
+
+        {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          const value = maxValue * fraction
+          const y = yAt(value)
+          return (
+            <g key={`codex-grid-${fraction}`}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#e6eef9" strokeWidth={1} />
+              <text x={8} y={y + 4} fontSize={10} fill="#5d769c">
+                {value.toFixed(2)}
+              </text>
+            </g>
+          )
+        })}
+
+        <path d={filledPath} fill="#e8f3ff" />
+        <path d={spendPath} fill="none" stroke="#0a66c2" strokeWidth={2.4} />
+
+        {safePoints.map((point, index) => (
+          <text
+            key={`codex-x-${point.label}-${index}`}
+            x={xAt(index)}
+            y={height - 10}
+            textAnchor="middle"
+            fontSize={10}
+            fill="#4a6388"
+          >
+            {point.label}
+          </text>
+        ))}
+      </svg>
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">
+        <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">{label} zoom</span>
+        <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[#1f4f99]">
+          Codex spend
+        </span>
       </div>
     </div>
   )

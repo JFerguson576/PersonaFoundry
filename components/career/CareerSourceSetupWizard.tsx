@@ -367,7 +367,10 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
   return (
     <form onSubmit={handleSubmit} className="space-y-2.5 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Load source files</h2>
+        <div>
+          <h2 className="text-base font-semibold">Add your files</h2>
+          <p className="mt-0.5 text-xs text-neutral-600">Start with CV + Gallup Strengths. LinkedIn and extra proof can come next.</p>
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -413,6 +416,9 @@ export function CareerSourceSetupWizard({ candidateId, existingDocuments = [] }:
             ) : null}
           </div>
         </div>
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+        <span className="font-semibold">Best input after the CV:</span> Gallup Strengths. It improves the profile voice, documents, and interview wording across the whole workflow.
       </div>
 
       <section className="rounded-2xl border border-neutral-200 bg-white">
