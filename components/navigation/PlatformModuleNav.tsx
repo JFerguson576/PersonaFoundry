@@ -67,7 +67,11 @@ function isCareerWorkspaceHref(value: string | null) {
   return Boolean(value && /^\/career\/[^/?#]+/.test(value))
 }
 
-export function PlatformModuleNav() {
+type PlatformModuleNavProps = {
+  autoMinimizeOnWork?: boolean
+}
+
+export function PlatformModuleNav({ autoMinimizeOnWork = false }: PlatformModuleNavProps) {
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [roleBadge, setRoleBadge] = useState<"Superuser" | "Admin" | "Support" | null>(null)
@@ -86,6 +90,9 @@ export function PlatformModuleNav() {
   const [showReturnMenu, setShowReturnMenu] = useState(false)
   const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [isAutoNavMinimized, setIsAutoNavMinimized] = useState(false)
+  const [isPointerNearTop, setIsPointerNearTop] = useState(true)
+  const [isAutoNavHovered, setIsAutoNavHovered] = useState(false)
   const dropdownWrapRef = useRef<HTMLDivElement | null>(null)
 
   const isModulePage = useMemo(() => {
@@ -183,6 +190,30 @@ export function PlatformModuleNav() {
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
+
+  useEffect(() => {
+    if (!autoMinimizeOnWork || typeof window === "undefined") {
+      setIsAutoNavMinimized(false)
+      setIsPointerNearTop(true)
+      return
+    }
+
+    function handleScroll() {
+      setIsAutoNavMinimized(window.scrollY > 140)
+    }
+
+    function handleMouseMove(event: MouseEvent) {
+      setIsPointerNearTop(event.clientY <= 92)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    window.addEventListener("mousemove", handleMouseMove, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("mousemove", handleMouseMove)
+    }
+  }, [autoMinimizeOnWork])
 
   useEffect(() => {
     let mounted = true
@@ -329,9 +360,35 @@ export function PlatformModuleNav() {
     }
   }
 
+  const shouldRevealAutoNav =
+    !autoMinimizeOnWork ||
+    !isAutoNavMinimized ||
+    isPointerNearTop ||
+    isAutoNavHovered ||
+    Boolean(openDropdownKey) ||
+    showReturnMenu ||
+    showReferralModal
+
   return (
     <nav
-      className={`sticky top-3 z-40 mb-4 rounded-2xl border border-[var(--border-soft)] bg-[color:var(--surface)]/95 px-4 py-3 backdrop-blur transition-shadow ${
+      data-sticky-nav="true"
+      onMouseEnter={() => {
+        if (autoMinimizeOnWork) {
+          setIsAutoNavHovered(true)
+        }
+      }}
+      onMouseLeave={() => {
+        if (autoMinimizeOnWork) {
+          setIsAutoNavHovered(false)
+        }
+      }}
+      className={`sticky z-40 mb-4 border border-[var(--border-soft)] bg-[color:var(--surface)]/95 px-4 py-3 backdrop-blur ${
+        autoMinimizeOnWork
+          ? `top-0 rounded-b-2xl border-x-0 border-t-0 transition-[transform,opacity,box-shadow] duration-300 ${
+              shouldRevealAutoNav ? "translate-y-0 opacity-100" : "-translate-y-[calc(100%-22px)] opacity-95"
+            }`
+          : "top-3 rounded-2xl transition-shadow"
+      } ${
         scrolled ? "shadow-[0_14px_34px_-22px_rgba(15,30,70,0.45)]" : "shadow-[0_8px_20px_-18px_rgba(15,30,70,0.35)]"
       }`}
     >

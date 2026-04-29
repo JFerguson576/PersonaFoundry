@@ -147,21 +147,24 @@ export function CareerCompanyDossierGenerator({ candidateId, initialPrefill }: P
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="submit"
-          disabled={loading || !canGenerate}
-          title="Research and save a reusable company dossier in this workspace."
-          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? "Researching company..." : "Generate company dossier"}
-        </button>
-        <div
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-            canGenerate ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-500"
-          }`}
-        >
-          {canGenerate ? "Ready to generate" : "Add company name"}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">Primary action</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={loading || !canGenerate}
+            title="Research and save a reusable company dossier in this workspace."
+            className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#004182]"
+          >
+            {loading ? "Researching..." : "Generate dossier"}
+          </button>
+          <div
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+              canGenerate ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-neutral-50 text-neutral-500"
+            }`}
+          >
+            {canGenerate ? "Ready" : "Needs company"}
+          </div>
         </div>
       </div>
 

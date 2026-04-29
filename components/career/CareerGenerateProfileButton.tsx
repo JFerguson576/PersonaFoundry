@@ -60,33 +60,34 @@ export function CareerGenerateProfileButton({ candidateId, variant = "card", lab
     }
   }
 
-  const action = (
-    <>
-      <button
-        type="button"
-        onClick={handleGenerate}
-        disabled={loading}
-        className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${
-          loading ? "animate-pulse bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900" : "bg-black"
-        }`}
-      >
-        {loading ? (
-          <>
-            <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />
-            Generating...
-          </>
-        ) : (
-          label
-        )}
-      </button>
-      {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. Stay on this page while the profile is created.</p> : null}
-
-      {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
-    </>
+  const actionButton = (
+    <button
+      type="button"
+      onClick={handleGenerate}
+      disabled={loading}
+      className={`inline-flex items-center gap-2 rounded-full border border-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+        loading ? "animate-pulse bg-[#0a66c2]" : "bg-[#0a66c2] hover:bg-[#004182]"
+      }`}
+    >
+      {loading ? (
+        <>
+          <span className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />
+          Generating...
+        </>
+      ) : (
+        label
+      )}
+    </button>
   )
 
   if (variant === "inline") {
-    return <div>{action}</div>
+    return (
+      <div>
+        {actionButton}
+        {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. Stay on this page while the profile is created.</p> : null}
+        {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
+      </div>
+    )
   }
 
   return (
@@ -95,7 +96,17 @@ export function CareerGenerateProfileButton({ candidateId, variant = "card", lab
       <p className="mt-1 text-sm text-neutral-600">
         Build the first career identity and positioning pack from the saved source material.
       </p>
-      <div className="mt-3">{action}</div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">Primary action</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {actionButton}
+          <div className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+            Ready
+          </div>
+        </div>
+      </div>
+      {loading ? <p className="mt-2 text-xs text-neutral-600">This may take about a minute. Stay on this page while the profile is created.</p> : null}
+      {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
     </div>
   )
 }

@@ -233,7 +233,7 @@ export function CareerIntelligenceLandingClient() {
   ]
   const careerRecommendedAction = latestCareerWorkspace
     ? {
-        title: `Open ${latestCareerWorkspace.full_name || "latest Career workspace"}`,
+        title: "Open latest Career workspace",
         detail:
           activeCareerApplicationCount > 0
             ? "Review active roles, follow-ups, and saved outputs before creating anything new."
@@ -255,41 +255,6 @@ export function CareerIntelligenceLandingClient() {
     fullName ||
     session?.user?.email?.split("@")[0] ||
     "there"
-  const signedInDestinationCards = [
-    {
-      title: "Career Intelligence",
-      detail: latestCareerWorkspace
-        ? `${latestCareerWorkspace.full_name || "Career workspace"}${latestCareerWorkspace.active_application_count ? ` | ${latestCareerWorkspace.active_application_count} active role${latestCareerWorkspace.active_application_count === 1 ? "" : "s"}` : ""}`
-        : loadingCareerCandidates
-          ? "Checking for your saved workspace..."
-          : "Create your first career workspace.",
-      action: latestCareerWorkspace ? "Open workspace" : "Create workspace",
-      href: latestCareerWorkspace ? `/career/${latestCareerWorkspace.id}` : "#career-workspace-create",
-      tone: "border-sky-200 bg-sky-50 text-sky-950",
-      status: latestCareerWorkspace
-        ? `${latestCareerWorkspace.readiness_score ?? 0}/100 ready`
-        : loadingCareerCandidates
-          ? "Checking"
-          : "Not started",
-    },
-    {
-      title: "Persona Foundry",
-      detail: "Build or refine identity, voice, and decision profiles.",
-      action: "Open Persona Foundry",
-      href: "/persona-foundry",
-      tone: "border-violet-200 bg-violet-50 text-violet-950",
-      status: "Available",
-    },
-    {
-      title: "TeamSync",
-      detail: "Work on team dynamics, shared strengths, and communication.",
-      action: "Open TeamSync",
-      href: "/teamsync",
-      tone: "border-teal-200 bg-teal-50 text-teal-950",
-      status: "Available",
-    },
-  ]
-
   async function signInWithProvider(provider: "google" | "facebook" | "linkedin_oidc") {
     if (!providerStatus[provider]?.enabled) {
       setMessage(`${providerStatus[provider]?.label || "This provider"} login is not configured yet.`)
@@ -452,55 +417,17 @@ export function CareerIntelligenceLandingClient() {
               </h1>
               <p className="mt-3 text-sm leading-6 text-[#475569]">
                 {session?.user
-                  ? "Choose where you want to continue today. Career Intelligence, Persona Foundry, and TeamSync all use the same signed-in account."
+                  ? "Resume your Career workflow here. Use the top menu any time you want to switch to Persona Foundry or TeamSync."
                   : "Sign in, create one workspace, then generate profile, documents, and interview prep in sequence."}
               </p>
-              <ModuleExplainerPanel
-                buttonLabel="Why Career Intelligence Works"
-                title="Why Career Intelligence Works"
-                summary="Career Intelligence combines your identity profile, strengths signals, and role evidence into one guided execution flow so every output is more targeted, coherent, and interview-ready."
-                docHref="/docs/personara-ai-career-intelligence-explainer.docx"
-              />
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <a
-                  href="/docs/personara-ai-career-intelligence-explainer.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open career explainer
-                </a>
-                <a
-                  href="/docs/personara-candidate-explainer-v2.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open candidate guide
-                </a>
-                <a
-                  href="/docs/personara-ai-gallup-strengths-explainer.docx"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="personara-explainer-chip"
-                >
-                  Open Gallup explainer
-                </a>
-                <Link
-                  href="/resources#career"
-                  className="personara-explainer-chip"
-                >
-                  Open resource hub
-                </Link>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/career" className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
-                Open workspace hub
-              </Link>
-              <Link href="/platform" className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
-                Back to homepage
-              </Link>
+              {!session?.user ? (
+                <ModuleExplainerPanel
+                  buttonLabel="Why Career Intelligence Works"
+                  title="Why Career Intelligence Works"
+                  summary="Career Intelligence combines your identity profile, strengths signals, and role evidence into one guided execution flow so every output is more targeted, coherent, and interview-ready."
+                  docHref="/docs/personara-ai-career-intelligence-explainer.docx"
+                />
+              ) : null}
             </div>
           </div>
 
@@ -536,12 +463,6 @@ export function CareerIntelligenceLandingClient() {
                     You are already signed in. Pick the right module, reopen the most recent Career workspace, or create a new one only when it is truly needed.
                   </p>
                 </div>
-                <Link
-                  href="/platform"
-                  className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-white"
-                >
-                  All modules
-                </Link>
               </div>
 
               <div className="mt-4 grid gap-2 sm:grid-cols-4">
@@ -569,39 +490,9 @@ export function CareerIntelligenceLandingClient() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3">
-                {signedInDestinationCards.map((destination) => (
-                  <Link
-                    key={destination.title}
-                    href={destination.href}
-                    className={`block rounded-2xl border px-4 py-3 transition hover:shadow-sm ${destination.tone}`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-base font-semibold">{destination.title}</div>
-                          <span className="rounded-full border border-white/80 bg-white/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
-                            {destination.status}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm leading-5 opacity-85">{destination.detail}</p>
-                      </div>
-                      <span className="rounded-full border border-white/80 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-800">
-                        {destination.action}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
               {recentCareerWorkspaces.length > 0 ? (
                 <div className="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Recent Career workspaces</div>
-                    <Link href="/career" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:text-neutral-950">
-                      View hub
-                    </Link>
-                  </div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Recent Career workspaces</div>
                   <div className="mt-2 divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
                     {recentCareerWorkspaces.map((workspace) => (
                       <Link
@@ -647,14 +538,6 @@ export function CareerIntelligenceLandingClient() {
                   ? "Use this only when you want a separate candidate or scenario workspace."
                   : "Quick setup now. You can add detailed files after creation."}
               </p>
-              {latestCareerWorkspace ? (
-                <Link
-                  href={`/career/${latestCareerWorkspace.id}`}
-                  className="mt-3 inline-flex rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100"
-                >
-                  Open latest Career workspace
-                </Link>
-              ) : null}
               {linkedInProfile.available ? (
                 <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
                   LinkedIn sign-in detected. We pre-filled what we could from your profile, and you can adjust anything before creating your workspace.

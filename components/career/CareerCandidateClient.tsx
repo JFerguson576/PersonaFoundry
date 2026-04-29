@@ -415,18 +415,9 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   }, [])
 
   const activateLeftNavigation = useCallback((sectionKey: string, href: string) => {
-    const isSameTarget = activeStep === sectionKey && activeAnchor === href
-    const sectionKeyTyped = sectionKey as keyof typeof expandedLeftSections
-    const isExpanded = Boolean(expandedLeftSections[sectionKeyTyped])
-
-    if (isSameTarget && isExpanded) {
-      revealLeftSection(sectionKey, false)
-      return
-    }
-
     revealLeftSection(sectionKey, true)
     openAndScroll(sectionKey, href)
-  }, [activeAnchor, activeStep, expandedLeftSections, openAndScroll, revealLeftSection])
+  }, [openAndScroll, revealLeftSection])
 
   useEffect(() => {
     revealLeftSection(activeStep, true)
@@ -2808,7 +2799,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
   return (
     <main id="career-workspace-root" className="min-h-screen bg-neutral-50 text-neutral-900">
       <div className={`candidate-compact-workspace w-full px-4 py-3 lg:pl-[240px] lg:pr-4 ${isContextRailOpen || isMyFilesDrawerOpen ? "lg:pr-[380px]" : ""}`}>
-        <PlatformModuleNav />
+        <PlatformModuleNav autoMinimizeOnWork />
         <AdaptiveProductTour moduleKey="career" />
         <WelcomeBackNotice userId={session?.user?.id} moduleLabel="Career Intelligence" />
         {previewOwnerUserId ? (
@@ -4779,13 +4770,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className="text-[10px] text-neutral-700">
                   <span className="font-semibold">Start here:</span> Add CV, Gallup Strengths, LinkedIn, then any extra proof.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleSectionContext("source")}
-                  className="ui-compact-pill"
-                >
-                  {showSectionContext.source ? "Hide details" : "Show details"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAndScroll("source", sectionActionGuides.source.href)}
+                    className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                  >
+                    {sectionActionGuides.source.actionLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionContext("source")}
+                    className="ui-compact-pill"
+                  >
+                    {showSectionContext.source ? "Hide details" : "Show details"}
+                  </button>
+                </div>
               </div>
               <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -5012,22 +5012,27 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                         ? "Create the first CV and LinkedIn drafts from this profile, then move into job search."
                         : "Generate your profile, then refine positioning."}
                     </div>
-                    {latestProfile ? (
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => openAndScroll("documents", "#base-asset-generator")}
+                        onClick={() =>
+                          openAndScroll(hasProfile ? "documents" : "positioning", sectionActionGuides.positioning.href)
+                        }
                         className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
                       >
-                        Create first CV + LinkedIn
+                        {sectionActionGuides.positioning.actionLabel}
                       </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => toggleSectionContext("positioning")}
-                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                    >
-                      {showSectionContext.positioning ? "Hide details" : "Show details"}
-                    </button>
+                      {latestProfile ? (
+                        <CareerGenerateProfileButton candidateId={candidate.id} variant="inline" label="Generate new version" />
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => toggleSectionContext("positioning")}
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                      >
+                        {showSectionContext.positioning ? "Hide details" : "Show details"}
+                      </button>
+                    </div>
                   </div>
                   {showSectionContext.positioning && showStepGuidance ? (
                     <>
@@ -5062,9 +5067,6 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       : "Generate the professional narrative before creating outward-facing assets."}
                   </p>
                 </div>
-                {latestProfile ? (
-                  <CareerGenerateProfileButton candidateId={candidate.id} variant="inline" label="Generate new version" />
-                ) : null}
               </div>
               {!latestProfile ? (
                 <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-3">
@@ -5358,13 +5360,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className="text-[11px] text-neutral-700">
                   <span className="font-semibold">Next:</span> Generate base CV + LinkedIn assets. Tailor them to a role when you have one.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleSectionContext("documents")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {showSectionContext.documents ? "Hide details" : "Show details"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAndScroll("documents", sectionActionGuides.documents.href)}
+                    className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                  >
+                    {sectionActionGuides.documents.actionLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionContext("documents")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {showSectionContext.documents ? "Hide details" : "Show details"}
+                  </button>
+                </div>
               </div>
               {showSectionContext.documents && showStepGuidance ? (
                 <>
@@ -5734,13 +5745,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     <div className="text-[11px] text-neutral-700">
                       <span className="font-semibold">Next:</span> Generate company dossier, then align message and outreach.
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleSectionContext("company")}
-                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                    >
-                      {showSectionContext.company ? "Hide details" : "Show details"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll("company", sectionActionGuides.company.href)}
+                        className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                      >
+                        {sectionActionGuides.company.actionLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleSectionContext("company")}
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                      >
+                        {showSectionContext.company ? "Hide details" : "Show details"}
+                      </button>
+                    </div>
                   </div>
                   {showSectionContext.company && showStepGuidance ? (
                     <>
@@ -5845,29 +5865,37 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       {latestCompanyDossiers.length === 0 ? (
                         <p className="mt-3 text-xs text-neutral-600">Generate a company dossier and it will appear here.</p>
                       ) : (
-                        <details className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2 sm:mt-3 sm:p-3" open={!isFirstTimeMinimalMode}>
-                          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700 sm:text-xs">
-                            Open editable dossiers ({latestCompanyDossiers.length})
-                          </summary>
-                          <div className="mt-3 space-y-4">
-                            {latestCompanyDossiers.map((asset) => (
-                              <div key={asset.id} className="space-y-2">
-                                <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-neutral-400">
-                                  <span>
-                                    {formatAssetType(asset.asset_type)} | v{asset.version ?? "?"}
-                                  </span>
-                                  <span>{asset.created_at ? new Date(asset.created_at).toLocaleString() : ""}</span>
-                                </div>
-                                <CareerAssetEditor
-                                  candidateId={candidate.id}
-                                  assetType={asset.asset_type || "company_dossier"}
-                                  initialTitle={asset.title || "Untitled company dossier"}
-                                  initialContent={asset.content || ""}
-                                />
+                        <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2 sm:mt-3 sm:p-3">
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-700">
+                              Editing latest dossier
+                            </div>
+                            {latestCompanyDossiers[0]?.created_at ? (
+                              <div className="text-[11px] text-neutral-500">
+                                Updated {new Date(latestCompanyDossiers[0].created_at).toLocaleString()}
                               </div>
-                            ))}
+                            ) : null}
                           </div>
-                        </details>
+                          <CareerAssetEditor
+                            candidateId={candidate.id}
+                            assetType={latestCompanyDossiers[0].asset_type || "company_dossier"}
+                            initialTitle={latestCompanyDossiers[0].title || "Untitled company dossier"}
+                            initialContent={latestCompanyDossiers[0].content || ""}
+                          />
+                          {latestCompanyDossiers.length > 1 ? (
+                            <div className="mt-2 px-1 text-[11px] text-neutral-600">
+                              {latestCompanyDossiers.length - 1} older version{latestCompanyDossiers.length - 1 === 1 ? "" : "s"} available in{" "}
+                              <button
+                                type="button"
+                                onClick={() => openAndScroll("company", "#company-dossier-history")}
+                                className="font-semibold text-[#0a66c2] hover:underline"
+                              >
+                                Employer insight dossier history
+                              </button>
+                              .
+                            </div>
+                          ) : null}
+                        </div>
                       )}
                     </section>
                   </div>
@@ -5936,7 +5964,7 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                       ))}
                     </HistoryArchiveSection>
                   </div>
-                  <div className="mt-4">
+                  <div id="company-dossier-history" className="mt-4">
                     <HistoryArchiveSection
                       eyebrow="Version trail"
                       title="Employer insight dossier history"
@@ -5993,13 +6021,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                     <div className="text-[11px] text-neutral-700">
                       <span className="font-semibold">Next:</span> Generate interview prep, then save reflections after interviews.
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleSectionContext("interview")}
-                      className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                    >
-                      {showSectionContext.interview ? "Hide details" : "Show details"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openAndScroll("interview", sectionActionGuides.interview.href)}
+                        className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                      >
+                        {sectionActionGuides.interview.actionLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleSectionContext("interview")}
+                        className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                      >
+                        {showSectionContext.interview ? "Hide details" : "Show details"}
+                      </button>
+                    </div>
                   </div>
                   {showSectionContext.interview && showStepGuidance ? (
                     <>
@@ -6230,13 +6267,22 @@ export function CareerCandidateClient({ candidateId, previewOwnerUserId = null }
                 <div className="text-[11px] text-neutral-700">
                   <span className="font-semibold">Next:</span> Run live search, then shortlist and apply from saved roles.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleSectionContext("jobs")}
-                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
-                >
-                  {showSectionContext.jobs ? "Hide details" : "Show details"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAndScroll("jobs", sectionActionGuides.jobs.href)}
+                    className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#004182]"
+                  >
+                    {sectionActionGuides.jobs.actionLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSectionContext("jobs")}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-700 hover:bg-neutral-100"
+                  >
+                    {showSectionContext.jobs ? "Hide details" : "Show details"}
+                  </button>
+                </div>
               </div>
               <div className="mt-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] text-sky-900">
                 Search scope is currently <span className="font-semibold">New Zealand only</span>. International targeting is coming soon.

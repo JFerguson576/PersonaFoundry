@@ -142,13 +142,27 @@ export function CareerApplicationFitAnalyzer({ candidateId, applications, initia
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={loading || !jobTitle.trim() || !jobDescription.trim()}
-        className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Starting fit analysis..." : "Generate fit score"}
-      </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">Primary action</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={loading || !jobTitle.trim() || !jobDescription.trim()}
+            className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#004182]"
+          >
+            {loading ? "Starting..." : "Generate fit score"}
+          </button>
+          <div
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+              jobTitle.trim() && jobDescription.trim()
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-neutral-200 bg-neutral-50 text-neutral-500"
+            }`}
+          >
+            {jobTitle.trim() && jobDescription.trim() ? "Ready" : "Needs role + description"}
+          </div>
+        </div>
+      </div>
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} /> : null}
     </form>

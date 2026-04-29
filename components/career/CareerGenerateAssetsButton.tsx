@@ -60,14 +60,16 @@ export function CareerGenerateAssetsButton({ candidateId }: Props) {
           </p>
         </div>
       </div>
-
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        className="mt-3 rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Generating drafts..." : "Generate CV and LinkedIn drafts"}
-      </button>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-600">Primary action</div>
+        <button
+          onClick={handleGenerate}
+          disabled={loading}
+          className="rounded-full border border-[#0a66c2] bg-[#0a66c2] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#004182]"
+        >
+          {loading ? "Generating drafts..." : "Generate CV + LinkedIn"}
+        </button>
+      </div>
 
       {message ? <CareerStatusBanner message={message} tone={getCareerMessageTone(message)} className="mt-3" /> : null}
     </div>
