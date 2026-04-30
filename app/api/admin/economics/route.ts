@@ -46,10 +46,30 @@ type RevenueLineSeries = {
   monthly: RevenueLinePoint[]
 }
 
+type TrafficFlowEdge = {
+  from: string
+  to: string
+  events: number
+}
+
+type TrafficLocationPoint = {
+  country_code: string
+  browser_tz: string
+  events: number
+}
+
+type TrafficHeatCell = {
+  day_index: number
+  day_label: string
+  hour: number
+  events: number
+}
+
 const DEMO_WEEKLY_REVENUE_USD = 100
 const DAYS_PER_MONTH = 30.4375
 const WEEKS_PER_YEAR = 52
 const MONTHS_PER_YEAR = 12
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 const MODULE_LABELS: Record<string, string> = {
   career_intelligence: "Career Intelligence",
@@ -265,6 +285,94 @@ function buildCodexSpendSeries(
   return { hour, day, week, month }
 }
 
+function buildEventCountSeries(
+  hourBuckets: Map<string, number>,
+  dayBuckets: Map<string, number>,
+  weekBuckets: Map<string, number>,
+  monthBuckets: Map<string, number>
+) {
+  const now = new Date()
+  const hour = Array.from({ length: 24 }, (_, index) => {
+    const offset = 23 - index
+    const bucket = toHourStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours() - offset,
+      0,
+      0,
+      0
+    )))
+    const key = hourKeyFromDate(bucket)
+    return {
+      label: bucket.toLocaleTimeString("en-US", { hour: "numeric" }),
+      events: Math.round(hourBuckets.get(key) ?? 0),
+    }
+  })
+
+  const day = Array.from({ length: 30 }, (_, index) => {
+    const offset = 29 - index
+    const bucket = toDayStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - offset,
+      0,
+      0,
+      0,
+      0
+    )))
+    const key = dayKeyFromIso(bucket.toISOString())
+    return {
+      label: bucket.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      events: Math.round(dayBuckets.get(key) ?? 0),
+    }
+  })
+
+  const week = Array.from({ length: 12 }, (_, index) => {
+    const offset = 11 - index
+    const anchor = toDayStart(new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - offset * 7,
+      0,
+      0,
+      0,
+      0
+    )))
+    const weekStart = toWeekStart(anchor)
+    const key = dayKeyFromIso(weekStart.toISOString())
+    return {
+      label: `Wk ${weekStart.toLocaleDateString("en-US", { month: "numeric", day: "numeric" })}`,
+      events: Math.round(weekBuckets.get(key) ?? 0),
+    }
+  })
+
+  const month = Array.from({ length: 12 }, (_, index) => {
+    const offset = 11 - index
+    const bucket = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1, 0, 0, 0, 0))
+    const key = monthKeyFromDate(bucket)
+    return {
+      label: bucket.toLocaleDateString("en-US", { month: "short" }),
+      events: Math.round(monthBuckets.get(key) ?? 0),
+    }
+  })
+
+  return { hour, day, week, month }
+}
+
+function baseRoutePath(value: string) {
+  const raw = normalizeText(value)
+  if (!raw) return "/"
+  const withoutHash = raw.split("#")[0] ?? raw
+  const withoutQuery = withoutHash.split("?")[0] ?? withoutHash
+  return normalizeText(withoutQuery) || "/"
+}
+
+function metadataText(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object") return ""
+  return normalizeText((metadata as Record<string, unknown>)[key])
+}
+
 function sumCostsForRange(dayBuckets: Map<string, CostBucket>, rangeStart: Date, rangeEnd: Date) {
   const totals: CostBucket = {
     api_cost_usd: 0,
@@ -383,10 +491,16 @@ export async function GET(request: Request) {
 
   const { startIso, monthLabel } = monthWindow()
   const trendStartIso = yearWindowStartIso()
-  const [apiLogsResult, subscriptionsResult, usersResponse, openaiOrgMonthlyUsage] = await Promise.all([
+  const [apiLogsResult, usageEventsResult, subscriptionsResult, usersResponse, openaiOrgMonthlyUsage] = await Promise.all([
     admin
       .from("api_usage_logs")
       .select("user_id, input_tokens, output_tokens, total_tokens, estimated_cost_usd, created_at, provider, model")
+      .gte("created_at", trendStartIso)
+      .order("created_at", { ascending: false })
+      .limit(20000),
+    admin
+      .from("usage_events")
+      .select("user_id, event_type, module, metadata, created_at")
       .gte("created_at", trendStartIso)
       .order("created_at", { ascending: false })
       .limit(20000),
@@ -399,6 +513,9 @@ export async function GET(request: Request) {
 
   if (apiLogsResult.error) {
     return NextResponse.json({ error: apiLogsResult.error.message }, { status: 400 })
+  }
+  if (usageEventsResult.error) {
+    return NextResponse.json({ error: usageEventsResult.error.message }, { status: 400 })
   }
   if (subscriptionsResult.error) {
     return NextResponse.json({ error: subscriptionsResult.error.message }, { status: 400 })
@@ -446,6 +563,14 @@ export async function GET(request: Request) {
   const costByDay = new Map<string, CostBucket>()
   const codexCostByHour = new Map<string, number>()
   const codexCostByDay = new Map<string, number>()
+  const trafficEventByHour = new Map<string, number>()
+  const trafficEventByDay = new Map<string, number>()
+  const trafficEventByWeek = new Map<string, number>()
+  const trafficEventByMonth = new Map<string, number>()
+  const trafficHeatByDayHour = new Map<string, number>()
+  const trafficLocations = new Map<string, number>()
+  const trafficUserRoutes = new Map<string, { created_at: string; route: string }[]>()
+  const trafficFlowEdges = new Map<string, number>()
 
   for (const log of apiLogsResult.data ?? []) {
     if (!log.created_at) continue
@@ -497,6 +622,79 @@ export async function GET(request: Request) {
     }
     costByUserId.set(log.user_id, current)
   }
+
+  for (const event of usageEventsResult.data ?? []) {
+    if (!event.created_at) continue
+    const timestamp = new Date(event.created_at)
+    if (!Number.isFinite(timestamp.getTime())) continue
+    const dayKey = dayKeyFromIso(timestamp.toISOString())
+    const weekKey = dayKeyFromIso(toWeekStart(timestamp).toISOString())
+    const monthKey = monthKeyFromDate(timestamp)
+    const hourKey = hourKeyFromDate(timestamp)
+    incrementBucket(trafficEventByHour, hourKey, 1)
+    incrementBucket(trafficEventByDay, dayKey, 1)
+    incrementBucket(trafficEventByWeek, weekKey, 1)
+    incrementBucket(trafficEventByMonth, monthKey, 1)
+
+    const dayIndex = timestamp.getUTCDay()
+    const hour = timestamp.getUTCHours()
+    incrementBucket(trafficHeatByDayHour, `${dayIndex}|${hour}`, 1)
+
+    const countryCode = metadataText(event.metadata, "country_code").toUpperCase() || "Unknown"
+    const browserTz = metadataText(event.metadata, "browser_tz") || "Unknown"
+    incrementBucket(trafficLocations, `${countryCode}|${browserTz}`, 1)
+
+    if (!event.user_id) continue
+    if (normalizeText(event.event_type) !== "page_view") continue
+    const routePath = baseRoutePath(metadataText(event.metadata, "route_path"))
+    const list = trafficUserRoutes.get(event.user_id) ?? []
+    list.push({ created_at: event.created_at, route: routePath })
+    trafficUserRoutes.set(event.user_id, list)
+  }
+
+  for (const routes of trafficUserRoutes.values()) {
+    routes.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    for (let index = 1; index < routes.length; index += 1) {
+      const previous = routes[index - 1]
+      const current = routes[index]
+      if (!previous || !current) continue
+      if (previous.route === current.route) continue
+      incrementBucket(trafficFlowEdges, `${previous.route}>>>${current.route}`, 1)
+    }
+  }
+
+  const trafficFlow = [...trafficFlowEdges.entries()]
+    .map(([key, events]) => {
+      const [from, to] = key.split(">>>")
+      return {
+        from: from || "/",
+        to: to || "/",
+        events,
+      } satisfies TrafficFlowEdge
+    })
+    .sort((a, b) => b.events - a.events)
+    .slice(0, 12)
+
+  const trafficHeat = DAY_LABELS.flatMap((dayLabel, dayIndex) =>
+    Array.from({ length: 24 }, (_, hour) => ({
+      day_index: dayIndex,
+      day_label: dayLabel,
+      hour,
+      events: trafficHeatByDayHour.get(`${dayIndex}|${hour}`) ?? 0,
+    } satisfies TrafficHeatCell))
+  )
+
+  const trafficLocationSummary = [...trafficLocations.entries()]
+    .map(([key, events]) => {
+      const [countryCode, browserTz] = key.split("|")
+      return {
+        country_code: countryCode || "Unknown",
+        browser_tz: browserTz || "Unknown",
+        events,
+      } satisfies TrafficLocationPoint
+    })
+    .sort((a, b) => b.events - a.events)
+    .slice(0, 20)
 
   const allUserIds = new Set<string>([...subscriptionByUserId.keys(), ...costByUserId.keys()])
   const moduleRevenueMonthly = new Map<string, number>()
@@ -613,6 +811,12 @@ export async function GET(request: Request) {
     weekly: buildTrendSeries(costByDay, totalMonthlyRevenue, "weekly"),
     monthly: buildTrendSeries(costByDay, totalMonthlyRevenue, "monthly"),
     codex_spend: buildCodexSpendSeries(codexCostByHour, codexDisplayByDay, codexDisplayByWeek, codexDisplayByMonth),
+    traffic: {
+      events: buildEventCountSeries(trafficEventByHour, trafficEventByDay, trafficEventByWeek, trafficEventByMonth),
+      flow: trafficFlow,
+      heatmap: trafficHeat,
+      locations: trafficLocationSummary,
+    },
     module_lines: buildRevenueLineSeries(moduleRevenueMonthly, MODULE_LABELS),
     tier_lines: buildRevenueLineSeries(tierRevenueMonthly, TIER_LABELS),
     seeded_weekly_revenue_usd: DEMO_WEEKLY_REVENUE_USD,

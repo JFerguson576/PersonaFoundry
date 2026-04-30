@@ -277,6 +277,17 @@ type OperationsEconomicsResponse = {
       week: { label: string; codex_spend_usd: number }[]
       month: { label: string; codex_spend_usd: number }[]
     }
+    traffic?: {
+      events: {
+        hour: { label: string; events: number }[]
+        day: { label: string; events: number }[]
+        week: { label: string; events: number }[]
+        month: { label: string; events: number }[]
+      }
+      flow: { from: string; to: string; events: number }[]
+      heatmap: { day_index: number; day_label: string; hour: number; events: number }[]
+      locations: { country_code: string; browser_tz: string; events: number }[]
+    }
     module_lines?: RevenueLineSeries[]
     tier_lines?: RevenueLineSeries[]
     seeded_weekly_revenue_usd?: number
@@ -899,6 +910,7 @@ export function OperationsJobsClient() {
   const [activeFinancialView, setActiveFinancialView] = useState<"api" | "marketing" | "revenue">("api")
   const [activeFinancialRange, setActiveFinancialRange] = useState<"daily" | "weekly" | "monthly">("weekly")
   const [activeCodexSpendRange, setActiveCodexSpendRange] = useState<"hour" | "day" | "week" | "month">("day")
+  const [activeTrafficRange, setActiveTrafficRange] = useState<"hour" | "day" | "week" | "month">("day")
   const [activeFinancialRevenueLines, setActiveFinancialRevenueLines] = useState<"total" | "module" | "tier">("total")
   const [activeMarketingView, setActiveMarketingView] = useState<
     "overview" | "teamsync_outreach" | "tester_outreach" | "analytics" | "campaign_manager" | "practitioner_outreach_data"
@@ -1964,6 +1976,30 @@ export function OperationsJobsClient() {
     if (activeCodexSpendRange === "month") return codexSeries.month
     return codexSeries.day
   }, [economics, activeCodexSpendRange])
+  const trafficEventTrendSeries = useMemo(() => {
+    const traffic = economics?.trends?.traffic?.events
+    if (!traffic) return []
+    if (activeTrafficRange === "hour") return traffic.hour
+    if (activeTrafficRange === "week") return traffic.week
+    if (activeTrafficRange === "month") return traffic.month
+    return traffic.day
+  }, [economics, activeTrafficRange])
+  const trafficFlowEdges = useMemo(() => economics?.trends?.traffic?.flow ?? [], [economics])
+  const trafficLocationSummary = useMemo(() => economics?.trends?.traffic?.locations ?? [], [economics])
+  const trafficTotalEvents = useMemo(
+    () => trafficEventTrendSeries.reduce((sum, point) => sum + Number(point.events || 0), 0),
+    [trafficEventTrendSeries]
+  )
+  const trafficTopFlow = useMemo(() => trafficFlowEdges[0] ?? null, [trafficFlowEdges])
+  const trafficTopLocation = useMemo(() => trafficLocationSummary[0] ?? null, [trafficLocationSummary])
+  const trafficHeatMap = useMemo(() => {
+    const cells = economics?.trends?.traffic?.heatmap ?? []
+    const maxEvents = Math.max(1, ...cells.map((cell) => Number(cell.events || 0)))
+    return cells.map((cell) => ({
+      ...cell,
+      intensity: Number(cell.events || 0) / maxEvents,
+    }))
+  }, [economics])
   const seededWeeklyRevenue = useMemo(() => Number(economics?.trends?.seeded_weekly_revenue_usd || 100), [economics])
   const negativeMarginRows = useMemo(
     () => economicsRows.filter((row) => row.profitability === "negative"),
@@ -3210,6 +3246,101 @@ export function OperationsJobsClient() {
                           </div>
                         </div>
                         <CodexSpendTrendChart points={codexSpendTrendSeries} label={activeCodexSpendRange} />
+                      </div>
+                      <div className="mt-2 rounded-xl border border-[#dbe6f4] bg-[#fafdff] px-2.5 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#4a6388]">Traffic activity</div>
+                            <div className="mt-0.5 text-xs text-[#4a6388]">Low-overhead page-view telemetry by route, time window, and location.</div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">
+                              <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">
+                                {trafficTotalEvents.toLocaleString()} events
+                              </span>
+                              <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">
+                                Top flow: {trafficTopFlow ? `${trafficTopFlow.from} -> ${trafficTopFlow.to}` : "N/A"}
+                              </span>
+                              <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">
+                                Top location: {trafficTopLocation ? `${trafficTopLocation.country_code}` : "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {(["hour", "day", "week", "month"] as const).map((range) => (
+                              <button
+                                key={`traffic-range-${range}`}
+                                type="button"
+                                onClick={() => setActiveTrafficRange(range)}
+                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                  activeTrafficRange === range
+                                    ? "border-[#8fb4ef] bg-[#eaf3ff] text-[#1f4f99]"
+                                    : "border-[#cbd8eb] bg-white text-[#36537d]"
+                                }`}
+                              >
+                                {range}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <TrafficEventsTrendChart points={trafficEventTrendSeries} label={activeTrafficRange} />
+                        <div className="mt-2 grid gap-2 lg:grid-cols-3">
+                          <div className="rounded-xl border border-[#dbe6f4] bg-white px-2.5 py-2 lg:col-span-2">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">Activity heat map (UTC day x hour)</div>
+                            <div className="mt-1 space-y-1">
+                              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayLabel, dayIndex) => {
+                                const dayCells = trafficHeatMap.filter((cell) => cell.day_index === dayIndex)
+                                return (
+                                  <div key={`traffic-day-${dayLabel}`} className="flex items-center gap-1">
+                                    <div className="w-7 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#47628d]">{dayLabel}</div>
+                                    <div className="grid flex-1 gap-0.5" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
+                                      {dayCells.map((cell) => (
+                                        <div
+                                          key={`heat-cell-${dayLabel}-${cell.hour}`}
+                                          className="h-2 rounded-[2px] border border-white/40"
+                                          style={{
+                                            backgroundColor: `rgba(10,102,194,${Math.max(0.08, cell.intensity * 0.95)})`,
+                                          }}
+                                          title={`${dayLabel} ${cell.hour}:00 - ${cell.events} events`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div className="space-y-2 rounded-xl border border-[#dbe6f4] bg-white px-2.5 py-2">
+                            <div>
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">Top flows</div>
+                              <div className="mt-1 space-y-1.5 text-[11px] text-[#2f4c78]">
+                                {trafficFlowEdges.length === 0 ? (
+                                  <div className="rounded-lg border border-[#dbe6f4] bg-[#f7fbff] px-2 py-1.5 text-[#5a7399]">No route flow data yet.</div>
+                                ) : (
+                                  trafficFlowEdges.slice(0, 6).map((edge, index) => (
+                                    <div key={`flow-edge-${index}`} className="rounded-lg border border-[#dbe6f4] bg-[#f7fbff] px-2 py-1.5">
+                                      <div className="font-semibold text-[#173b6f]">{edge.events} events</div>
+                                      <div className="mt-0.5 truncate">{edge.from} {"->"} {edge.to}</div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">Top locations</div>
+                              <div className="mt-1 space-y-1 text-[11px] text-[#2f4c78]">
+                                {trafficLocationSummary.length === 0 ? (
+                                  <div className="rounded-lg border border-[#dbe6f4] bg-[#f7fbff] px-2 py-1.5 text-[#5a7399]">No location data yet.</div>
+                                ) : (
+                                  trafficLocationSummary.slice(0, 6).map((location, index) => (
+                                    <div key={`location-${index}`} className="flex items-center justify-between rounded-lg border border-[#dbe6f4] bg-[#f7fbff] px-2 py-1.5">
+                                      <span className="truncate pr-2">{location.country_code} | {location.browser_tz}</span>
+                                      <span className="font-semibold text-[#173b6f]">{location.events}</span>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-2 rounded-xl border border-[#d3dfee] bg-white px-3 py-2">
@@ -4911,6 +5042,61 @@ function CodexSpendTrendChart({
         <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[#1f4f99]">
           Codex spend
         </span>
+      </div>
+    </div>
+  )
+}
+
+function TrafficEventsTrendChart({
+  points,
+  label,
+}: {
+  points: { label: string; events: number }[]
+  label: "hour" | "day" | "week" | "month"
+}) {
+  const width = 760
+  const height = 170
+  const padding = { top: 12, right: 20, bottom: 34, left: 46 }
+  const innerWidth = width - padding.left - padding.right
+  const innerHeight = height - padding.top - padding.bottom
+
+  const safePoints = points.length > 0 ? points : [{ label: "-", events: 0 }]
+  const xAt = (index: number) =>
+    safePoints.length <= 1 ? padding.left + innerWidth / 2 : padding.left + (index / (safePoints.length - 1)) * innerWidth
+  const maxValue = Math.max(...safePoints.map((point) => point.events), 1)
+  const yAt = (value: number) => padding.top + innerHeight - (value / maxValue) * innerHeight
+  const eventPath = safePoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index)} ${yAt(point.events)}`)
+    .join(" ")
+  const fillPath = `${eventPath} L ${xAt(safePoints.length - 1)} ${padding.top + innerHeight} L ${xAt(0)} ${padding.top + innerHeight} Z`
+
+  return (
+    <div className="mt-2 rounded-xl border border-[#dbe6f4] bg-white px-2.5 py-2">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-[170px] w-full">
+        <rect x={0} y={0} width={width} height={height} fill="transparent" />
+        {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          const value = maxValue * fraction
+          const y = yAt(value)
+          return (
+            <g key={`traffic-grid-${fraction}`}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#e6eef9" strokeWidth={1} />
+              <text x={8} y={y + 4} fontSize={10} fill="#5d769c">
+                {Math.round(value)}
+              </text>
+            </g>
+          )
+        })}
+        <path d={fillPath} fill="#eef7ff" />
+        <path d={eventPath} fill="none" stroke="#0a66c2" strokeWidth={2.2} />
+        {safePoints.map((point, index) => (
+          <text key={`traffic-point-${point.label}-${index}`} x={xAt(index)} y={height - 10} textAnchor="middle" fontSize={10} fill="#4a6388">
+            {point.label}
+          </text>
+        ))}
+      </svg>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#3f5b84]">
+        <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5">{label} zoom</span>
+        <span className="rounded-full border border-[#cbd8eb] bg-white px-2 py-0.5 text-[#1f4f99]">Page-view events</span>
       </div>
     </div>
   )
