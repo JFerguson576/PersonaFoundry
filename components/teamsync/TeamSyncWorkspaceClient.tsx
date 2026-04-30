@@ -161,6 +161,15 @@ type NextBestAction = {
   action: "open_support" | "open_checklist" | "schedule_pulse" | "none"
 }
 
+type TeamSyncUseCase = {
+  id: string
+  title: string
+  audience: string
+  outcome: string
+  scenarioHint: string
+  startStep: "intake" | "scenario"
+}
+
 const LOCAL_MEMBERS_KEY = "teamsync-members-v1"
 const LOCAL_RUNS_KEY = "teamsync-runs-v1"
 const LOCAL_GROUP_NAME_KEY = "teamsync-group-name-v1"
@@ -219,6 +228,41 @@ const scenarioLibrary: ScenarioTemplate[] = [
   { id: "s6", category: "Family", title: "Holiday planning simulator", focus: "Decision style and friction points" },
   { id: "s7", category: "Family", title: "Big decision simulator", focus: "Consensus path under stress" },
   { id: "s8", category: "Learning", title: "Learning strategy builder", focus: "How the group learns best together" },
+]
+
+const teamsyncUseCases: TeamSyncUseCase[] = [
+  {
+    id: "couples",
+    title: "Couples counseling",
+    audience: "Partners working through conflict, trust, or communication pressure.",
+    outcome: "Identify friction triggers and create a practical repair rhythm.",
+    scenarioHint: "Family conflict repair",
+    startStep: "intake",
+  },
+  {
+    id: "coaching",
+    title: "1:1 coaching",
+    audience: "Coaches supporting professionals through role clarity and growth.",
+    outcome: "Turn strengths into behavior shifts and clear next actions.",
+    scenarioHint: "Feedback conversation",
+    startStep: "intake",
+  },
+  {
+    id: "ceo",
+    title: "CEO and executive team",
+    audience: "Leadership teams making high-stakes decisions under pressure.",
+    outcome: "Reduce decision drift and tighten execution handoffs.",
+    scenarioHint: "Executive leadership prompt",
+    startStep: "scenario",
+  },
+  {
+    id: "board",
+    title: "Board and governance",
+    audience: "Boards and governance groups managing strategic risk and accountability.",
+    outcome: "Clarify governance decisions, challenge quality, and oversight cadence.",
+    scenarioHint: "Boardroom prompt",
+    startStep: "scenario",
+  },
 ]
 
 const executivePromptLibrary: ExecutivePromptTemplate[] = teamsyncExecutivePromptLibrary.map((item) => ({
@@ -1104,6 +1148,153 @@ function buildMeetingAgenda(run: RunResult) {
     `4) Confirm follow-up for: ${secondAction}`,
     `5) Support check for highest-priority member`,
     `6) Agree 24h pulse + 7-day review`,
+  ].join("\n")
+}
+
+function buildPractitionerOfferBrief(run: RunResult, groupName: string) {
+  const topRisk = run.risks[0] || "No major risk identified."
+  const topAction = run.actions[0] || "No immediate action listed."
+  const topPriority = run.memberSupportPriorities[0]
+  const supportOwner = topPriority ? `${topPriority.memberName} (${topPriority.level} priority)` : "No member priority assigned yet."
+
+  return [
+    `TeamSync Practice Growth Brief`,
+    `Client group: ${groupName || "Unnamed group"}`,
+    `Scenario: ${run.scenarioTitle} (${run.scenarioCategory}, pressure ${run.pressureLevel}/5)`,
+    ``,
+    `Current executive signal:`,
+    run.groupSummary || "No summary available.",
+    ``,
+    `Primary risk to solve:`,
+    topRisk,
+    ``,
+    `Primary move to run this week:`,
+    topAction,
+    ``,
+    `Support owner to coach first:`,
+    supportOwner,
+    ``,
+    `Commercial positioning line:`,
+    `We help this team convert hidden tension into clear decisions, faster execution, and stronger follow-through.`,
+  ].join("\n")
+}
+
+function buildPractitionerDeliveryPlan(run: RunResult, horizonDays: 30 | 90 | 120) {
+  const topActions = run.actions.slice(0, 3)
+  const topRisks = run.risks.slice(0, 2)
+  const supportTarget = run.memberSupportPriorities[0]?.memberName || "priority support member"
+  const horizonLabel = horizonDays === 120 ? "Quarterly renewal plan" : `${horizonDays}-day practitioner plan`
+
+  return [
+    `${horizonLabel} - ${run.scenarioTitle}`,
+    ``,
+    `Week 1`,
+    `- Run alignment session using current scenario output.`,
+    `- Confirm owner + due date for action #1: ${topActions[0] || "Define first action."}`,
+    ``,
+    `Weeks 2-4`,
+    `- Coach ${supportTarget} with a short support conversation cadence.`,
+    `- Track signal drift on: ${topRisks[0] || "key risk signal"}.`,
+    ``,
+    `Month 2`,
+    `- Re-run TeamSync simulation under updated pressure assumptions.`,
+    `- Close or re-scope action #2: ${topActions[1] || "Second action backlog item."}`,
+    ``,
+    `Month 3+`,
+    `- Present outcome review and next-cycle recommendation.`,
+    `- Focus risk reduction on: ${topRisks[1] || topRisks[0] || "primary watch signal"}.`,
+    `- Advance action #3: ${topActions[2] || "Third action backlog item."}`,
+  ].join("\n")
+}
+
+function buildPractitionerSessionPackage(
+  run: RunResult,
+  groupName: string,
+  packageType: "kickoff" | "review30" | "renewal90"
+) {
+  const riskOne = run.risks[0] || "No major risk listed."
+  const riskTwo = run.risks[1] || "No second risk listed."
+  const actionOne = run.actions[0] || "Confirm immediate team action."
+  const actionTwo = run.actions[1] || "Assign clear owner and follow-up date."
+  const priorityMember = run.memberSupportPriorities[0]?.memberName || "priority support member"
+
+  if (packageType === "kickoff") {
+    return [
+      `TeamSync Practitioner Session Pack - Kickoff`,
+      `Client group: ${groupName || "Unnamed group"}`,
+      `Scenario: ${run.scenarioTitle} (${run.scenarioCategory}, pressure ${run.pressureLevel}/5)`,
+      ``,
+      `Session objective`,
+      `Establish role clarity, reduce immediate friction, and commit to one measurable execution rhythm.`,
+      ``,
+      `Agenda (60 minutes)`,
+      `1. Context reset and scenario framing (10 min)`,
+      `2. Team signal review: risks, strengths, and pressure points (15 min)`,
+      `3. Alignment decisions (20 min)`,
+      `4. Ownership and check-in cadence (10 min)`,
+      `5. Close and commitments (5 min)`,
+      ``,
+      `Facilitator prompts`,
+      `- Which risk will hurt momentum most this month: ${riskOne}`,
+      `- What is the one action we start immediately: ${actionOne}`,
+      `- Who needs targeted support first: ${priorityMember}`,
+      ``,
+      `Deliverables`,
+      `- Action owner list`,
+      `- 7-day pulse check date`,
+      `- Practitioner follow-up summary`,
+    ].join("\n")
+  }
+
+  if (packageType === "review30") {
+    return [
+      `TeamSync Practitioner Session Pack - 30-Day Review`,
+      `Client group: ${groupName || "Unnamed group"}`,
+      `Scenario baseline: ${run.scenarioTitle}`,
+      ``,
+      `Review objective`,
+      `Validate progress, close unresolved friction, and tighten accountability before drift starts.`,
+      ``,
+      `Agenda (45 minutes)`,
+      `1. Wins and blockers since kickoff (10 min)`,
+      `2. Risk drift scan (${riskOne}; ${riskTwo}) (15 min)`,
+      `3. Action progress review (${actionOne}; ${actionTwo}) (10 min)`,
+      `4. 30-day reset commitments (10 min)`,
+      ``,
+      `Practitioner guidance`,
+      `- Keep discussion evidence-based and role-specific.`,
+      `- Convert vague concerns into named owners + dates.`,
+      `- Re-confirm support plan for ${priorityMember}.`,
+      ``,
+      `Output`,
+      `A refreshed action board with clear owners, deadlines, and one facilitation focus for the next month.`,
+    ].join("\n")
+  }
+
+  return [
+    `TeamSync Practitioner Session Pack - Quarterly Renewal`,
+    `Client group: ${groupName || "Unnamed group"}`,
+    `Scenario anchor: ${run.scenarioTitle}`,
+    ``,
+    `Renewal objective`,
+    `Demonstrate value delivered, prioritise next-quarter goals, and secure continuity with a clear delivery roadmap.`,
+    ``,
+    `Quarterly review flow (75 minutes)`,
+    `1. Executive summary of outcomes and system shifts (15 min)`,
+    `2. Role and relationship pressure audit (20 min)`,
+    `3. Next-quarter priorities and risk prevention design (25 min)`,
+    `4. Commercial and cadence agreement (15 min)`,
+    ``,
+    `Commercial narrative`,
+    `TeamSync reduced ambiguity around ${riskOne.toLowerCase()} and improved decision clarity by introducing structured facilitation and ownership discipline.`,
+    ``,
+    `Recommended renewal scope`,
+    `- Monthly simulation refresh`,
+    `- Targeted coaching for ${priorityMember}`,
+    `- Quarterly strategy review with action accountability`,
+    ``,
+    `Next step`,
+    `Confirm renewal decision and schedule next-quarter kickoff.`,
   ].join("\n")
 }
 
@@ -2408,6 +2599,10 @@ export function TeamSyncWorkspaceClient() {
   const [customScenarioCategory, setCustomScenarioCategory] = useState<ScenarioTemplate["category"]>("Professional")
   const [customScenarioTitle, setCustomScenarioTitle] = useState("")
   const [customScenarioSearch, setCustomScenarioSearch] = useState("")
+  const [selectedUseCaseId, setSelectedUseCaseId] = useState("coaching")
+  const [showUseCaseCoach, setShowUseCaseCoach] = useState(false)
+  const [useCaseTeamType, setUseCaseTeamType] = useState<"partners" | "individual" | "exec-team" | "board">("individual")
+  const [useCaseNeed, setUseCaseNeed] = useState<"conflict" | "growth" | "decision" | "governance">("growth")
   const [selectedCustomScenarioId, setSelectedCustomScenarioId] = useState("")
   const [customScenarioVisibility, setCustomScenarioVisibility] = useState<"private" | "shared">("private")
   const [strategyDocumentLabel, setStrategyDocumentLabel] = useState("")
@@ -3228,6 +3423,7 @@ export function TeamSyncWorkspaceClient() {
     { key: "scenario", label: "Scenario", href: "#teamsync-scenario" },
     { key: "run", label: "Run", href: "#teamsync-run" },
     { key: "insights", label: "Insights", href: "#teamsync-insights" },
+    { key: "practitioner", label: "Practitioner", href: "#teamsync-practitioner" },
     { key: "history", label: "History", href: "#teamsync-history" },
   ]
   const activeStepNavItem = stepNav.find((item) => item.key === activeStep) ?? stepNav[0]
@@ -3310,12 +3506,15 @@ export function TeamSyncWorkspaceClient() {
           : { title: "Review and share insights", detail: "Your latest run is ready for action and sharing.", stepKey: "insights", href: "#teamsync-insights", cta: "Open Insights" }
   const showOnboardingStartCard = members.length < 2 || !latestRun
   const readinessCount = readinessItems.filter((item) => item.ready).length
+  const practitionerReady = membersReady && runReady
+  const activeUseCase = teamsyncUseCases.find((item) => item.id === selectedUseCaseId) ?? teamsyncUseCases[0]
   const stepStatusByKey: Record<string, boolean> = {
     overview: readinessCount > 0 || Boolean(latestRun),
     intake: membersReady,
     scenario: scenarioReady,
     run: runReady,
     insights: runReady,
+    practitioner: practitionerReady,
     history: runHistory.length > 0,
   }
   const smartCheckTone =
@@ -3383,6 +3582,76 @@ export function TeamSyncWorkspaceClient() {
         scrollToSelectorWithOffset(href, { offsetPx: 132 })
       })
     })
+  }
+
+  function applyUseCaseBlueprint(useCaseId: string) {
+    const useCase = teamsyncUseCases.find((item) => item.id === useCaseId)
+    if (!useCase) return
+    setSelectedUseCaseId(useCase.id)
+
+    if (useCase.id === "couples") {
+      setScenarioMode("library")
+      setSelectedScenarioId("s5")
+      setCustomScenarioCategory("Family")
+      setMessage("Use case set to Couples counseling. Start by loading both partners, then run Family conflict repair.")
+      openStep(membersReady ? "scenario" : "intake", membersReady ? "#teamsync-scenario" : "#teamsync-intake")
+      return
+    }
+
+    if (useCase.id === "coaching") {
+      setScenarioMode("library")
+      setSelectedScenarioId("s3")
+      setCustomScenarioCategory("Professional")
+      setMessage("Use case set to 1:1 coaching. Load client strengths first, then run Feedback conversation.")
+      openStep(membersReady ? "scenario" : "intake", membersReady ? "#teamsync-scenario" : "#teamsync-intake")
+      return
+    }
+
+    if (useCase.id === "ceo") {
+      const executiveDefault =
+        executivePromptLibrary.find((item) => /leadership|crisis|strategy/i.test(`${item.title} ${item.category}`)) ??
+        executivePromptLibrary[0]
+      if (executiveDefault) {
+        setScenarioMode("executive")
+        setSelectedExecutivePromptId(executiveDefault.id)
+      }
+      setCustomScenarioCategory("Executive")
+      setMessage("Use case set to CEO and executive team. Load leaders, then run an executive prompt.")
+      openStep(membersReady ? "scenario" : "intake", membersReady ? "#teamsync-scenario" : "#teamsync-intake")
+      return
+    }
+
+    const boardroomDefault =
+      executivePromptLibrary.find((item) => item.tier === "Boardroom") ??
+      executivePromptLibrary.find((item) => /board|governance/i.test(`${item.title} ${item.category}`)) ??
+      executivePromptLibrary[0]
+    if (boardroomDefault) {
+      setScenarioMode("executive")
+      setSelectedExecutivePromptId(boardroomDefault.id)
+    }
+    setCustomScenarioCategory("Boardroom")
+    setMessage("Use case set to Board and governance. Load members, then run a boardroom scenario.")
+    openStep(membersReady ? "scenario" : "intake", membersReady ? "#teamsync-scenario" : "#teamsync-intake")
+  }
+
+  function recommendUseCaseFromCoach() {
+    let recommended: TeamSyncUseCase["id"] = "coaching"
+
+    if (useCaseTeamType === "partners") {
+      recommended = "couples"
+    } else if (useCaseTeamType === "board" || useCaseNeed === "governance") {
+      recommended = "board"
+    } else if (useCaseTeamType === "exec-team" || useCaseNeed === "decision") {
+      recommended = "ceo"
+    } else if (useCaseNeed === "conflict") {
+      recommended = "couples"
+    } else {
+      recommended = "coaching"
+    }
+
+    applyUseCaseBlueprint(recommended)
+    setShowUseCaseCoach(false)
+    setMessage("Recommended path selected. You can change it any time.")
   }
 
   function resetWorkspaceView() {
@@ -5300,6 +5569,89 @@ export function TeamSyncWorkspaceClient() {
             <p className="mt-0.5 text-sm text-[#475569]">
               A fast snapshot of how this group is likely to respond under pressure.
             </p>
+            <div className="mt-2 rounded-xl border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#475569]">Choose your TeamSync path</div>
+                  <p className="mt-0.5 text-xs text-[#334155]">Pick what you are using TeamSync for, and we will preload the best starting flow.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowUseCaseCoach((current) => !current)}
+                    className="rounded-full border border-neutral-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#334155] hover:bg-neutral-50"
+                  >
+                    {showUseCaseCoach ? "Close chooser" : "Not sure? Help me choose"}
+                  </button>
+                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sky-800">
+                    Current: {activeUseCase.title}
+                  </span>
+                </div>
+              </div>
+              {showUseCaseCoach ? (
+                <div className="mt-2 rounded-lg border border-[#d8e4f2] bg-white p-2">
+                  <div className="grid gap-1.5 md:grid-cols-2">
+                    <label className="text-xs text-[#334155]">
+                      <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748b]">Who is this for?</span>
+                      <select
+                        value={useCaseTeamType}
+                        onChange={(event) => setUseCaseTeamType(event.target.value as "partners" | "individual" | "exec-team" | "board")}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs"
+                      >
+                        <option value="partners">A couple / partners</option>
+                        <option value="individual">An individual coaching client</option>
+                        <option value="exec-team">A CEO and executive team</option>
+                        <option value="board">A board / governance group</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-[#334155]">
+                      <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#64748b]">Main need right now?</span>
+                      <select
+                        value={useCaseNeed}
+                        onChange={(event) => setUseCaseNeed(event.target.value as "conflict" | "growth" | "decision" | "governance")}
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs"
+                      >
+                        <option value="conflict">Resolve conflict and reduce tension</option>
+                        <option value="growth">Build capability and growth</option>
+                        <option value="decision">Improve decision speed and clarity</option>
+                        <option value="governance">Strengthen governance and oversight</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={recommendUseCaseFromCoach}
+                      className="rounded-md border border-[#1d4ed8] bg-[#dbeafe] px-2.5 py-1 text-[11px] font-semibold text-[#1e3a8a] hover:bg-[#bfdbfe]"
+                    >
+                      Recommend best path
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-2 grid gap-1.5 lg:grid-cols-2">
+                {teamsyncUseCases.map((useCase) => {
+                  const active = useCase.id === selectedUseCaseId
+                  return (
+                    <button
+                      key={useCase.id}
+                      type="button"
+                      onClick={() => applyUseCaseBlueprint(useCase.id)}
+                      className={`rounded-lg border px-2.5 py-2 text-left transition ${
+                        active
+                          ? "border-sky-300 bg-sky-100"
+                          : "border-[#d8e4f2] bg-white hover:bg-[#f1f5f9]"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-[#0f172a]">{useCase.title}</div>
+                      <p className="mt-0.5 text-xs text-[#475569]">{useCase.audience}</p>
+                      <p className="mt-1 text-xs text-[#334155]"><span className="font-semibold">Outcome:</span> {useCase.outcome}</p>
+                      <p className="mt-0.5 text-xs text-[#334155]"><span className="font-semibold">Best start:</span> {useCase.scenarioHint}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <div className="mt-1.5 grid gap-1.5 md:grid-cols-3">
               {readinessItems.map((item) => (
                 <div
@@ -7566,12 +7918,136 @@ export function TeamSyncWorkspaceClient() {
           </section>
 
           <section
+            id="teamsync-practitioner"
+            className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "practitioner" ? "" : "hidden"}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Step 6: Practitioner growth add-on</h2>
+                <p className="mt-0.5 text-[11px] text-[#64748b]">Turn TeamSync output into a client-ready offer, delivery plan, and renewal path.</p>
+              </div>
+              <div className="ui-action-row">
+                <button
+                  type="button"
+                  onClick={() => openStep("insights", "#teamsync-insights")}
+                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                >
+                  Open insights
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openStep("history", "#teamsync-history")}
+                  className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                >
+                  Open saved runs
+                </button>
+              </div>
+            </div>
+
+            {latestRun ? (
+              <>
+                <div className="mt-2 grid gap-2 md:grid-cols-3">
+                  <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Practice revenue builder</div>
+                    <p className="mt-1 text-sm font-semibold text-[#0f172a]">{latestRun.scenarioTitle}</p>
+                    <p className="mt-0.5 text-xs text-[#334155]">Lead risk: {latestRun.risks[0] || "No major risk flagged yet."}</p>
+                    <button
+                      type="button"
+                      onClick={() => void copyShareText(buildPractitionerOfferBrief(latestRun, groupName), "Practitioner offer brief")}
+                      className="mt-2 rounded-md border border-[#1d4ed8] bg-[#dbeafe] px-2.5 py-1 text-[11px] font-semibold text-[#1e3a8a] hover:bg-[#bfdbfe]"
+                    >
+                      Copy client offer brief
+                    </button>
+                  </div>
+
+                  <div className="rounded-lg border border-[#d8e4f2] bg-white p-2.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Delivery automation</div>
+                    <p className="mt-1 text-xs text-[#334155]">
+                      Generate delivery plans quickly so practitioners can run 30/90/quarterly cycles without rebuilding from scratch.
+                    </p>
+                    <div className="ui-action-row mt-2">
+                      <button
+                        type="button"
+                        onClick={() => void copyShareText(buildPractitionerDeliveryPlan(latestRun, 30), "30-day practitioner plan")}
+                        className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                      >
+                        30-day plan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyShareText(buildPractitionerDeliveryPlan(latestRun, 90), "90-day practitioner plan")}
+                        className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                      >
+                        90-day plan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void copyShareText(buildPractitionerDeliveryPlan(latestRun, 120), "Quarterly renewal plan")}
+                        className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                      >
+                        Quarterly plan
+                      </button>
+                    </div>
+                    <div className="mt-2 border-t border-[#e2e8f0] pt-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Session packages</div>
+                      <div className="ui-action-row mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void copyShareText(buildPractitionerSessionPackage(latestRun, groupName, "kickoff"), "Kickoff session package")}
+                          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        >
+                          Kickoff pack
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyShareText(buildPractitionerSessionPackage(latestRun, groupName, "review30"), "30-day review package")}
+                          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        >
+                          30-day review
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void copyShareText(buildPractitionerSessionPackage(latestRun, groupName, "renewal90"), "Quarterly renewal package")}
+                          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                        >
+                          Quarterly renewal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-[#d8e4f2] bg-[#f8fbff] p-2.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748b]">Continuity hub</div>
+                    <p className="mt-1 text-xs text-[#334155]">
+                      Priority coach target: <span className="font-semibold text-[#0f172a]">{latestRun.memberSupportPriorities[0]?.memberName || "Not identified yet"}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-[#334155]">
+                      First facilitation move: <span className="font-medium">{latestRun.actions[0] || "No facilitation action listed yet."}</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void copyShareText(buildMeetingAgenda(latestRun), "Client facilitation agenda")}
+                      className="mt-2 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-semibold hover:bg-neutral-50"
+                    >
+                      Copy facilitation agenda
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="mt-2 rounded-lg border border-dashed border-neutral-300 px-2.5 py-2.5 text-sm text-[#64748b]">
+                Run a simulation first, then this add-on will generate practitioner-ready briefs and delivery plans.
+              </div>
+            )}
+          </section>
+
+          <section
             id="teamsync-history"
             className={`scroll-mt-56 rounded-2xl border border-neutral-200 bg-white p-2.5 shadow-sm md:scroll-mt-60 ${activeStep === "history" ? "" : "hidden"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Step 6: Saved Runs</h2>
+                <h2 className="text-lg font-semibold">Step 7: Saved Runs</h2>
                 <p className="mt-0.5 text-[11px] text-[#64748b]">Search, compare, and reuse past runs.</p>
               </div>
               <div className="ui-action-row">

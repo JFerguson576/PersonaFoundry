@@ -13,7 +13,12 @@ export function getOAuthReturnErrorFromUrl() {
 
   if (!errorDescription) return null
 
-  return decodeURIComponent(errorDescription.replaceAll("+", " "))
+  const normalized = errorDescription.split("+").join(" ")
+  try {
+    return decodeURIComponent(normalized)
+  } catch {
+    return normalized
+  }
 }
 
 export function clearOAuthReturnParamsFromUrl() {
